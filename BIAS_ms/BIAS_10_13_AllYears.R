@@ -1,0 +1,255 @@
+#
+# Korvataan silakkam??r?n sovitus silakkaosuuden sovituksella
+# => binomijakauman approksimointi beta-jakaumalla
+#
+library(rjags)
+library(runjags)
+
+
+
+BIAS<-"
+model{
+
+  # Observation model for nautical area scattering coefficients
+  ##############################################################
+  for(i in 1:Nobs){# total number of observations over years
+    NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2) at depth 6-100m
+    # expected NASC at point i, year nascY[i]
+    mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
+                           sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]])/
+                           (pA[i]*A[R[i]])
+    M_nasc[i,nascY[i]]<-log(mu_nasc[i,nascY[i]])-0.5*(1/tau_nasc)
+    propA[LOG[i],R[i],nascY[i]]<-pA[i] # proportion of area i of rectangle R[i]
+  }
+  tau_nasc<-1/log(cv_nasc*cv_nasc+1)
+  cv_nasc~dlnorm(0.03,3.26) # kohina/mittausvirhe, voidaan pit?? samana vuosien yli
+
+  # Abundances
+  ############
+  for(y in 1:Nyears){
+    for(s in 1:2){
+      Ntot[s,y]<-exp(Ntmp[s,y])
+      Ntmp[s,y]~dnorm(13,0.0000001)
+
+      # pR: probability that a fish will be at rectangle r
+      # E(pR[r])=A[r]/Atot: proportion of area in rectangle r compared to total
+      # eta_pR: overdispersion parameter, could be derived with schooling behaviour etc.
+      # Ekspertit: onko kalojen jakauma ruuduille satunnainen, vai onko kalat todenn?k?isemmin
+      # samalla ruudulla eri vuosina? pR:lle voisi tehd? rakenteen jossa vuosikohinaa mutta yleinen
+      # tn osua tietylle ruudulle
+      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s,y])
+      alphaR[1:Nrec,s,y]<-(A[1:Nrec]/Atot)*etaR[y,s]
+    }
+
+
+    for(r in 1:Nrec){
+
+      # Proportion of herring in trawl catch
+      ######################################
+      #Hobs[r,y]~dbin(qH[r,y],Cobs[r,y])
+      HobsProp[r,y]~dbeta(aH[r,y],bH[r,y])
+      muH[r,y]<-N[r,1,y]/(N[r,1,y]+N[r,2,y])
+      aH[r,y]<-muH[r,y]*Cobs[r,y]*etaH
+      bH[r,y]<-(1-muH[r,y])*Cobs[r,y]*etaH
+
+      for(s in 1:2){
+        # N: Number of fish of species s on rectangle r
+        N[r,s,y]<-Ntot[s,y]*pR[r,s,y]
+
+        # pE satunnainen vuosien yli
+        # pE: probability that a fish at rectangle r is at echo area i
+        # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
+        # etaE: overdispersion parameter
+        pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[y,s]
+
+        for(e in 1:Necho[r,y]){
+          # n: number of fish of species s on echo area e of rectangle r
+          n[e,r,s,y]<-N[r,s,y]*pE[e,r,s,y]
+        }
+
+        # Length data
+        #################
+        # Observed number of fish of species s in each length class in rectangle r
+        Lobs[1:8,r,s,y]~dmulti(qL[1:8,r,s,y],nLobs[r,s,y])
+
+        # approximate dirichlet (set of gamma distributions) with lognormal
+        #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
+        qL[1:8,r,s,y]<-zL[1:8,r,s,y]/sum(zL[1:8,r,s,y])
+
+        for(l in 1:8){
+          zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
+          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l]
+        }
+        sigmaR[r,s,y]<-sum(sigmaTmp[1:8,r,s,y])
+      }
+
+      for(l in 1:8){
+        # Age data
+        #################
+        # Gobs: observed number of fish of each age class in length class l
+        Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
+        # qG: age distribution of length class l
+
+        # approximate dirichlet (set of gamma distributions) with lognormal
+        qG[1:Nages,l,r,y]<-zG[1:Nages,l,r,y]/sum(zG[1:Nages,l,r,y]) #~ddirich(alphaG[1:Nages,l,y])
+
+        for(a in 1:Nages){
+          zG[a,l,r,y]~dlnorm(MG[a,l,y],tauG[a,l,y])
+          qGtmp1[a,l,r,y]<-qL[l,r,1,y]*qG[a,l,r,y]
+        }
+      }
+      for(a in 1:Nages){
+        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:8,r,y])*N[r,1,y]
+      }
+    }
+
+    for(a in 1:Nages){
+      PopAge[a,y]<-sum(qGtmp2[a,1:28,y])/Ntot[1,y]
+    }
+    for(l in 1:8){
+      alphaG[1:Nages,l,y]<-Gstar[1:Nages,l,y]*etaG
+      Gstar[1:Nages,l,y]~ddirich(aG)
+      MG[1:Nages,l,y]<-log(Gstar[1:Nages,l,y])-0.5*(1/tauG[1:Nages,l,y])
+      tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
+    }
+    for(s in 1:2){
+      alphaL[1:8,s,y]<-Lstar[1:8,s,y]*(etaL[s]+1)
+      Lstar[1:8,s,y]~ddirich(aL)
+      ML[1:8,s,y]<-log(Lstar[1:8,s,y])-0.5*(1/tauL[1:8,s,y])
+      tauL[1:8,s,y]<-1/log((1/alphaL[1:8,s,y])+1)
+    }
+  }
+
+  for(s in 1:2){
+    etaL[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#dunif(1,10000)#dlnorm(4.6,0.7)
+#    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
+    # spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
+    # mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
+    # my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
+#    etaE[s]<-exp(etaEZ[s])
+  # etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
+#    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
+  for(y in 1:Nyears){
+    etaE[y,s]~dlnorm(ME[s],tauE[s])
+    etaR[y,s]~dlnorm(MR[s],tauR[s])
+  }
+  }
+#  etaR~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
+  muE[1]~dunif(1,100000)
+  cvE[1]~dunif(0.01,2)
+  ME[1]<-log(muE[1])-0.5/tauE[1]
+  tauE[1]<-1/(log(cvE[1]*cvE[1]+1))
+  muR[1]~dunif(1,1000)
+  cvR[1]~dunif(0.01,2)
+  MR[1]<-log(muR[1])-0.5/tauR[1]
+  tauR[1]<-1/(log(cvR[1]*cvR[1]+1))
+
+muE[2]~dunif(1,100000)
+  cvE[2]~dunif(0.01,2)
+  ME[2]<-log(muE[2])-0.5/tauE[2]
+  tauE[2]<-1/(log(cvE[2]*cvE[2]+1))
+  muR[2]~dunif(1,1000)
+  cvR[2]~dunif(0.01,2)
+  MR[2]<-log(muR[2])-0.5/tauR[2]
+  tauR[2]<-1/(log(cvR[2]*cvR[2]+1))
+  
+
+etaG~dlnorm(0.8,0.1)#dunif(1,10000)
+  #etaH~dlnorm(0.8,0.1)
+  etaH~dbeta(2,2)
+  # meanL: midpoint of each length class
+  #sigmaL[1:8]<-9.533*pow(10,-7)*pow(meanL[1:8],2)
+
+  sigmaL[1:8]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
+  TSa<-71.2
+  #TSa~dlnorm(4.23,243)# mu=68.72, sd=4.415
+  # Unupdated priors
+  ##############################
+  NTX<-exp(NtmpX)
+  NtmpX~dnorm(13,0.0000001)
+  cv_nascX~dlnorm(0.03,3.26)
+  etaX~dlnorm(0.8,0.1)
+
+
+}"
+
+cat(BIAS,file="BIAS_ms/BIAS_TSfixed0712.txt")
+
+#source("prg/model/BIAS_data_age_2010-2012.r")
+source("BIAS_ms/BIAS_data_age_new.r")
+
+
+data<-list(
+  Nages=9,
+  pi=3.14159265358979323846,
+  Nyears=6,
+  Cobs=Ntot,
+  #Hobs=Nherring,
+  HobsProp=HerringProp,
+  aG=star2,
+  Gobs=Age,
+  nGobs=AgeTot,
+  aL=star,
+  Lobs=L,
+  nLobs=Ltot,
+  meanL=meanL,
+  Nobs=length(echo$Rec),
+  Nrec=28,
+  Necho=Nlog+1,
+  Atot=Atot,# total area of interest
+  A=A, # Areas of rectangles
+  LOG=echo$LOG,
+  pA=echo$pA, # proportion of echo area out of total rectangle
+  R=echo$Rec, # rectangle
+  nascY=echo$Y,
+  NASC=echo$ch1+echo$ch2 # NASC's from two depth layers
+)
+
+parnames=c(
+  "PopAge",
+  "Lstar",
+  "cv_nasc",
+  "etaR", "etaE", "etaL","etaG","etaH",
+  "Ntot","N"
+)
+
+#jm<-jags.model('BIAS_ms/BIAS_TSfixed0712.txt',n.adapt=15000,
+#data=data,n.chains=2)
+
+run.jags(BIAS, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
+         burnin =10000, modules = "mix",
+         sample =600000, adapt = 15000,
+         keep.jags.files=F,
+         progress.bar=TRUE, jags.refresh=100)
+
+
+
+
+# parnames<-c(
+#   "Tot_Landed", "Tot_Released", "Tot_Catch", "Tot_Catch_Dead")
+# 
+# run_sd32 <- run.jags(M_trolling, monitor= parnames,
+#                      data=datalist,
+#                      n.chains = 2, method = 'parallel', thin=100,
+#                      burnin =10000, modules = "mix",
+#                      sample =1000, adapt = 10000,
+#                      keep.jags.files=F,
+#                      progress.bar=TRUE, jags.refresh=100)
+
+summary(run_sd32)
+
+# 
+# 
+# system.time(chains2<-coda.samples(jm,
+# variable.names=c(
+# "PopAge",
+# "Lstar",
+# "cv_nasc",
+# "etaR", "etaE", "etaL","etaG","etaH",
+# "Ntot","N"
+# ),
+# n.iter=600000, #100h
+# thin=500))
+# 
+

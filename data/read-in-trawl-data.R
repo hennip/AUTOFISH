@@ -68,6 +68,7 @@ dfB_catch<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"),
   as_tibble() |>
   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
   mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
+  mutate(catch=round(catch,0)) |> 
   full_join(df_rec) |> 
   mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
   select(rec_ruhne, everything())|> 
@@ -77,13 +78,51 @@ dfB_catch
 #View(dfB_catch)
 
 
-# Herring
-tmp<-dfB_catch 
-tmp2<-tmp |> mutate(catch=round(catch,0)) |> 
-  group_by(rec_ruhne,HaulNumber,species) |> 
+# Cobs: total catch per trawl haul
+#########################################
+# group by rec & haul, calculate total catch
+tmp2<-dfB_catch |>
+  group_by(rec_ruhne,HaulNumber) |> 
+  summarise(tot_catch=sum(catch))|> 
+  select(rec_ruhne, HaulNumber, tot_catch)
+#View(tmp2)
+
+# Cobs[h,r,y]
+# Build tot catch table in which rows are hauls and columns are rectangles 
+C_obs<-array(NA, dim=c(6,4))
+for(r in 1:4){
+  apu<-1
+  for(i in 1:length(tmp2$rec_ruhne)){
+    if(tmp2$rec_ruhne[i]==r){
+      C_obs[apu,r]<-tmp2$tot_catch[i]
+      apu<-apu+1
+    }}}
+C_obs
+
+# Hobsprop: Proportion of herring in each catch
+###############################################
+# group by rec, haul & species, calculate total catch
+herring<-dfB_catch  |> 
+  group_by(rec_ruhne,HaulNumber, species) |> 
   summarise(tot_catch=sum(catch))|> 
   select(rec_ruhne, HaulNumber, species, tot_catch)
-View(tmp2)
+herring
+
+
+#HobsProp[h,r,y]
+C_herring_obs<-array(NA, dim=c(6,4))
+for(r in 1:4){
+  apu<-1
+  for(i in 1:length(tmp3$rec_ruhne)){
+    if(tmp3$rec_ruhne[i]==r){
+      C_herring_obs[apu,r]<-tmp3$tot_catch[i]
+      apu<-apu+1
+    }}}
+
+Hprop_obs<-tmp3
+
+
+
 
 ###############
 # Haul data

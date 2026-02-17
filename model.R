@@ -46,12 +46,13 @@ model{
 
       # Proportion of herring in trawl catch
       ######################################
-      #Hobs[r,y]~dbin(qH[r,y],Cobs[r,y])
-      HobsProp[r,y]~dbeta(aH[r,y],bH[r,y])
+      for(h in 1:N_haul[r]){ # Several hauls per ruhne rectangle
+        HobsProp[h,r,y]~dbeta(aH[h,r,y],bH[e,r,y])
+        aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
+        bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
+      }
       muH[r,y]<-N[r,1,y]/(N[r,1,y]+N[r,2,y])
-      aH[r,y]<-muH[r,y]*Cobs[r,y]*etaH
-      bH[r,y]<-(1-muH[r,y])*Cobs[r,y]*etaH
-
+      
       for(s in 1:2){
         # N: Number of fish of species s on rectangle r
         N[r,s,y]<-Ntot[s,y]*pR[r,s,y]
@@ -195,6 +196,8 @@ data<-list(
   pA=areas$area_NM2, # proportion of echo area out of total rectangle
   
   Cobs=Ntot,
+  
+  
   #Hobs=Nherring,
   HobsProp=HerringProp,
   

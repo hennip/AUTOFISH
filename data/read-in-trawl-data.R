@@ -129,9 +129,19 @@ for(r in 1:4){
 Hprops
 
 
+# Lobs: Number of fish of species s from all hauls at rectangle r from length groups 1:8
+#######################################################################################
+# Lobs[1:8,r,s,y]
+# nLobs[r,s,y])
+
+
+
+
+
+
 
 ###############
-# Haul data
+# Age data
 ###############
 
 

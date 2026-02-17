@@ -180,26 +180,23 @@ cat(BIAS,file="BIAS_ms/BIAS_TSfixed0712.txt")
 #source("prg/model/BIAS_data_age_2010-2012.r")
 source("BIAS_ms/BIAS_data_age_new.r")
 
-
+A<-c(819.8155089, # NW
+    1014.006703, # NE 
+    536.3622401,  # SW
+    1558.658342 # SE
+)
 data<-list(
   Nages=9,
   pi=3.14159265358979323846,
   Nyears=6,
   Nrec=4,
-  A=c(819.8155089, # NW
-      1014.006703, # NE 
-      536.3622401,  # SW
-      1558.658342 # SE
-      ), # Areas of rectangles, NM^2
+  A=A, # Areas of rectangles, NM^2
+  Atot=sum(A),
   NASC=tot_nasc_per_log$sum_nasc, # All depths summed together for now
   Nobs=length(tot_nasc_per_log$sum_nasc), # Total number of observations over years
   pA=areas$area_NM2, # proportion of echo area out of total rectangle
-  
-  Cobs=Ntot,
-  
-  
-  #Hobs=Nherring,
-  HobsProp=HerringProp,
+  Cobs=C_obs,
+  HobsProp=Hprops,
   
   aG=star2,
   Gobs=Age,
@@ -208,11 +205,9 @@ data<-list(
   Lobs=L,
   nLobs=Ltot,
   meanL=meanL,
-  Nobs=length(echo$Rec),
   Necho=Nlog+1,
   Atot=Atot,# total area of interest
   LOG=echo$LOG,
-  pA=echo$pA, # proportion of echo area out of total rectangle
   R=echo$Rec, # rectangle
   nascY=echo$Y
 )

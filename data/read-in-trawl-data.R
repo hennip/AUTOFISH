@@ -81,20 +81,21 @@ dfB_catch
 # Cobs: total catch per trawl haul
 #########################################
 # group by rec & haul, calculate total catch
-tmp2<-dfB_catch |>
+TotCatch<-dfB_catch |>
   group_by(rec_ruhne,HaulNumber) |> 
   summarise(tot_catch=sum(catch))|> 
   select(rec_ruhne, HaulNumber, tot_catch)
-#View(tmp2)
+#View(TotCatch)
+TotCatch
 
 # Cobs[h,r,y]
 # Build tot catch table in which rows are hauls and columns are rectangles 
 C_obs<-array(NA, dim=c(6,4))
 for(r in 1:4){
   apu<-1
-  for(i in 1:length(tmp2$rec_ruhne)){
-    if(tmp2$rec_ruhne[i]==r){
-      C_obs[apu,r]<-tmp2$tot_catch[i]
+  for(i in 1:length(TotCatch$rec_ruhne)){
+    if(TotCatch$rec_ruhne[i]==r){
+      C_obs[apu,r]<-TotCatch$tot_catch[i]
       apu<-apu+1
     }}}
 C_obs
@@ -105,22 +106,27 @@ C_obs
 herring<-dfB_catch  |> 
   group_by(rec_ruhne,HaulNumber, species) |> 
   summarise(tot_catch=sum(catch))|> 
-  select(rec_ruhne, HaulNumber, species, tot_catch)
+  select(rec_ruhne, HaulNumber, species, tot_catch) |> 
+  filter(species==1) |>  # herring only
+  mutate(herring_catch=tot_catch) |> 
+  select(-tot_catch)
 herring
+  
+dfH<-full_join(herring, TotCatch) |> 
+  mutate(hprop=herring_catch/tot_catch)
 
 
 #HobsProp[h,r,y]
-C_herring_obs<-array(NA, dim=c(6,4))
+# Build table for herring proportions in which rows are hauls and columns are rectangles
+Hprops<-array(NA, dim=c(6,4))
 for(r in 1:4){
   apu<-1
-  for(i in 1:length(tmp3$rec_ruhne)){
-    if(tmp3$rec_ruhne[i]==r){
-      C_herring_obs[apu,r]<-tmp3$tot_catch[i]
+  for(i in 1:length(dfH$rec_ruhne)){
+    if(dfH$rec_ruhne[i]==r){
+      Hprops[apu,r]<-dfH$hprop[i]
       apu<-apu+1
     }}}
-
-Hprop_obs<-tmp3
-
+Hprops
 
 
 

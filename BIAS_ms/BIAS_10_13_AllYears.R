@@ -214,42 +214,19 @@ parnames=c(
   "Ntot","N"
 )
 
-#jm<-jags.model('BIAS_ms/BIAS_TSfixed0712.txt',n.adapt=15000,
-#data=data,n.chains=2)
+sink(paste0("sink_",Sys.time(),"_",".txt"))
 
-run.jags(BIAS, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
+t01<-Sys.time();print(t01)
+run1<-run.jags(BIAS, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
          burnin =10000, modules = "mix",
-         sample =600000, adapt = 15000,
+         sample =1200, adapt = 15000, #500*1200=600000
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
+save(run1, file="../BIAS_ms.RData")
+t02<-Sys.time();print(t02)
+print("run1 done");print(difftime(t02,t01))
+print("--------------------------------------------------")
 
+sink()
 
-
-
-# parnames<-c(
-#   "Tot_Landed", "Tot_Released", "Tot_Catch", "Tot_Catch_Dead")
-# 
-# run_sd32 <- run.jags(M_trolling, monitor= parnames,
-#                      data=datalist,
-#                      n.chains = 2, method = 'parallel', thin=100,
-#                      burnin =10000, modules = "mix",
-#                      sample =1000, adapt = 10000,
-#                      keep.jags.files=F,
-#                      progress.bar=TRUE, jags.refresh=100)
-
-summary(run_sd32)
-
-# 
-# 
-# system.time(chains2<-coda.samples(jm,
-# variable.names=c(
-# "PopAge",
-# "Lstar",
-# "cv_nasc",
-# "etaR", "etaE", "etaL","etaG","etaH",
-# "Ntot","N"
-# ),
-# n.iter=600000, #100h
-# thin=500))
-# 
 

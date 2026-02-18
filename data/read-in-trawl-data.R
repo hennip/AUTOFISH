@@ -60,7 +60,7 @@ minmax_depth<-dfB_haul |> arrange(rec) |> group_by(rec) |>
 #View(dfB_haul)
 
 ###############
-# Haul data
+# Catch data
 ###############
 
 
@@ -69,6 +69,8 @@ dfB_catch<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"),
   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
   mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
   mutate(catch=round(catch,0)) |> 
+  mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
+  mutate(CatchLengthClass=as.numeric(CatchLengthClass)) |> 
   full_join(df_rec) |> 
   mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
   select(rec_ruhne, everything())|> 
@@ -134,7 +136,33 @@ Hprops
 # Lobs[1:8,r,s,y]
 # nLobs[r,s,y])
 
+sample_size<-dfB_catch  |>
+  group_by(rec_ruhne,species) |> 
+  summarise(tot_sample=sum(N_at_length))#|> 
+sample_size
 
+# Decide upon 8 length groups
+# limits are upper limits expect the last one which is also a lower limit of the 
+# 8th group
+length_limits<-c(90,105,120,135,150,165,180)
+
+print(n =31, x=dfB_catch |>filter(species==1) |> 
+  group_by(CatchLengthClass) |>  
+  summarise(n=sum(CatchNumberAtLength)))
+
+
+
+dfB_catch |>group_by(CatchSpeciesCode) |>  
+  summarise(min=min(CatchLengthClass), max=max(CatchLengthClass))
+
+
+number_at_length<-dfB_catch |> 
+  group_by(species, CatchLengthClass ) |> 
+  #group_by(rec_ruhne, species, CatchLengthClass ) |> 
+  summarise(N_at_length=sum(CatchNumberAtLength))
+number_at_length
+
+View(number_at_length)
 
 
 
@@ -145,11 +173,21 @@ Hprops
 ###############
 
 
-dfB_biol<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=500) |> 
-  as_tibble() #|> 
-#  mutate(HaulNumber=as.numeric(HaulNumber))
-dfB_biol
+dfB_biol24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=500) |> mutate(year=2024)|> as_tibble()
+dfB_biol23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=485) |> mutate(year=2023)|> as_tibble()
+dfB_biol22<-read.csv(str_c(path,"Biotic_2022-ZR033_2023-04-13T07.55.56.180.csv"), skip=509) |> mutate(year=2022)|> as_tibble()
+dfB_biol21<-read.csv(str_c(path,"Biotic_2021-ZR007_2022-03-11T16.00.12.580.csv"), skip=488) |> mutate(year=2021)|> as_tibble()
+dfB_biol20<-read.csv(str_c(path,"Biotic_2020-ZR005_2021-04-01T13.30.21.857.csv"), skip=587) |> mutate(year=2020)|> as_tibble()
 
+dfB_biol<-full_join(dfB_biol24, dfB_biol23) |> 
+  full_join(dfB_biol22) |> 
+  full_join(dfB_biol21) |> 
+  full_join(dfB_biol20)  
+  
+  df<-dfB_biol |> mutate(length=BiologyLengthClass, age=BiologyIndividualAge)
+  
+print(n=35, x=df |> select(length, age) |> group_by(length, age) |> summarise(n=n())|> 
+  pivot_wider(names_from = age, values_from = n))
 
 
 

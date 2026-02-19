@@ -131,38 +131,60 @@ for(r in 1:4){
 Hprops
 
 
-# Lobs: Number of fish of species s from all hauls at rectangle r from length groups 1:8
+# Lobs[1:8,r,s,y]: Number of fish of species s in all haul samples at rectangle r from length groups 1:8
+# nLobs[r,s,y]: Total sample size per rectangle and species
 #######################################################################################
-# Lobs[1:8,r,s,y]
-# nLobs[r,s,y])
-
+# nLobs
+#==========================
+# catch sample size per ruhne rectangle and species (1=herring, 2=other)
 sample_size<-dfB_catch  |>
   group_by(rec_ruhne,species) |> 
-  summarise(tot_sample=sum(N_at_length))#|> 
+  summarise(tot_sample=sum(CatchNumberAtLength))#|> 
 sample_size
+
+# Sample size per species and rec in a form that feeds to the model
+num_Lobs<-array(NA, dim=c(4,2))
+num_Lobs<-as.data.frame(sample_size |> 
+            pivot_wider(values_from = tot_sample, names_from = species))[,2:3]
+
+# Lobs
+#==========================
+# min and max length per species
+dfB_catch |>group_by(CatchSpeciesCode) |>  
+  summarise(min=min(CatchLengthClass), max=max(CatchLengthClass))
 
 # Decide upon 8 length groups
 # limits are upper limits expect the last one which is also a lower limit of the 
 # 8th group
 length_limits<-c(90,105,120,135,150,165,180)
 
-print(n =31, x=dfB_catch |>filter(species==1) |> 
-  group_by(CatchLengthClass) |>  
-  summarise(n=sum(CatchNumberAtLength)))
+# Number of herring in the sample per 
+numbers_at_length<-dfB_catch|>
+  group_by(rec_ruhne, species, CatchLengthClass)|>  
+  summarise(n=sum(CatchNumberAtLength)) |> 
+  mutate(length_group=ifelse(CatchLengthClass<90, 1, NA)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=90 & CatchLengthClass<105, 2, length_group)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=105 & CatchLengthClass<120, 3, length_group)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=120 & CatchLengthClass<135, 4, length_group)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=135 & CatchLengthClass<150, 5, length_group)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=150 & CatchLengthClass<165, 6, length_group)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=165 & CatchLengthClass<180, 7, length_group)) |> 
+  mutate(length_group=ifelse(CatchLengthClass>=180, 8, length_group)) |> 
+  group_by(rec_ruhne, species, length_group) |> 
+  summarise(number_at_length=sum(n)) |> 
+  pivot_wider(names_from = rec_ruhne, values_from=number_at_length)
+  
+print(n=50, x=numbers_at_length)
 
 
 
-dfB_catch |>group_by(CatchSpeciesCode) |>  
-  summarise(min=min(CatchLengthClass), max=max(CatchLengthClass))
+# number_at_length<-dfB_catch |> 
+#   #group_by(species, CatchLengthClass ) |> 
+#   group_by(rec_ruhne, species, CatchLengthClass ) |> 
+#   summarise(N_at_length=sum(CatchNumberAtLength))
+# number_at_length
 
-
-number_at_length<-dfB_catch |> 
-  group_by(species, CatchLengthClass ) |> 
-  #group_by(rec_ruhne, species, CatchLengthClass ) |> 
-  summarise(N_at_length=sum(CatchNumberAtLength))
-number_at_length
-
-View(number_at_length)
+#View(number_at_length)
 
 
 
@@ -187,7 +209,8 @@ dfB_biol<-full_join(dfB_biol24, dfB_biol23) |>
   df<-dfB_biol |> mutate(length=BiologyLengthClass, age=BiologyIndividualAge)
   
 print(n=35, x=df |> select(length, age) |> group_by(length, age) |> summarise(n=n())|> 
-  pivot_wider(names_from = age, values_from = n))
+  pivot_wider(names_from = age, values_from = n) |> 
+    select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`))
 
 
 

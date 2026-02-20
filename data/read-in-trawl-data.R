@@ -229,28 +229,60 @@ df_pivot<-df_length_at_age |>
   pivot_wider(names_from = age, values_from = n) |> 
   select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
 print(n=35, x=df_pivot)
-sum(df_pivot, na.rm=T) #12178 2020-2024
+sum(df_pivot[,2:17], na.rm=T) #7803 2020-2024
 
 # Divide to rectangles, but use only 2024 data as atm rec_ruhne contains only that year
-df_pivot2<-df_length_at_age |> 
+df_pivot24<-df_length_at_age |> 
   filter(year==2024) |> 
   mutate(age=ifelse(age>9, 9, age)) |>  # pool ages >=9 together (10th age group)
   group_by(rec_ruhne, length_group, age) |> summarise(n=n())|> 
+  #  select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`) # Use later if need to arrange
   pivot_wider(names_from = age, values_from = n) 
-print(n=350, x=df_pivot2) # Looks correct
-
-
-#|> 
-  select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
-sum(df_length_age_pivot, na.rm=T)
-
-tmp<-df_length_at_age |> select(rec_ruhne, everything())
-filter(tmp, is.na(rec_ruhne)==T)
-View(tmp)
+print(n=350, x=df_pivot24) # Looks correct
+sum(df_pivot24[,3:11], na.rm=T) #1186 in 2024 should be at max 1210 so seems pretty ok
 
 # nGobs[l,r,y]: Age sample size 
 # Gobs[1:Nages,l,r,y]: Sample size on age samples from length group l
 # ===================================================================
+# Let's take ages 0-9 (10 age groups)
+G_obs<-array(NA, dim=c(10,8,4))
+for(i in 1:dim(tmp)[1]){
+  r<-tmp$rec_ruhne[i]
+  l<-tmp$length_group[i]
+  a<-ifelse(tmp$age[i]<=9,tmp$age[i]+1,9) # age groups start from 1 (0+) 
+  G_obs[a,l,r]<-tmp$n[i]
+}
+G_obs
+sum(G_obs, na.rm=T)
+
+filter(tmp, length_group==2)
+
+# Tämä voi olla ok, ->nGobs
+nG_obs<-as.data.frame(df |> group_by(rec_ruhne, length_group) |> summarise(n=n()) |> 
+                        pivot_wider(values_from = n, names_from = rec_ruhne) |> 
+                        ungroup() |> select(-length_group))
+nG_obs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 df_ages<-dfB_biol24 |> select(-Biology, -Header, -CruiseLocalID, -HaulGear) |> 
@@ -293,4 +325,3 @@ nG_obs<-as.data.frame(df |> group_by(rec_ruhne, length_group) |> summarise(n=n()
     ungroup() |> select(-length_group))
 nG_obs
 
-# Sitten tarvii Gobsin, jossa jokaiselle ruudulle oma age-length matriisi. Easy peasy?

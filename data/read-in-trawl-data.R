@@ -231,97 +231,44 @@ df_pivot<-df_length_at_age |>
 print(n=35, x=df_pivot)
 sum(df_pivot[,2:17], na.rm=T) #7803 2020-2024
 
-# Divide to rectangles, but use only 2024 data as atm rec_ruhne contains only that year
-df_pivot24<-df_length_at_age |> 
+# 2024 only
+df_24<-df_length_at_age |> 
   filter(year==2024) |> 
-  mutate(age=ifelse(age>9, 9, age)) |>  # pool ages >=9 together (10th age group)
-  group_by(rec_ruhne, length_group, age) |> summarise(n=n())|> 
+  mutate(age=ifelse(age>9, 9, age)) |>   # pool ages >=9 together (10th age group)
+  group_by(rec_ruhne, length_group, age) |> 
+  summarise(n=n())
+df_24
+
+# Divide to rectangles, but use only 2024 data as atm rec_ruhne contains only that year
+df_pivot24<-  df_24 |> 
   #  select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`) # Use later if need to arrange
-  pivot_wider(names_from = age, values_from = n) 
+  #pivot_wider(names_from = age, values_from = n) 
+pivot_wider(names_from = length_group, values_from = n) 
 print(n=350, x=df_pivot24) # Looks correct
-sum(df_pivot24[,3:11], na.rm=T) #1186 in 2024 should be at max 1210 so seems pretty ok
+sum(df_pivot24[,3:10], na.rm=T) #1210 as it should!
 
 # nGobs[l,r,y]: Age sample size 
 # Gobs[1:Nages,l,r,y]: Sample size on age samples from length group l
 # ===================================================================
+df<-df_24 
 # Let's take ages 0-9 (10 age groups)
 G_obs<-array(NA, dim=c(10,8,4))
-for(i in 1:dim(tmp)[1]){
-  r<-tmp$rec_ruhne[i]
-  l<-tmp$length_group[i]
-  a<-ifelse(tmp$age[i]<=9,tmp$age[i]+1,9) # age groups start from 1 (0+) 
-  G_obs[a,l,r]<-tmp$n[i]
+for(i in 1:dim(df)[1]){
+  r<-df$rec_ruhne[i]
+  l<-df$length_group[i]
+  a<-df$age[i]+1 # first age groups is 0+ 
+  G_obs[a,l,r]<-df$n[i]
 }
 G_obs
-sum(G_obs, na.rm=T)
-
-filter(tmp, length_group==2)
-
-# Tämä voi olla ok, ->nGobs
-nG_obs<-as.data.frame(df |> group_by(rec_ruhne, length_group) |> summarise(n=n()) |> 
-                        pivot_wider(values_from = n, names_from = rec_ruhne) |> 
-                        ungroup() |> select(-length_group))
-nG_obs
+sum(G_obs, na.rm=T) # 1210!
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-df_ages<-dfB_biol24 |> select(-Biology, -Header, -CruiseLocalID, -HaulGear) |> 
-  filter(CatchSpeciesCode==126417) |> 
-  mutate(LengthClass=BiologyLengthClass) |> 
-  mutate(age=BiologyIndividualAge) |> 
-  mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
-  mutate(length_group=ifelse(LengthClass>=90  & LengthClass<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=105 & LengthClass<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=120 & LengthClass<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=135 & LengthClass<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  select(rec_ruhne, HaulNumber,length_group, age, year)
-df_ages
-#View(df_ages) # 1210 individuals in total 
-
-tmp<-df_ages |> group_by(rec_ruhne, length_group, age) #|>  
-  summarise(n=n())  
-#tmp2<-pivot_wider(tmp, names_from = length_group, values_from = n)
-#print(n=50, tmp2)
-
-# Let's take ages 0-9 (10 age groups)
-G_obs<-array(NA, dim=c(10,8,4))
-for(i in 1:dim(tmp)[1]){
-  r<-tmp$rec_ruhne[i]
-  l<-tmp$length_group[i]
-  a<-ifelse(tmp$age[i]<=9,tmp$age[i]+1,9) # age groups start from 1 (0+) 
-  G_obs[a,l,r]<-tmp$n[i]
-}
-G_obs
-sum(G_obs, na.rm=T)
-
-filter(tmp, length_group==2)
-
-# Tämä voi olla ok, ->nGobs
-nG_obs<-as.data.frame(df |> group_by(rec_ruhne, length_group) |> summarise(n=n()) |> 
-  pivot_wider(values_from = n, names_from = rec_ruhne) |> 
-    ungroup() |> select(-length_group))
-nG_obs
+nG_obs<-df_length_at_age |> 
+  filter(year==2024) |> 
+  group_by(rec_ruhne, length_group) |> 
+  summarise(ntot=n()) |> 
+  pivot_wider(names_from = rec_ruhne, values_from = ntot) |> 
+  select(-length_group)
+nG_obs<-as.data.frame(nG_obs)  
+sum(nG_obs, na.rm=T) # 1210!
 

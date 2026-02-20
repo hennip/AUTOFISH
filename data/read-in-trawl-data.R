@@ -198,12 +198,12 @@ dfB_biol22<-read.csv(str_c(path,"Biotic_2022-ZR033_2023-04-13T07.55.56.180.csv")
 dfB_biol21<-read.csv(str_c(path,"Biotic_2021-ZR007_2022-03-11T16.00.12.580.csv"), skip=488) |> mutate(year=2021)|> as_tibble()
 dfB_biol20<-read.csv(str_c(path,"Biotic_2020-ZR005_2021-04-01T13.30.21.857.csv"), skip=587) |> mutate(year=2020)|> as_tibble()
 
-dfB_biol<-full_join(dfB_biol24, dfB_biol23) |> 
+dfB_biol_all<-full_join(dfB_biol24, dfB_biol23) |> 
   full_join(dfB_biol22) |> 
   full_join(dfB_biol21) |> 
   full_join(dfB_biol20)
 
-dfB_biol |> filter(is.na(HaulNumber)==T)
+dfB_biol<-dfB_biol_all
 
 df_length_at_age<-dfB_biol|> 
   left_join(df_rec) |> # Add ruhne rectangles 
@@ -219,21 +219,29 @@ df_length_at_age<-dfB_biol|>
   mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
   mutate(length_group=ifelse(length>=180, 8, length_group))
 df_length_at_age
-  
-# Toimii niin kauan kun ei jaeta ruutuihin
+#View(df_length_at_age)
+df_length_at_age |> filter(is.na(rec_ruhne)==T)
+
+# Obs! Data from all years
 df_pivot<-df_length_at_age |> 
-  select(length, age) |> group_by(length, age) |> summarise(n=n())|> 
+  select(length, age) |> group_by(length, age) |> 
+  summarise(n=n())|> # count works as each row is an individual 
   pivot_wider(names_from = age, values_from = n) |> 
   select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
 print(n=35, x=df_pivot)
-sum(df_pivot, na.rm=T)
+sum(df_pivot, na.rm=T) #12178 2020-2024
 
-# ruutuihin jako sakkaa, tulee puuttuvia ruutuja, mutta miksi?
-df_length_age_pivot<-df_length_at_age |> 
-  group_by(rec_ruhne, length, age) |> summarise(n=n())|> 
-  pivot_wider(names_from = age, values_from = n) |> 
+# Divide to rectangles, but use only 2024 data as atm rec_ruhne contains only that year
+df_pivot2<-df_length_at_age |> 
+  filter(year==2024) |> 
+  mutate(age=ifelse(age>9, 9, age)) |>  # pool ages >=9 together (10th age group)
+  group_by(rec_ruhne, length_group, age) |> summarise(n=n())|> 
+  pivot_wider(names_from = age, values_from = n) 
+print(n=350, x=df_pivot2) # Looks correct
+
+
+#|> 
   select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
-print(n=350, x=df_length_age_pivot )
 sum(df_length_age_pivot, na.rm=T)
 
 tmp<-df_length_at_age |> select(rec_ruhne, everything())

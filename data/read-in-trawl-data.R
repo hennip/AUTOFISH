@@ -201,23 +201,54 @@ dfB_biol20<-read.csv(str_c(path,"Biotic_2020-ZR005_2021-04-01T13.30.21.857.csv")
 dfB_biol<-full_join(dfB_biol24, dfB_biol23) |> 
   full_join(dfB_biol22) |> 
   full_join(dfB_biol21) |> 
-  full_join(dfB_biol20)  
+  full_join(dfB_biol20)
+
+dfB_biol |> filter(is.na(HaulNumber)==T)
+
+df_length_at_age<-dfB_biol|> 
+  left_join(df_rec) |> # Add ruhne rectangles 
+  filter(CatchSpeciesCode==126417) |> 
+  mutate(length=BiologyLengthClass, # Give shorter names
+        age=BiologyIndividualAge)|> 
+  mutate(length_group=ifelse(length<90, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=180, 8, length_group))
+df_length_at_age
   
-  df<-dfB_biol |> mutate(length=BiologyLengthClass, age=BiologyIndividualAge)
-  
-print(n=35, x=df |> select(length, age) |> group_by(length, age) |> summarise(n=n())|> 
+# Toimii niin kauan kun ei jaeta ruutuihin
+df_pivot<-df_length_at_age |> 
+  select(length, age) |> group_by(length, age) |> summarise(n=n())|> 
   pivot_wider(names_from = age, values_from = n) |> 
-    select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`))
+  select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
+print(n=35, x=df_pivot)
+sum(df_pivot, na.rm=T)
+
+# ruutuihin jako sakkaa, tulee puuttuvia ruutuja, mutta miksi?
+df_length_age_pivot<-df_length_at_age |> 
+  group_by(rec_ruhne, length, age) |> summarise(n=n())|> 
+  pivot_wider(names_from = age, values_from = n) |> 
+  select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
+print(n=350, x=df_length_age_pivot )
+sum(df_length_age_pivot, na.rm=T)
+
+tmp<-df_length_at_age |> select(rec_ruhne, everything())
+filter(tmp, is.na(rec_ruhne)==T)
+View(tmp)
 
 # nGobs[l,r,y]: Age sample size 
 # Gobs[1:Nages,l,r,y]: Sample size on age samples from length group l
 # ===================================================================
 
-# Oho. Ikä unohtui. Jatketaan tästä...
 
-df<-dfB_biol24 |> select(-Biology, -Header, -CruiseLocalID, -HaulGear) |> 
+df_ages<-dfB_biol24 |> select(-Biology, -Header, -CruiseLocalID, -HaulGear) |> 
   filter(CatchSpeciesCode==126417) |> 
   mutate(LengthClass=BiologyLengthClass) |> 
+  mutate(age=BiologyIndividualAge) |> 
   mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
   mutate(length_group=ifelse(LengthClass>=90  & LengthClass<105, 2, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=105 & LengthClass<120, 3, length_group)) |> 
@@ -226,15 +257,32 @@ df<-dfB_biol24 |> select(-Biology, -Header, -CruiseLocalID, -HaulGear) |>
   mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  full_join(df_rec) |> 
-  select(rec_ruhne, HaulNumber,length_group, BiologyIndividualAge, year)
-df
-#View(df)
+  select(rec_ruhne, HaulNumber,length_group, age, year)
+df_ages
+#View(df_ages) # 1210 individuals in total 
 
-# Tämä voi olla ok, ->Gobs
-df2<-as.data.frame(df |> group_by(rec_ruhne, length_group) |> summarise(n=n()) |> 
+tmp<-df_ages |> group_by(rec_ruhne, length_group, age) #|>  
+  summarise(n=n())  
+#tmp2<-pivot_wider(tmp, names_from = length_group, values_from = n)
+#print(n=50, tmp2)
+
+# Let's take ages 0-9 (10 age groups)
+G_obs<-array(NA, dim=c(10,8,4))
+for(i in 1:dim(tmp)[1]){
+  r<-tmp$rec_ruhne[i]
+  l<-tmp$length_group[i]
+  a<-ifelse(tmp$age[i]<=9,tmp$age[i]+1,9) # age groups start from 1 (0+) 
+  G_obs[a,l,r]<-tmp$n[i]
+}
+G_obs
+sum(G_obs, na.rm=T)
+
+filter(tmp, length_group==2)
+
+# Tämä voi olla ok, ->nGobs
+nG_obs<-as.data.frame(df |> group_by(rec_ruhne, length_group) |> summarise(n=n()) |> 
   pivot_wider(values_from = n, names_from = rec_ruhne) |> 
     ungroup() |> select(-length_group))
-df2
+nG_obs
 
 # Sitten tarvii Gobsin, jossa jokaiselle ruudulle oma age-length matriisi. Easy peasy?

@@ -39,22 +39,14 @@ mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
   select(-Data, -Header) |> 
   mutate(rec=rec_ruhne)
 dfA2
-View(dfA2)  
+#View(dfA2)  
 
-
-
-# Forget the depth layers for now, let's sum up nascs from different depths and 
-# assume all of them are similar enough as the trawl data
 
 tot_nasc_per_log<-dfA2 |> group_by(LogDistance, rec) |> 
-  summarise(N=n(), sum_nasc=sum(DataValue))|> 
-  select(-rec, -N) 
-tot_nasc_per_log
-View(tot_nasc_per_log)
-
-# For mean depth per location (of each nasc), take min(depthUpp) and max(depthLow) and take average
-areas<-dfA2 |> group_by(LogDistance, rec) |> 
-  summarise(min_depthUpp=min(depthUpp), max_depthLow=max(depthLow), 
+  # Sum nasc over different depths
+  summarise(N=n(), sum_nasc=sum(DataValue),
+            min_depthUpp=min(depthUpp), 
+            max_depthLow=max(depthLow), 
             mean_depth=(min_depthUpp+max_depthLow)/2)|>
   mutate(radius=mean_depth*tan((pi/180)*3.5), # angle of 3.5 degrees
          #circle=pi*radius^2, #m2
@@ -65,9 +57,23 @@ areas<-dfA2 |> group_by(LogDistance, rec) |>
          area_NM2=width_NM*1, # # Area in NM^2 per 1NM of cruise track
          test_m2=1852^2*area_NM2 # USE THIS CORRECTION IF USING M2's rather than NM2's! may(?) influence how smooth computation is, although no practical difference as long as keeping it systematic 
   )
+tot_nasc_per_log
+#View(tot_nasc_per_log)
 
-#View(areas)
+# LOG: for each rectangle, numbers 1:number_of_echo_areas_at_that_rectangle
+LOG<-c()
+countR1<-countR2<-countR3<-countR4<-1
+for(i in 1:dim(tot_nasc_per_log)[1]){
+  if(tot_nasc_per_log$rec[i]==1){LOG[i]<-countR1;countR1<-countR1+1}
+  if(tot_nasc_per_log$rec[i]==2){LOG[i]<-countR2;countR2<-countR2+1}
+  if(tot_nasc_per_log$rec[i]==3){LOG[i]<-countR3;countR3<-countR3+1}
+  if(tot_nasc_per_log$rec[i]==4){LOG[i]<-countR4;countR4<-countR4+1}
+}
+LOG
 
+
+tot_nasc_per_log<-tot_nasc_per_log |> ungroup() |> add_column(LOG) |> 
+  select(rec, LOG)
 
 
 

@@ -179,6 +179,32 @@ numbers_at_length<-dfB_catch|>
   
 print(n=50, x=numbers_at_length)
 
+# mean lengths in 8 length group
+meanL<-c()
+# <90
+meanL<-as.data.frame(dfB_catch|>
+  mutate(length=CatchLengthClass) |> 
+  filter(length<90, species==1) |> select(-species) |> 
+  summarise(meanL=mean(length)))[[1]]
+            
+for(i in 1:6){
+  #i<-1
+  meanL[i+1]<-length_limits[i]+(length_limits[i+1]-length_limits[i])/2
+}
+
+# >180
+meanL[8]<-
+  as.data.frame(
+  dfB_catch|>
+    mutate(length=CatchLengthClass) |> 
+    filter(length>180, species==1) |> select(-species) |> 
+    summarise(meanL=mean(length))
+  )[[1]]
+
+meanL
+
+
+
 # Sample size per species and rec in a form that feeds to the model
 L_obs<-array(NA, dim=c(8,4,2))
 for(r in 1:4){

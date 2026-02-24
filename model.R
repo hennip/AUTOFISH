@@ -7,7 +7,7 @@ library(runjags)
 
 
 
-BIAS<-"
+GRAHS_model1<-"
 model{
 
   # Observation model for nautical area scattering coefficients
@@ -175,41 +175,48 @@ etaG~dlnorm(0.8,0.1)#dunif(1,10000)
 
 }"
 
-cat(BIAS,file="BIAS_ms/BIAS_TSfixed0712.txt")
+#cat(GRAHS,file="GRAHS.txt")
 
-#source("prg/model/BIAS_data_age_2010-2012.r")
-source("BIAS_ms/BIAS_data_age_new.r")
 
 A<-c(819.8155089, # NW
     1014.006703, # NE 
     536.3622401,  # SW
     1558.658342 # SE
 )
+
+necho<-Necho_per_rec$n
+
+#############################
+meanL<-c(6.25,8.75,11.25,13.75,16.25,18.75,21.25,23.75)
+
+length_limits<-c(90,105,120,135,150,165,180)
+
+#star<-rep(1,8)
+#star2<-rep(1,9)
+
 data<-list(
-  Nages=9,
+  Nages=10,
   pi=3.14159265358979323846,
-  Nyears=6,
+  Nyears=1,
   Nrec=4,
   A=A, # Areas of rectangles, NM^2
   Atot=sum(A),
   NASC=tot_nasc_per_log$sum_nasc, # All depths summed together for now
   Nobs=length(tot_nasc_per_log$sum_nasc), # Total number of observations over years
-  pA=areas$area_NM2, # proportion of echo area out of total rectangle
+  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
+  R=tot_nasc_per_log$rec, # rectangle at log
+  LOG=LOG,
+  pA=tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
   Cobs=C_obs,
   HobsProp=Hprops,
-  
-  aG=star2,
-  Gobs=Age,
-  nGobs=AgeTot,
-  aL=star,
-  Lobs=L,
-  nLobs=Ltot,
+  Lobs=L_obs,
+  nLobs=as.matrix(nL_obs),
+  Gobs=G_obs,
+  nGobs=as.matrix(nG_obs),
+  aG=rep(1,10),
+  aL=rep(1,8),
   meanL=meanL,
-  Necho=Nlog+1,
-  Atot=Atot,# total area of interest
-  LOG=echo$LOG,
-  R=echo$Rec, # rectangle
-  nascY=echo$Y
+  nascY=rep(1, length(tot_nasc_per_log$sum_nasc))
 )
 
 parnames=c(
@@ -220,14 +227,17 @@ parnames=c(
   "Ntot","N"
 )
 
-#jm<-jags.model('BIAS_ms/BIAS_TSfixed0712.txt',n.adapt=15000,
-#data=data,n.chains=2)
 
-run.jags(BIAS, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
-         burnin =10000, modules = "mix",
-         sample =600000, adapt = 15000,
+run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+         burnin =1000, modules = "mix",
+         sample =1000, adapt = 1000,
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
 
+run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
+               burnin =10000, modules = "mix",
+               sample =600000, adapt = 15000,
+               keep.jags.files=F,
+               progress.bar=TRUE, jags.refresh=100)
 
 

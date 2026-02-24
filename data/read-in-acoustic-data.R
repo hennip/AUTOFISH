@@ -72,8 +72,7 @@ for(i in 1:dim(tot_nasc_per_log)[1]){
 LOG
 
 
-tot_nasc_per_log<-tot_nasc_per_log |> ungroup() |> add_column(LOG) |> 
-  select(rec, LOG)
+tot_nasc_per_log<-tot_nasc_per_log |> ungroup() |> add_column(LOG) 
 
 
 

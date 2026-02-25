@@ -1,4 +1,4 @@
-source("packages-and-paths.r")
+source("packages-and-paths.R")
 
 ####################################
 # Read in the trawl data from GRAHS (Gulf of Riga acoustic survey)
@@ -49,7 +49,8 @@ dfB_haul<-dfB_haul|>
 dfB_haul
 #View(dfB_haul)
 
-df_rec<-dfB_haul |> select(year,rec_ruhne, HaulNumber);View(df_rec)
+df_rec<-dfB_haul |> select(year,rec_ruhne, HaulNumber)
+#View(df_rec)
 
 # Number of hauls per rectangle: Nhaul[r,y]
 Nhaul<-
@@ -247,9 +248,9 @@ L_obs
 # Read in annual data
 dfB_biol24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=500) |> mutate(year=2024)|> as_tibble()
 dfB_biol23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=485) |> mutate(year=2023)|> as_tibble()
-dfB_biol22<-read.csv(str_c(path,"Biotic_2022-ZR033_2023-04-13T07.55.56.180.csv"), skip=509) |> mutate(year=2022)|> as_tibble()
-dfB_biol21<-read.csv(str_c(path,"Biotic_2021-ZR007_2022-03-11T16.00.12.580.csv"), skip=488) |> mutate(year=2021)|> as_tibble()
-dfB_biol20<-read.csv(str_c(path,"Biotic_2020-ZR005_2021-04-01T13.30.21.857.csv"), skip=587) |> mutate(year=2020)|> as_tibble()
+#dfB_biol22<-read.csv(str_c(path,"Biotic_2022-ZR033_2023-04-13T07.55.56.180.csv"), skip=509) |> mutate(year=2022)|> as_tibble()
+#dfB_biol21<-read.csv(str_c(path,"Biotic_2021-ZR007_2022-03-11T16.00.12.580.csv"), skip=488) |> mutate(year=2021)|> as_tibble()
+#dfB_biol20<-read.csv(str_c(path,"Biotic_2020-ZR005_2021-04-01T13.30.21.857.csv"), skip=587) |> mutate(year=2020)|> as_tibble()
 
 # Join
 dfB_biol_all<-full_join(dfB_biol24, dfB_biol23) #|> 

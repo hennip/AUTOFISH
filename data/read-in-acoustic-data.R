@@ -15,9 +15,9 @@ ruhneLong<-23.26012233
 ################################
 # Acoustic data
 
-dfA<-read.csv(str_c(path,"Acoustic_2024-ZR038_2025-03-12T10.25.26.053.csv"), skip=11) |> 
-  as_tibble() 
-dfA
+dfA24<-read.csv(str_c(path,"Acoustic_2024-ZR038_2025-03-12T10.25.26.053.csv"), skip=11) |> as_tibble() |> mutate(year=2024)
+dfA23<-read.csv(str_c(path,"Acoustic_2023-ZR055_2024-02-05T18.20.41.813.csv"), skip=11) |> as_tibble() |> mutate(year=2023) 
+dfA<-full_join(dfA24, dfA23)
 #View(dfA)
 ################################
 
@@ -41,10 +41,9 @@ mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
 dfA2
 #View(dfA2)  
 
-
-tot_nasc_per_log<-dfA2 |> group_by(LogDistance, rec) |> 
+tot_nasc_per_log<-dfA2 |> group_by(year, rec, LogDistance) |> 
   # Sum nasc over different depths
-  summarise(N=n(), sum_nasc=sum(DataValue),
+  summarise(number_of_layers=n(), sum_nasc=sum(DataValue),
             min_depthUpp=min(depthUpp), 
             max_depthLow=max(depthLow), 
             mean_depth=(min_depthUpp+max_depthLow)/2)|>
@@ -56,24 +55,22 @@ tot_nasc_per_log<-dfA2 |> group_by(LogDistance, rec) |>
          area_m2=width_m*1852, # Area in m^2 per 1NM (=1852 m) of cruise track,
          area_NM2=width_NM*1, # # Area in NM^2 per 1NM of cruise track
          test_m2=1852^2*area_NM2 # USE THIS CORRECTION IF USING M2's rather than NM2's! may(?) influence how smooth computation is, although no practical difference as long as keeping it systematic 
-  )
+  )|> 
+  group_by(year, rec) |> 
+  mutate(LOG = row_number())|>  # Add running number for logs per rectangle. Note! grouping by rec and year is mandatory
+ select(year, rec, LOG, everything())
 tot_nasc_per_log
 #View(tot_nasc_per_log)
 
-# LOG: for each rectangle, numbers 1:number_of_echo_areas_at_that_rectangle
-LOG<-c()
-countR1<-countR2<-countR3<-countR4<-1
-for(i in 1:dim(tot_nasc_per_log)[1]){
-  if(tot_nasc_per_log$rec[i]==1){LOG[i]<-countR1;countR1<-countR1+1}
-  if(tot_nasc_per_log$rec[i]==2){LOG[i]<-countR2;countR2<-countR2+1}
-  if(tot_nasc_per_log$rec[i]==3){LOG[i]<-countR3;countR3<-countR3+1}
-  if(tot_nasc_per_log$rec[i]==4){LOG[i]<-countR4;countR4<-countR4+1}
-}
-LOG
+#Necho[r,y]
+Necho_per_rec<-tot_nasc_per_log |> group_by(year, rec) |> summarise(n=n()) |> 
+  pivot_wider(names_from = year, values_from = n) |> select(-rec)
+Necho_per_rec
 
+necho<-as.matrix(Necho_per_rec)
 
-tot_nasc_per_log<-tot_nasc_per_log |> ungroup() |> add_column(LOG) 
-
+# nascY is year index
+nascY=tot_nasc_per_log |>ungroup() |> select(year) |> mutate(year=year-2022)
 
 
 # Testing stuff

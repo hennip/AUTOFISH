@@ -178,13 +178,14 @@ etaG~dlnorm(0.8,0.1)#dunif(1,10000)
 #cat(GRAHS,file="GRAHS.txt")
 
 
-A<-c(819.8155089, # NW
-    1014.006703, # NE 
-    536.3622401,  # SW
-    1558.658342 # SE
-)
+A<-c(819.8155089,# NW
+    1014.006703,# NE
+    536.3622401,# SW
+    1558.658342# SE
+    )
 
-necho<-Necho_per_rec$n
+
+
 
 #############################
 meanL<-c(6.25,8.75,11.25,13.75,16.25,18.75,21.25,23.75)
@@ -195,18 +196,18 @@ length_limits<-c(90,105,120,135,150,165,180)
 #star2<-rep(1,9)
 
 data<-list(
-  Nages=10,
-  pi=3.14159265358979323846,
   Nyears=1,
   Nrec=4,
+  Nages=10,
+  pi=3.14159265358979323846,
   A=A, # Areas of rectangles, NM^2
   Atot=sum(A),
   NASC=tot_nasc_per_log$sum_nasc, # All depths summed together for now
   Nobs=length(tot_nasc_per_log$sum_nasc), # Total number of observations over years
-  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
   R=tot_nasc_per_log$rec, # rectangle at log
-  LOG=LOG,
   pA=tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
+  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
+  LOG=LOG,
   Cobs=C_obs,
   HobsProp=Hprops,
   Lobs=L_obs,
@@ -216,7 +217,7 @@ data<-list(
   aG=rep(1,10),
   aL=rep(1,8),
   meanL=meanL,
-  nascY=rep(1, length(tot_nasc_per_log$sum_nasc))
+  nascY=nascY
 )
 
 parnames=c(

@@ -47,8 +47,16 @@ dfB_haul<-dfB_haul|>
   select(-Haul, -Header)|> 
   mutate(rec=as.factor(rec_ruhne))
 dfB_haul
+#View(dfB_haul)
 
 df_rec<-dfB_haul |> select(year,rec_ruhne, HaulNumber);View(df_rec)
+
+# Number of hauls per rectangle: Nhaul[r,y]
+Nhaul<-
+  as.matrix(dfB_haul |> group_by(year, rec_ruhne) |> summarise(n=n()) |> 
+    pivot_wider(names_from = year, values_from = n) |> 
+      ungroup() |> select(-rec_ruhne))
+
 
 minmax_depth<-dfB_haul |> arrange(rec) |> group_by(year,rec) |> 
   mutate(rec=as.numeric(rec)) |> 

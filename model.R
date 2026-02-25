@@ -46,7 +46,7 @@ model{
 
       # Proportion of herring in trawl catch
       ######################################
-      for(h in 1:N_haul[r]){ # Several hauls per ruhne rectangle
+      for(h in 1:Nhaul[r,y]){ # Several hauls per ruhne rectangle
         HobsProp[h,r,y]~dbeta(aH[h,r,y],bH[e,r,y])
         aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
         bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
@@ -208,6 +208,7 @@ data<-list(
   pA=tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
   LOG=LOG,
+  Nhaul=Nhaul, # Number of hauls per rectangle
   Cobs=C_obs,
   HobsProp=Hprops,
   Lobs=L_obs,

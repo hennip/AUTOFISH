@@ -73,52 +73,52 @@ necho<-as.matrix(Necho_per_rec)
 nascY<-unlist(tot_nasc_per_log |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
 nascY
 
-# Testing stuff
-################################################################################
-
-# psi: indicator of whether the depth is less than 25m
-tmp<-dfA2 |> mutate(psi=ifelse(depthLow>25, 1, 0)) |> group_by(LogDistance, psi, rec) |> 
-  summarise(nasc_tot=sum(DataValue))
-tmp
-# About 15% of observations is from deeper layers than 25m
-tmp |> group_by(psi) |> summarise(tot=sum(nasc_tot))
-
-# Run minmax_depth from trawl data (code below)
-# delta: does the acoustic go lower than the trawl data in corresponding ruhne-rectangle?
-tmp2<-full_join(dfA2, minmax_depth) |> 
-  select(min_trawl_depth, max_trawl_depth, rec, DataValue, depthUpp, depthLow, LogDistance, LogLatitude, LogLongitude) |> 
-  arrange(rec) |> 
-  mutate(delta=ifelse(depthLow>max_trawl_depth, 1, 0))
-
-View(tmp2)
-
-
-
-# Calculate autocorrelation of nascs as the distance increases (chatGPT)
-#######################################################################
-obs <- tmp3$sum_nasc
-max_lag <- length(obs) - 1
-lag_cor <- numeric(max_lag)
-for (h in 1:max_lag) {
-  lag_cor[h] <- cor(obs[1:(length(obs)-h)], 
-                    obs[(1+h):length(obs)])
-}
-lag_cor
-
-plot(1:max_lag, lag_cor, type = "b",
-     xlab = "Distance (km)",
-     ylab = "Pearson Correlation",
-     main = "Spatial Correlation vs Distance")
-abline(h = 0, lty = 2)
-
-acf(obs, lag.max = 5) # Compact solution!
-#######################################################################
-
-
-
-
-tmp |> filter(LogDistance==174)
-
-
-ggplot(data=tmp2, aes(x=LogDistance, y=sum_nasc))+
-  geom_col()
+# # Testing stuff
+# ################################################################################
+# 
+# # psi: indicator of whether the depth is less than 25m
+# tmp<-dfA2 |> mutate(psi=ifelse(depthLow>25, 1, 0)) |> group_by(LogDistance, psi, rec) |> 
+#   summarise(nasc_tot=sum(DataValue))
+# tmp
+# # About 15% of observations is from deeper layers than 25m
+# tmp |> group_by(psi) |> summarise(tot=sum(nasc_tot))
+# 
+# # Run minmax_depth from trawl data (code below)
+# # delta: does the acoustic go lower than the trawl data in corresponding ruhne-rectangle?
+# tmp2<-full_join(dfA2, minmax_depth) |> 
+#   select(min_trawl_depth, max_trawl_depth, rec, DataValue, depthUpp, depthLow, LogDistance, LogLatitude, LogLongitude) |> 
+#   arrange(rec) |> 
+#   mutate(delta=ifelse(depthLow>max_trawl_depth, 1, 0))
+# 
+# View(tmp2)
+# 
+# 
+# 
+# # Calculate autocorrelation of nascs as the distance increases (chatGPT)
+# #######################################################################
+# obs <- tmp3$sum_nasc
+# max_lag <- length(obs) - 1
+# lag_cor <- numeric(max_lag)
+# for (h in 1:max_lag) {
+#   lag_cor[h] <- cor(obs[1:(length(obs)-h)], 
+#                     obs[(1+h):length(obs)])
+# }
+# lag_cor
+# 
+# plot(1:max_lag, lag_cor, type = "b",
+#      xlab = "Distance (km)",
+#      ylab = "Pearson Correlation",
+#      main = "Spatial Correlation vs Distance")
+# abline(h = 0, lty = 2)
+# 
+# acf(obs, lag.max = 5) # Compact solution!
+# #######################################################################
+# 
+# 
+# 
+# 
+# tmp |> filter(LogDistance==174)
+# 
+# 
+# ggplot(data=tmp2, aes(x=LogDistance, y=sum_nasc))+
+#   geom_col()

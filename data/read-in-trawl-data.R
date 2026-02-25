@@ -326,7 +326,6 @@ G_obs
 sum(G_obs, na.rm=T) # 1210!
 
 nG_obs<-array(NA, dim=c(8,4,2))
-
 for (y in 1:2){
 for(r in 1:4){
 nG_obs[,r,y]<-as.data.frame(  df |> 
@@ -339,6 +338,6 @@ nG_obs[,r,y]<-as.data.frame(  df |>
 
 }
   
-nG_obs<-as.vector(nG_obs)
+#nG_obs<-as.matrix(nG_obs)
 sum(nG_obs, na.rm=T) # 2775 in 2022-2024
 

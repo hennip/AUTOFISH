@@ -47,7 +47,7 @@ model{
       # Proportion of herring in trawl catch
       ######################################
       for(h in 1:Nhaul[r,y]){ # Several hauls per ruhne rectangle
-        HobsProp[h,r,y]~dbeta(aH[h,r,y],bH[e,r,y])
+        HobsProp[h,r,y]~dbeta(aH[h,r,y],bH[h,r,y])
         aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
         bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
       }
@@ -177,6 +177,9 @@ etaG~dlnorm(0.8,0.1)#dunif(1,10000)
 
 #cat(GRAHS,file="GRAHS.txt")
 
+#############################
+source("data/read-in-acoustic-data.R")
+source("data/read-in-trawl-data.R")
 
 A<-c(819.8155089,# NW
     1014.006703,# NE
@@ -184,41 +187,40 @@ A<-c(819.8155089,# NW
     1558.658342# SE
     )
 
-
-
-
-#############################
-meanL<-c(6.25,8.75,11.25,13.75,16.25,18.75,21.25,23.75)
-
-length_limits<-c(90,105,120,135,150,165,180)
-
-#star<-rep(1,8)
-#star2<-rep(1,9)
+# PropA:ta herjaa. Tämän pitäisi kyllä olla kunnossa, mutta jos vikaa ei löydy 
+# niin voisi koittaa syöttää propA:n suoraan sen sijaan että tuo koostetaan
+# mallin sisällä...
+# Asiaa voi haitata se että LOGit eivät ole järjestyksessä...
+# Ja kuinkas nyt on, puuttuuko +1 jostain? pA:sta?
+# Tämä varmaan nyt ongelmana...
 
 data<-list(
-  Nyears=1,
+  Nyears=2,
   Nrec=4,
   Nages=10,
   pi=3.14159265358979323846,
   A=A, # Areas of rectangles, NM^2
   Atot=sum(A),
+
   NASC=tot_nasc_per_log$sum_nasc, # All depths summed together for now
+  R=   tot_nasc_per_log$rec, # rectangle at log
+  pA=  tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
+  LOG= tot_nasc_per_log$LOG,
+  
   Nobs=length(tot_nasc_per_log$sum_nasc), # Total number of observations over years
-  R=tot_nasc_per_log$rec, # rectangle at log
-  pA=tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
-  LOG=tot_nasc_per_log$LOG,
   Nhaul=Nhaul, # Number of hauls per rectangle
+  nascY=nascY,
+  
   Cobs=C_obs,
   HobsProp=Hprops,
   Lobs=L_obs,
-  nLobs=as.matrix(nL_obs),
-  Gobs=as.matrix(G_obs),
+  nLobs=nL_obs,
+  Gobs=G_obs,
   nGobs=nG_obs,
   aG=rep(1,10),
   aL=rep(1,8),
-  meanL=meanL,
-  nascY=nascY
+  meanL=meanL
 )
 
 parnames=c(

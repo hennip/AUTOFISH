@@ -62,6 +62,11 @@ tot_nasc_per_log<-dfA2 |> group_by(year, rec, LogDistance) |>
 tot_nasc_per_log
 #View(tot_nasc_per_log)
 
+# propA[1:Necho[r,y],r,y]
+
+
+
+
 #Necho[r,y]
 Necho_per_rec<-tot_nasc_per_log |> group_by(year, rec) |> summarise(n=n()) |> 
   pivot_wider(names_from = year, values_from = n) |> select(-rec)

@@ -339,6 +339,6 @@ nG_obs[,r,y]<-as.data.frame(  df |>
 
 }
   
-nG_obs
+nG_obs<-as.vector(nG_obs)
 sum(nG_obs, na.rm=T) # 2775 in 2022-2024
 

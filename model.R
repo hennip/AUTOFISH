@@ -106,7 +106,7 @@ model{
     }
 
     for(a in 1:Nages){
-      PopAge[a,y]<-sum(qGtmp2[a,1:28,y])/Ntot[1,y]
+      PopAge[a,y]<-sum(qGtmp2[a,1:Nrec,y])/Ntot[1,y]
     }
     for(l in 1:8){
       alphaG[1:Nages,l,y]<-Gstar[1:Nages,l,y]*etaG

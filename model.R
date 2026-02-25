@@ -207,7 +207,7 @@ data<-list(
   R=tot_nasc_per_log$rec, # rectangle at log
   pA=tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
-  LOG=LOG,
+  LOG=tot_nasc_per_log$LOG,
   Nhaul=Nhaul, # Number of hauls per rectangle
   Cobs=C_obs,
   HobsProp=Hprops,

@@ -70,8 +70,8 @@ Necho_per_rec
 necho<-as.matrix(Necho_per_rec)
 
 # nascY is year index fed to the model
-nascY=as.matrix(tot_nasc_per_log |>ungroup() |> select(year) |> mutate(year=year-2022))
-
+nascY<-unlist(tot_nasc_per_log |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
+nascY
 
 # Testing stuff
 ################################################################################

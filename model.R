@@ -231,7 +231,7 @@ run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = '
 t01<-Sys.time();print(t01)
 run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
                burnin =10000, modules = "mix",
-               sample =600000, adapt = 15000,
+               sample =2000, adapt = 15000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
 save(run1, file="../BIAS_ms.RData")

@@ -200,14 +200,14 @@ data<-list(
   Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
   Nhaul=Nhaul, # Number of hauls per rectangle
-  nascY=nascY,
+  nascY=nascY, # Year index
   
-  Cobs=C_obs,
-  HobsProp=Hprops,
-  Lobs=L_obs,
-  nLobs=nL_obs,
-  Gobs=G_obs,
-  nGobs=nG_obs,
+  Cobs=C_obs, # Total catch per species
+  HobsProp=Hprops, # Proportion of herring in the catch
+  nLobs=nL_obs, # Sample size per length group
+  Lobs=L_obs, # Number of individuals per length group in each sample
+  Gobs=G_obs, # Number of individuals per age group in each sample
+  nGobs=nG_obs, # sample size per age group
   aG=rep(1,10),
   aL=rep(1,8),
   meanL=meanL
@@ -228,10 +228,16 @@ run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = '
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
 
+t01<-Sys.time();print(t01)
 run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
                burnin =10000, modules = "mix",
                sample =600000, adapt = 15000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
+save(run1, file="../BIAS_ms.RData")
+t02<-Sys.time();print(t02)
+print("run1 done");print(difftime(t02,t01))
+print("--------------------------------------------------")
+
 
 

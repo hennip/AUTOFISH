@@ -164,9 +164,9 @@ sample_size
 # Sample size per species and rec in a form that feeds to the model
 nL_obs<-array(NA, dim=c(4,2,2))
 for(y in 1:2){
-nL_obs[,y,1]<-as.data.frame(sample_size |> filter(year==(y+2022), species==1) |>  
+nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+2022), species==1) |>  
             pivot_wider(values_from = tot_sample, names_from = species))[,3]
-nL_obs[,y,2]<-as.data.frame(sample_size |> filter(year==(y+2022), species==2) |>  
+nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+2022), species==2) |>  
             pivot_wider(values_from = tot_sample, names_from = species))[,3]
 }
 nL_obs
@@ -240,6 +240,30 @@ for(y in 1:2){
 }}
 L_obs
 
+
+# NOTE! REPLACE NA's IN LENGTH DATA WHERE NA NOT SUITABLE OR IN REALITY 0
+##########################################################################
+# For computational reasons, sample size can't be missing so imput sample of 500 
+# for all that are currently NA. Numbers per length will be then predicted by the model 
+# (THIS PROPABLY DOES NOT HAPPEN BUT IF IT WOULD, THIS PIECE OF CODE WOULD DEAL WITH IT)
+# AND
+# In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
+for(r in 1:4){
+  for(s in 1:2){
+    for(y in 1:2){
+      if(is.na(nL_obs[r,s,y])==T){
+        nL_obs[r,s,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
+          for(l in 1:8){
+            if(is.na(L_obs[l,r,s,y])==T){
+              L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            }
+          }
+        }
+    }
+  }
+}
+L_obs
+nL_obs
 
 ###############
 # Herring Age data
@@ -326,18 +350,45 @@ G_obs
 sum(G_obs, na.rm=T) # 1210!
 
 nG_obs<-array(NA, dim=c(8,4,2))
-for (y in 1:2){
+for(y in 1:2){
 for(r in 1:4){
 nG_obs[,r,y]<-as.data.frame(  df |> 
     filter(year==(y+2022))  |> 
   summarise(ntot=sum(n))|> 
   pivot_wider(names_from = rec_ruhne, values_from = ntot) |>
+    select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
     ungroup() |> 
     select(-length_group, -year))[,r] 
 }
-
 }
+nG_obs
   
 #nG_obs<-as.matrix(nG_obs)
 sum(nG_obs, na.rm=T) # 2775 in 2022-2024
+
+# NOTE! REPLACE NA's IN AGE DATA WHERE NA NOT SUITABLE OR ACTUALLY 0
+#####################################################################
+# For computational reasons, sample size can't be missing so imput sample of 500 
+# for all that are currently NA. Number per age will be predicted by the model
+# AND
+# In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
+for(i in 1:8){
+  for(r in 1:4){
+    for(y in 1:2){
+      if(is.na(nG_obs[i,r,y])==T){
+      nG_obs[i,r,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
+        for(a in 1:10){
+          if(is.na(G_obs[a,i,r,y])==T){
+            G_obs[a,i,r,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+          }
+        }
+      }
+    }
+  }
+}
+G_obs
+nG_obs
+
+
+
 

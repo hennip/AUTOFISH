@@ -72,11 +72,6 @@ Necho_per_rec
 
 necho<-as.matrix(Necho_per_rec)
 
-# nascY is year index fed to the model
-nascY<-unlist(tot_nasc_per_log |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
-nascY
-
-
 # Area of each rectangle in square NM's
 A_NM2<-c(819.8155089,# NW
      1014.006703,# NE
@@ -123,18 +118,10 @@ log_plus_one<-tot_nasc_per_log |> summarise(max_LOG=max(LOG)) |> mutate(LOG=max_
  tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |> 
    full_join(plus_one)
  
-
-# for(i in 1:Nobs){# total number of observations over years
-#   NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2) at depth 6-100m
-#   # expected NASC at point i, year nascY[i]
-#   mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
-#                            sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]])/
-#     (pA[i]*A[R[i]])
-#   M_nasc[i,nascY[i]]<-log(mu_nasc[i,nascY[i]])-0.5*(1/tau_nasc)
-#   propA[LOG[i],R[i],nascY[i]]<-pA[i] # proportion of area i of rectangle R[i]
-# }
-
-#pA=  tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
+ # nascY is year index in the model, must be the same length as sum_nasc
+ nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
+ nascY
+ 
 
 # # Testing stuff
 # ################################################################################

@@ -41,8 +41,8 @@ mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
 dfA2
 #View(dfA2)  
 
+# Sum nasc over different depths (in 1st version the depth is not accounted for)
 tot_nasc_per_log<-dfA2 |> group_by(year, rec, LogDistance) |> 
-  # Sum nasc over different depths
   summarise(number_of_layers=n(), sum_nasc=sum(DataValue),
             min_depthUpp=min(depthUpp), 
             max_depthLow=max(depthLow), 
@@ -65,8 +65,6 @@ tot_nasc_per_log
 # propA[1:Necho[r,y],r,y]
 
 
-
-
 #Necho[r,y]
 Necho_per_rec<-tot_nasc_per_log |> group_by(year, rec) |> summarise(n=n()) |> 
   pivot_wider(names_from = year, values_from = n) |> select(-rec)
@@ -77,6 +75,66 @@ necho<-as.matrix(Necho_per_rec)
 # nascY is year index fed to the model
 nascY<-unlist(tot_nasc_per_log |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
 nascY
+
+
+# Area of each rectangle in square NM's
+A_NM2<-c(819.8155089,# NW
+     1014.006703,# NE
+     536.3622401,# SW
+     1558.658342# SE
+)
+rec_areas_NM2<-tibble(rec=1:4, A_NM2)
+
+# We still one row of data per rectangle specifying the area that was NOT 
+# covered by the survey track (i.e. more than 99.9% of it)
+
+# Join rectangle areas, calculate proportion of the area observed (pA) for each LOG
+pA1<-tot_nasc_per_log |>  ungroup()|> 
+  select(year, rec, LOG, sum_nasc, area_NM2) |> 
+  full_join(rec_areas_NM2) |> 
+  mutate(pA=area_NM2/A_NM2) 
+pA1
+
+# Calculate the sum of the area covered per rectangle and proportion observed/not observed
+pA2<-
+  pA1|> 
+  group_by(year, rec) |> 
+  summarise(area_covered_NM2=sum(area_NM2)) |> 
+  full_join(rec_areas_NM2) |> 
+  mutate(area_not_covered_NM2=A-area_covered_NM2) |> 
+  mutate(prop_covered=area_covered_NM2/A) |> 
+  mutate(prop_not_covered=area_not_covered_NM2/A) |> 
+  select(year, rec, A_NM2, everything())
+pA2 |> as.data.frame()# print as data.frame to see all digits
+
+# pick & rename the columns needed for the input data 
+pA3<-pA2 |> select(year, rec, prop_not_covered) |>
+  mutate(pA=prop_not_covered) |> select(-prop_not_covered)|> as.data.frame()
+pA3
+
+# Give NA NASC value and LOG number as max(LOG[r,y])+1
+# -> this way the dimensions will match in the model
+
+nasc_plus_one<-pA3 |> mutate(sum_nasc=NA)
+log_plus_one<-tot_nasc_per_log |> summarise(max_LOG=max(LOG)) |> mutate(LOG=max_LOG+1)
+
+ plus_one<-full_join(nasc_plus_one, log_plus_one) |> select(-max_LOG)
+
+ tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |> 
+   full_join(plus_one)
+ 
+
+# for(i in 1:Nobs){# total number of observations over years
+#   NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2) at depth 6-100m
+#   # expected NASC at point i, year nascY[i]
+#   mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
+#                            sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]])/
+#     (pA[i]*A[R[i]])
+#   M_nasc[i,nascY[i]]<-log(mu_nasc[i,nascY[i]])-0.5*(1/tau_nasc)
+#   propA[LOG[i],R[i],nascY[i]]<-pA[i] # proportion of area i of rectangle R[i]
+# }
+
+#pA=  tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
 
 # # Testing stuff
 # ################################################################################

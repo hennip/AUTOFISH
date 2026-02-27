@@ -5,6 +5,10 @@
 library(rjags)
 library(runjags)
 
+source("data/read-in-acoustic-data.R")
+source("data/read-in-trawl-data.R")
+
+
 
 
 GRAHS_model1<-"
@@ -178,36 +182,22 @@ etaG~dlnorm(0.8,0.1)#dunif(1,10000)
 #cat(GRAHS,file="GRAHS.txt")
 
 #############################
-source("data/read-in-acoustic-data.R")
-source("data/read-in-trawl-data.R")
 
-A<-c(819.8155089,# NW
-    1014.006703,# NE
-    536.3622401,# SW
-    1558.658342# SE
-    )
-
-# PropA:ta herjaa. Tämän pitäisi kyllä olla kunnossa, mutta jos vikaa ei löydy 
-# niin voisi koittaa syöttää propA:n suoraan sen sijaan että tuo koostetaan
-# mallin sisällä...
-# Asiaa voi haitata se että LOGit eivät ole järjestyksessä...
-# Ja kuinkas nyt on, puuttuuko +1 jostain? pA:sta?
-# Tämä varmaan nyt ongelmana...
 
 data<-list(
   Nyears=2,
   Nrec=4,
   Nages=10,
   pi=3.14159265358979323846,
-  A=A, # Areas of rectangles, NM^2
-  Atot=sum(A),
+  A=A_NM2, # Areas of rectangles, NM^2
+  Atot=sum(A_NM2),
 
-  NASC=tot_nasc_per_log$sum_nasc, # All depths summed together for now
-  R=   tot_nasc_per_log$rec, # rectangle at log
-  pA=  tot_nasc_per_log$area_NM2, # proportion of echo area out of total rectangle
-  LOG= tot_nasc_per_log$LOG,
-  
-  Nobs=length(tot_nasc_per_log$sum_nasc), # Total number of observations over years
+  NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
+  R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
+  pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
+  LOG= tot_nasc_per_log_plus_one$LOG,
+
+  Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
   Nhaul=Nhaul, # Number of hauls per rectangle
   nascY=nascY,

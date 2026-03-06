@@ -1,1 +1,11 @@
-model{x~dnorm(0,1)}
+model{
+
+x1~dbeta(2,2)
+x2~dbeta(1,1)
+
+y~dnorm(0,0.5)
+x3<-exp(y)/(1+exp(y))
+
+z~dlnorm(0.8,0.1)
+
+}

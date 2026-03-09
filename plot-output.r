@@ -1,19 +1,5 @@
 # These graphs are the ones in the manuscript (/ecoknows deliverable)
 
-library(coda)
-setwd("H:/Projects/ECOKNOWS/HerringCase/BIAS/")
-
-#load(file="prg/output/chainsAllyears_pHpopAgeCorrected9AgeGroups_12corr.RData")
-#load(file="prg/output/BIAS_15_05_1.RData")
-#load(file="prg/output/BIAS_15_05_2.RData")
-#load(file="prg/output/BIAS_15_05_muHBeta4020.RData")
-#load(file="prg/output/BIAS_15_05_muH06.RData")
-#load(file="prg/output/BIAS_15_05_muHBeta22.RData")
-#load(file="prg/output/BIAS_15_05_milj.RData")
-
-#load(file="prg/output/BIAS_15_06.RData")
-#load(file="prg/output/BIAS_15_06_muH_R.RData")
-#load(file="prg/output/BIAS_15_06_muH_R_tmp.RData")
 
 load(file="prg/output/BIAS_15_06_muH_R_0.01.RData")
 load(file="prg/output/BIAS_15_06_muH_R_0.001.RData")

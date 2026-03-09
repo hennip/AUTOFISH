@@ -97,9 +97,9 @@ pA2<-
   group_by(year, rec) |> 
   summarise(area_covered_NM2=sum(area_NM2)) |> 
   full_join(rec_areas_NM2) |> 
-  mutate(area_not_covered_NM2=A-area_covered_NM2) |> 
-  mutate(prop_covered=area_covered_NM2/A) |> 
-  mutate(prop_not_covered=area_not_covered_NM2/A) |> 
+  mutate(area_not_covered_NM2=A_NM2-area_covered_NM2) |> 
+  mutate(prop_covered=area_covered_NM2/A_NM2) |> 
+  mutate(prop_not_covered=area_not_covered_NM2/A_NM2) |> 
   select(year, rec, A_NM2, everything())
 pA2 |> as.data.frame()# print as data.frame to see all digits
 

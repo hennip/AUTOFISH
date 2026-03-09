@@ -6,11 +6,11 @@ source("packages-and-paths.R")
 ####################################
 
 # Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of Ruhne island (lighthouse) as a limit point
+# of ruhnu island (lighthouse) as a limit point
 
-# Coordinates of Ruhne lighthouse according to Wikipedia
-ruhneLat<-57.80135766
-ruhneLong<-23.26012233
+# Coordinates of Ruhnu lighthouse according to Wikipedia
+ruhnuLat<-57.80135766
+ruhnuLong<-23.26012233
 
 ################################
 # Acoustic data
@@ -23,21 +23,22 @@ dfA<-full_join(dfA24, dfA23)
 
 
 # Divide area to 4 pieces:
-# 1: NW from Ruhne 
-# 2: NE from Ruhne 
-# 3: SW from Ruhne 
-# 4: SE from Ruhne 
+# 1: NW from ruhnu 
+# 2: NE from ruhnu 
+# 3: SW from ruhnu 
+# 4: SE from ruhnu 
 
-# Define rec_ruhne based on coordinates of the lighthouse the locations of the cruise track
+# Define rec_ruhnu based on coordinates of the lighthouse the locations of the cruise track
 # shorten names for depth, pick up variables needed later
-dfA2<-dfA |> mutate(rec_ruhne=ifelse(LogLatitude>=ruhneLat & LogLongitude<ruhneLong, 1,NA)) |>   # 1: NW
-  mutate(rec_ruhne=ifelse(LogLatitude>=ruhneLat & LogLongitude>=ruhneLong, 2,rec_ruhne)) |>      # 2: NE 
-  mutate(rec_ruhne=ifelse(LogLatitude<ruhneLat & LogLongitude<ruhneLong, 3,rec_ruhne)) |>        # 3: SW 
-  mutate(rec_ruhne=ifelse(LogLatitude<ruhneLat & LogLongitude>=ruhneLong, 4,rec_ruhne))|>        # 4: SE  
+dfA2<-dfA |> 
+  mutate(rec_ruhnu=ifelse(LogLatitude>=ruhnuLat & LogLongitude<ruhnuLong, 1,NA)) |>   # 1: NW
+  mutate(rec_ruhnu=ifelse(LogLatitude>=ruhnuLat & LogLongitude>=ruhnuLong, 2,rec_ruhnu)) |>      # 2: NE 
+  mutate(rec_ruhnu=ifelse(LogLatitude<ruhnuLat & LogLongitude<ruhnuLong, 3,rec_ruhnu)) |>        # 3: SW 
+  mutate(rec_ruhnu=ifelse(LogLatitude<ruhnuLat & LogLongitude>=ruhnuLong, 4,rec_ruhnu))|>        # 4: SE  
 mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
-  select(rec_ruhne, DataValue, depthLow, depthUpp, everything()) |> 
+  select(rec_ruhnu, DataValue, depthLow, depthUpp, everything()) |> 
   select(-Data, -Header) |> 
-  mutate(rec=rec_ruhne)
+  mutate(rec=rec_ruhnu)
 dfA2
 #View(dfA2)  
 
@@ -134,7 +135,7 @@ log_plus_one<-tot_nasc_per_log |> summarise(max_LOG=max(LOG)) |> mutate(LOG=max_
 # tmp |> group_by(psi) |> summarise(tot=sum(nasc_tot))
 # 
 # # Run minmax_depth from trawl data (code below)
-# # delta: does the acoustic go lower than the trawl data in corresponding ruhne-rectangle?
+# # delta: does the acoustic go lower than the trawl data in corresponding ruhnu-rectangle?
 # tmp2<-full_join(dfA2, minmax_depth) |> 
 #   select(min_trawl_depth, max_trawl_depth, rec, DataValue, depthUpp, depthLow, LogDistance, LogLatitude, LogLongitude) |> 
 #   arrange(rec) |> 

@@ -15,9 +15,10 @@ ruhnuLong<-23.26012233
 ################################
 # Acoustic data
 
+dfA25<-read.csv(str_c(path,"Acoustic_2025-ZR012_2026-03-03T10.07.30.860.csv"), skip=11) |> as_tibble() |> mutate(year=2025)
 dfA24<-read.csv(str_c(path,"Acoustic_2024-ZR038_2025-03-12T10.25.26.053.csv"), skip=11) |> as_tibble() |> mutate(year=2024)
 dfA23<-read.csv(str_c(path,"Acoustic_2023-ZR055_2024-02-05T18.20.41.813.csv"), skip=11) |> as_tibble() |> mutate(year=2023) 
-dfA<-full_join(dfA24, dfA23)
+dfA<-full_join(dfA24, dfA23) %>% full_join(dfA25)
 #View(dfA)
 ################################
 
@@ -97,9 +98,9 @@ pA2<-
   group_by(year, rec) |> 
   summarise(area_covered_NM2=sum(area_NM2)) |> 
   full_join(rec_areas_NM2) |> 
-  mutate(area_not_covered_NM2=A-area_covered_NM2) |> 
-  mutate(prop_covered=area_covered_NM2/A) |> 
-  mutate(prop_not_covered=area_not_covered_NM2/A) |> 
+  mutate(area_not_covered_NM2=A_NM2-area_covered_NM2) |> 
+  mutate(prop_covered=area_covered_NM2/A_NM2) |> 
+  mutate(prop_not_covered=area_not_covered_NM2/A_NM2) |> 
   select(year, rec, A_NM2, everything())
 pA2 |> as.data.frame()# print as data.frame to see all digits
 

@@ -6,7 +6,7 @@ source("packages-and-paths.R")
 ####################################
 
 # Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of ruhnu island (lighthouse) as a limit point
+# of Ruhnu island (lighthouse) as a limit point
 
 # Coordinates of Ruhnu lighthouse according to Wikipedia
 ruhnuLat<-57.80135766

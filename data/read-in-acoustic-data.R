@@ -6,7 +6,7 @@ source("packages-and-paths.R")
 ####################################
 
 # Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of ruhnu island (lighthouse) as a limit point
+# of Ruhnu island (lighthouse) as a limit point
 
 # Coordinates of Ruhnu lighthouse according to Wikipedia
 ruhnuLat<-57.80135766
@@ -15,9 +15,10 @@ ruhnuLong<-23.26012233
 ################################
 # Acoustic data
 
+dfA25<-read.csv(str_c(path,"Acoustic_2025-ZR012_2026-03-03T10.07.30.860.csv"), skip=11) |> as_tibble() |> mutate(year=2025)
 dfA24<-read.csv(str_c(path,"Acoustic_2024-ZR038_2025-03-12T10.25.26.053.csv"), skip=11) |> as_tibble() |> mutate(year=2024)
 dfA23<-read.csv(str_c(path,"Acoustic_2023-ZR055_2024-02-05T18.20.41.813.csv"), skip=11) |> as_tibble() |> mutate(year=2023) 
-dfA<-full_join(dfA24, dfA23)
+dfA<-full_join(dfA24, dfA23) %>% full_join(dfA25)
 #View(dfA)
 ################################
 

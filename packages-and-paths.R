@@ -5,4 +5,4 @@ library(forcats)
 #path<-"../../01-Projects/AUTOFISH/dat/orig/"# laptop
 #path<-"../../dat/AUTOFISH/orig/"# kala1
 
-path<-"C:/Users/elorsepp/OneDrive - Tartu Ülikool/AKUSTIKA/ICES Acoustic database/GRAHS/"
+path<-"../../ICES Acoustic database/GRAHS/"

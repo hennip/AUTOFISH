@@ -5,9 +5,13 @@
 library(rjags)
 library(runjags)
 
+source("data/read-in-acoustic-data.R")
+source("data/read-in-trawl-data.R")
 
 
-BIAS<-"
+
+
+GRAHS_model1<-"
 model{
 
   # Observation model for nautical area scattering coefficients
@@ -26,28 +30,29 @@ model{
 
   # Abundances
   ############
-  for(y in 1:Nyears){
-    for(s in 1:2){
+  for(s in 1:2){
+    for(y in 1:Nyears){
       Ntot[s,y]<-exp(Ntmp[s,y])
       Ntmp[s,y]~dnorm(13,0.0000001)
 
       # pR: probability that a fish will be at rectangle r
       # E(pR[r])=A[r]/Atot: proportion of area in rectangle r compared to total
-      # eta_pR: overdispersion parameter, could be derived with schooling behaviour etc.
+      # eta_R: overdispersion parameter, could be derived with schooling behaviour etc.
       # Ekspertit: onko kalojen jakauma ruuduille satunnainen, vai onko kalat todenn?k?isemmin
       # samalla ruudulla eri vuosina? pR:lle voisi tehd? rakenteen jossa vuosikohinaa mutta yleinen
       # tn osua tietylle ruudulle
-      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s,y])
-      alphaR[1:Nrec,s,y]<-(A[1:Nrec]/Atot)*etaR[y,s]
+      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
     }
+    alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] # Palautettu kässärin muotoon, jossa ruudun osuuden odotusarvo sama yli vuosien
+  }
 
-
+  for(y in 1:Nyears){
     for(r in 1:Nrec){
 
       # Proportion of herring in trawl catch
       ######################################
-      for(h in 1:N_haul[r]){ # Several hauls per ruhne rectangle
-        HobsProp[h,r,y]~dbeta(aH[h,r,y],bH[e,r,y])
+      for(h in 1:Nhaul[r,y]){ # Several hauls per ruhne rectangle
+        HobsProp[h,r,y]~dbeta(aH[h,r,y],bH[h,r,y])
         aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
         bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
       }
@@ -62,7 +67,7 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[y,s]
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] # etaE palautettu kässärin muotoon, sama yli vuosien
 
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -106,7 +111,7 @@ model{
     }
 
     for(a in 1:Nages){
-      PopAge[a,y]<-sum(qGtmp2[a,1:28,y])/Ntot[1,y]
+      PopAge[a,y]<-sum(qGtmp2[a,1:Nrec,y])/Ntot[1,y]
     }
     for(l in 1:8){
       alphaG[1:Nages,l,y]<-Gstar[1:Nages,l,y]*etaG
@@ -122,49 +127,54 @@ model{
     }
   }
 
-  for(s in 1:2){
-    etaL[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#dunif(1,10000)#dlnorm(4.6,0.7)
-#    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-    # spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
-    # mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
-    # my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
-#    etaE[s]<-exp(etaEZ[s])
-  # etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
-#    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
-  for(y in 1:Nyears){
-    etaE[y,s]~dlnorm(ME[s],tauE[s])
-    etaR[y,s]~dlnorm(MR[s],tauR[s])
-  }
-  }
-#  etaR~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-  muE[1]~dunif(1,100000)
-  cvE[1]~dunif(0.01,2)
-  ME[1]<-log(muE[1])-0.5/tauE[1]
-  tauE[1]<-1/(log(cvE[1]*cvE[1]+1))
-  muR[1]~dunif(1,1000)
-  cvR[1]~dunif(0.01,2)
-  MR[1]<-log(muR[1])-0.5/tauR[1]
-  tauR[1]<-1/(log(cvR[1]*cvR[1]+1))
-
-muE[2]~dunif(1,100000)
-  cvE[2]~dunif(0.01,2)
-  ME[2]<-log(muE[2])-0.5/tauE[2]
-  tauE[2]<-1/(log(cvE[2]*cvE[2]+1))
-  muR[2]~dunif(1,1000)
-  cvR[2]~dunif(0.01,2)
-  MR[2]<-log(muR[2])-0.5/tauR[2]
-  tauR[2]<-1/(log(cvR[2]*cvR[2]+1))
-  
-
-etaG~dlnorm(0.8,0.1)#dunif(1,10000)
-  #etaH~dlnorm(0.8,0.1)
-  etaH~dbeta(2,2)
   # meanL: midpoint of each length class
-  #sigmaL[1:8]<-9.533*pow(10,-7)*pow(meanL[1:8],2)
-
   sigmaL[1:8]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
   TSa<-71.2
-  #TSa~dlnorm(4.23,243)# mu=68.72, sd=4.415
+
+  etaH~dbeta(2,2)
+  etaG~dlnorm(0.8,0.1)
+
+  for(s in 1:2){
+    etaR[s]~dlnorm(0.8,0.1)
+    etaE[s]~dbeta(1,1)
+    etaL[s]~dlnorm(0.8,0.1)
+  }
+
+# 
+#   for(s in 1:2){
+#     etaL[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#dunif(1,10000)#dlnorm(4.6,0.7)
+# #    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
+#     # spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
+#     # mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
+#     # my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
+# #    etaE[s]<-exp(etaEZ[s])
+#   # etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
+# #    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
+#   for(y in 1:Nyears){
+#     etaE[y,s]~dlnorm(ME[s],tauE[s])
+#     etaR[y,s]~dlnorm(MR[s],tauR[s])
+#   }
+#   }
+# #  etaR~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
+#   muE[1]~dunif(1,100000)
+#   cvE[1]~dunif(0.01,2)
+#   ME[1]<-log(muE[1])-0.5/tauE[1]
+#   tauE[1]<-1/(log(cvE[1]*cvE[1]+1))
+#   muR[1]~dunif(1,1000)
+#   cvR[1]~dunif(0.01,2)
+#   MR[1]<-log(muR[1])-0.5/tauR[1]
+#   tauR[1]<-1/(log(cvR[1]*cvR[1]+1))
+# 
+# muE[2]~dunif(1,100000)
+#   cvE[2]~dunif(0.01,2)
+#   ME[2]<-log(muE[2])-0.5/tauE[2]
+#   tauE[2]<-1/(log(cvE[2]*cvE[2]+1))
+#   muR[2]~dunif(1,1000)
+#   cvR[2]~dunif(0.01,2)
+#   MR[2]<-log(muR[2])-0.5/tauR[2]
+#   tauR[2]<-1/(log(cvR[2]*cvR[2]+1))
+  
+
   # Unupdated priors
   ##############################
   NTX<-exp(NtmpX)
@@ -175,46 +185,38 @@ etaG~dlnorm(0.8,0.1)#dunif(1,10000)
 
 }"
 
-cat(BIAS,file="BIAS_ms/BIAS_TSfixed0712.txt")
+#cat(GRAHS,file="GRAHS.txt")
 
-#source("prg/model/BIAS_data_age_2010-2012.r")
-source("BIAS_ms/BIAS_data_age_new.r")
+#############################
 
 
 data<-list(
-  Nages=9,
-  pi=3.14159265358979323846,
-  Nyears=6,
+  Nyears=2,
   Nrec=4,
-  A=c(819.8155089, # NW
-      1014.006703, # NE 
-      536.3622401,  # SW
-      1558.658342 # SE
-      ), # Areas of rectangles, NM^2
-  NASC=tot_nasc_per_log$sum_nasc, # All depths summed together for now
-  Nobs=length(tot_nasc_per_log$sum_nasc), # Total number of observations over years
-  pA=areas$area_NM2, # proportion of echo area out of total rectangle
+  Nages=10,
+  pi=3.14159265358979323846,
+  A=A_NM2, # Areas of rectangles, NM^2
+  Atot=sum(A_NM2),
+
+  NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
+  R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
+  pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
+  LOG= tot_nasc_per_log_plus_one$LOG,
+
+  Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
+  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
+  Nhaul=Nhaul, # Number of hauls per rectangle
+  nascY=nascY, # Year index
   
-  Cobs=Ntot,
-  
-  
-  #Hobs=Nherring,
-  HobsProp=HerringProp,
-  
-  aG=star2,
-  Gobs=Age,
-  nGobs=AgeTot,
-  aL=star,
-  Lobs=L,
-  nLobs=Ltot,
-  meanL=meanL,
-  Nobs=length(echo$Rec),
-  Necho=Nlog+1,
-  Atot=Atot,# total area of interest
-  LOG=echo$LOG,
-  pA=echo$pA, # proportion of echo area out of total rectangle
-  R=echo$Rec, # rectangle
-  nascY=echo$Y
+  Cobs=C_obs, # Total catch per species
+  HobsProp=Hprops, # Proportion of herring in the catch
+  nLobs=nL_obs, # Sample size per length group
+  Lobs=L_obs, # Number of individuals per length group in each sample
+  Gobs=G_obs, # Number of individuals per age group in each sample
+  nGobs=nG_obs, # sample size per age group
+  aG=rep(1,10),
+  aL=rep(1,8),
+  meanL=meanL
 )
 
 parnames=c(
@@ -225,14 +227,23 @@ parnames=c(
   "Ntot","N"
 )
 
-#jm<-jags.model('BIAS_ms/BIAS_TSfixed0712.txt',n.adapt=15000,
-#data=data,n.chains=2)
 
-run.jags(BIAS, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=500,
-         burnin =10000, modules = "mix",
-         sample =600000, adapt = 15000,
+run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+         burnin =1000, modules = "mix",
+         sample =1000, adapt = 1000,
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
+
+t01<-Sys.time();print(t01)
+run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1000,
+               burnin =10000, modules = "mix",
+               sample =10000, adapt = 15000,
+               keep.jags.files=F,
+               progress.bar=TRUE, jags.refresh=100)
+save(run1, file="../GRAHS1.RData")
+t02<-Sys.time();print(t02)
+print("run1 done");print(difftime(t02,t01))
+print("--------------------------------------------------")
 
 
 

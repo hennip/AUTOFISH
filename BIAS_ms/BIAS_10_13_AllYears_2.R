@@ -205,6 +205,7 @@ data<-list(
   nascY=echo$Y,
   NASC=echo$ch1+echo$ch2 # NASC's from two depth layers
 )
+dataBIASold<-data
 
 parnames=c(
   "PopAge",

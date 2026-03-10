@@ -10,26 +10,30 @@ source("packages-and-paths.R")
 ####################################
 
 # Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of Ruhne island (lighthouse) as a limit point
+# of ruhnu island (lighthouse) as a limit point
 
-# Coordinates of Ruhne lighthouse according to Wikipedia
-ruhneLat<-57.80135766
-ruhneLong<-23.26012233
+# Coordinates of ruhnu lighthouse according to Wikipedia
+ruhnuLat<-57.80135766
+ruhnuLong<-23.26012233
 
 # Divide area to 4 pieces
-# 1: NW from Ruhne 
-# 2: NE from Ruhne 
-# 3: SW from Ruhne 
-# 4: SE from Ruhne 
+# 1: NW from ruhnu 
+# 2: NE from ruhnu 
+# 3: SW from ruhnu 
+# 4: SE from ruhnu 
+
+######################
+# How many years in the data?
+
+tmp<-dfB_haul |> group_by(year) |> summarise(n=n())
+
+Nyears<-length(tmp$year)
+min_years<-min(tmp$year)
 
 ###############
 # Haul data
 ###############
 
-#dfB_haul24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=2)[1:16,] |> mutate(year=2024)
-#dfB_haul23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=2)[1:17,] |> mutate(year=2023)
-
-#dfB_haul<-full_join(dfB_haul24, dfB_haul23) |> as_tibble()
 dfB_haul<-hauls_all %>% mutate(year=SurveyYear)
 
 dfB_haul<-dfB_haul|> 
@@ -39,25 +43,25 @@ dfB_haul<-dfB_haul|>
     longStart=as.numeric(HaulStartLongitude),
     latStop=as.numeric(HaulStopLatitude),
     longStop=as.numeric(HaulStopLongitude)) |> 
-  mutate(rec_ruhne=ifelse(latStart>=ruhneLat & longStart<ruhneLong, 1,NA)) |>         # 1: NW
-  mutate(rec_ruhne=ifelse(latStart>=ruhneLat & longStart>=ruhneLong, 2,rec_ruhne)) |> # 2: NE 
-  mutate(rec_ruhne=ifelse(latStart<ruhneLat & longStart<ruhneLong, 3,rec_ruhne)) |>   # 3: SW 
-  mutate(rec_ruhne=ifelse(latStart<ruhneLat & longStart>=ruhneLong, 4,rec_ruhne)) |>  # 4: SE 
+  mutate(rec_ruhnu=ifelse(latStart>=ruhnuLat & longStart<ruhnuLong, 1,NA)) |>         # 1: NW
+  mutate(rec_ruhnu=ifelse(latStart>=ruhnuLat & longStart>=ruhnuLong, 2,rec_ruhnu)) |> # 2: NE 
+  mutate(rec_ruhnu=ifelse(latStart<ruhnuLat & longStart<ruhnuLong, 3,rec_ruhnu)) |>   # 3: SW 
+  mutate(rec_ruhnu=ifelse(latStart<ruhnuLat & longStart>=ruhnuLong, 4,rec_ruhnu)) |>  # 4: SE 
   mutate(minDepth=as.numeric(HaulMinTrawlDepth), maxDepth=as.numeric(HaulMaxTrawlDepth)) |> 
-  select( year, rec_ruhne, latStart, longStart, minDepth, maxDepth, HaulNumber, everything()) |> 
+  select( year, rec_ruhnu, latStart, longStart, minDepth, maxDepth, HaulNumber, everything()) |> 
   #select(-Haul, -Header)|> 
-  mutate(rec=as.factor(rec_ruhne))
+  mutate(rec=as.factor(rec_ruhnu))
 dfB_haul
 #View(dfB_haul)
 
-df_rec<-dfB_haul |> select(year,rec_ruhne, HaulNumber)
+df_rec<-dfB_haul |> select(year,rec_ruhnu, HaulNumber)
 #View(df_rec)
 
 # Number of hauls per rectangle: Nhaul[r,y]
 Nhaul<-
-  as.matrix(dfB_haul |> group_by(year, rec_ruhne) |> summarise(n=n()) |> 
+  as.matrix(dfB_haul |> group_by(year, rec_ruhnu) |> summarise(n=n()) |> 
     pivot_wider(names_from = year, values_from = n) |> 
-      ungroup() |> select(-rec_ruhne))
+      ungroup() |> select(-rec_ruhnu))
 
 
 minmax_depth<-dfB_haul |> arrange(rec) |> group_by(year,rec) |> 
@@ -77,12 +81,8 @@ minmax_depth<-dfB_haul |> arrange(rec) |> group_by(year,rec) |>
 # Catch data
 ###############
 
-#dfB_catch24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=19)[1:(500-20),]|> as_tibble() |> mutate(year=2024)
-#dfB_catch23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=20)[1:(485-21),]|> as_tibble() |> mutate(year=2023) 
-
-#dfB_catch<-full_join(dfB_catch24,dfB_catch23) 
 dfB_catch<-catch_all %>% mutate(year=SurveyYear)
-  View(dfB_catch)
+#View(dfB_catch)
   
 dfB_catch<-dfB_catch  |>
   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
@@ -92,7 +92,7 @@ dfB_catch<-dfB_catch  |>
   mutate(CatchLengthClass=as.numeric(CatchLengthClass)) |> 
   full_join(df_rec) |> 
   mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
-  select(year,rec_ruhne, everything())|> 
+  select(year,rec_ruhnu, everything())|> 
   #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
   select(-CatchDataType, -CatchSpeciesValidity)
 dfB_catch
@@ -103,32 +103,41 @@ dfB_catch
 #########################################
 # group by rec & haul, calculate total catch
 TotCatch<-dfB_catch |>
-  group_by(year,rec_ruhne,HaulNumber) |> 
+  group_by(year,rec_ruhnu,HaulNumber) |> 
   summarise(tot_catch=sum(catch))|> 
-  select(year,rec_ruhne, HaulNumber, tot_catch)
+  select(year,rec_ruhnu, HaulNumber, tot_catch)
 #View(TotCatch)
 TotCatch
 
+# Calculate maximum number of hauls per rectangle in the data
+tmp<-TotCatch |> group_by(year, rec_ruhnu,HaulNumber) |> summarise(n=n()) |> 
+  select(-HaulNumber) |> summarise(n=n()) |> select(n)
+max_number_of_hauls<-max(tmp$n)
+
+
 # Cobs[h,r,y]
 # Build tot catch table in which rows are hauls and columns are rectangles 
-C_obs<-array(NA, dim=c(6,4,2))
-for(y in 1:2){
-for(r in 1:4){
-  apu<-1
-  for(i in 1:length(TotCatch$rec_ruhne)){
-    if(TotCatch$year[i]==(y+2022) & TotCatch$rec_ruhne[i]==r){
+C_obs<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
+for(y in 1:Nyears){
+  #y<-1
+  for(r in 1:4){
+  #r<-1
+      apu<-1
+  for(i in 1:length(TotCatch$rec_ruhnu)){
+    if(TotCatch$year[i]==(y+min_years-1) & TotCatch$rec_ruhnu[i]==r){
       C_obs[apu,r,y]<-TotCatch$tot_catch[i]
       apu<-apu+1
-    }}}}
+    }}}
+  }
 C_obs
 
 # Hobsprop: Proportion of herring in each catch
 ###############################################
 # group by rec, haul & species, calculate total catch
 herring<-dfB_catch  |> 
-  group_by(year,rec_ruhne,HaulNumber, species) |> 
+  group_by(year,rec_ruhnu,HaulNumber, species) |> 
   summarise(tot_catch=sum(catch))|> 
-  select(year,rec_ruhne, HaulNumber, species, tot_catch) |> 
+  select(year,rec_ruhnu, HaulNumber, species, tot_catch) |> 
   filter(species==1) |>  # herring only
   mutate(herring_catch=tot_catch) |> 
   select(-tot_catch)
@@ -140,12 +149,12 @@ dfH<-full_join(herring, TotCatch) |>
 
 #HobsProp[h,r,y]
 # Build table for herring proportions in which rows are hauls and columns are rectangles
-Hprops<-array(NA, dim=c(6,4,2))
-for(y in 1:2){
+Hprops<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
+for(y in 1:Nyears){
   for(r in 1:4){
   apu<-1
-  for(i in 1:length(dfH$rec_ruhne)){
-    if(dfH$year[i]==(y+2022) & dfH$rec_ruhne[i]==r){
+  for(i in 1:length(dfH$rec_ruhnu)){
+    if(dfH$year[i]==(y+min_years-1) & dfH$rec_ruhnu[i]==r){
       Hprops[apu,r,y]<-dfH$hprop[i]
       apu<-apu+1
     }}}}
@@ -157,18 +166,18 @@ Hprops
 #######################################################################################
 # nLobs
 #==========================
-# catch sample size per ruhne rectangle and species (1=herring, 2=other)
+# catch sample size per ruhnu rectangle and species (1=herring, 2=other)
 sample_size<-dfB_catch  |>
-  group_by(year,rec_ruhne,species) |> 
+  group_by(year,rec_ruhnu,species) |> 
   summarise(tot_sample=sum(CatchNumberAtLength))#|> 
 sample_size
 
 # Sample size per species and rec in a form that feeds to the model
-nL_obs<-array(NA, dim=c(4,2,2))
-for(y in 1:2){
-nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+2022), species==1) |>  
+nL_obs<-array(NA, dim=c(4,2,Nyears))
+for(y in 1:Nyears){
+nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==1) |>  
             pivot_wider(values_from = tot_sample, names_from = species))[,3]
-nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+2022), species==2) |>  
+nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==2) |>  
             pivot_wider(values_from = tot_sample, names_from = species))[,3]
 }
 nL_obs
@@ -186,7 +195,7 @@ length_limits<-c(90,105,120,135,150,165,180)
 
 # Number of herring/other species in the sample per rectangle and length group
 numbers_at_length<-dfB_catch|>
-  group_by(year,rec_ruhne, species, CatchLengthClass)|>  
+  group_by(year,rec_ruhnu, species, CatchLengthClass)|>  
   summarise(n=sum(CatchNumberAtLength)) |> 
   mutate(LengthClass=CatchLengthClass) |> 
   mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
@@ -197,9 +206,9 @@ numbers_at_length<-dfB_catch|>
   mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  group_by(year,rec_ruhne, species, length_group) |> 
+  group_by(year,rec_ruhnu, species, length_group) |> 
   summarise(number_at_length=sum(n)) |> 
-  pivot_wider(names_from = rec_ruhne, values_from=number_at_length) |> 
+  pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
   arrange(year,species, length_group)
   
 print(n=50, x=numbers_at_length)
@@ -232,12 +241,12 @@ meanL
 
 # Sample size per species and rec in a form that feeds to the model
 # Lobs[1:8,r,s,y]
-L_obs<-array(NA, dim=c(8,4,2,2))
-for(y in 1:2){
+L_obs<-array(NA, dim=c(8,4,2,Nyears))
+for(y in 1:Nyears){
   for(r in 1:4){
-  L_obs[,r,1,y]<-as.data.frame(numbers_at_length |> filter(species==1 & year==(y+2022)) |> 
+  L_obs[,r,1,y]<-as.data.frame(numbers_at_length |> filter(species==1 & year==(y+min_years-1)) |> 
                                ungroup() |> select(-year, -species, -length_group))[,r]
-  L_obs[,r,2,y]<-as.data.frame(numbers_at_length |> filter(species==2 & year==(y+2022)) |> 
+  L_obs[,r,2,y]<-as.data.frame(numbers_at_length |> filter(species==2 & year==(y+min_years-1)) |> 
                                ungroup() |> select(-year, -species, -length_group))[,r]
 }}
 L_obs
@@ -252,7 +261,7 @@ L_obs
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
 for(r in 1:4){
   for(s in 1:2){
-    for(y in 1:2){
+    for(y in 1:Nyears){
       if(is.na(nL_obs[r,s,y])==T){
         nL_obs[r,s,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
           for(l in 1:8){
@@ -273,15 +282,14 @@ nL_obs
 
 dfB_biol<-bio_all %>% mutate(year=SurveyYear) %>% mutate(HaulNumber=as.numeric(HaulNumber))
 
-View(dfB_biol %>% select(HaulNumber))
-dfB_biol$HaulNumber
+#dfB_biol$HaulNumber
 
 # Add rectangles and define 8 length groups for herring
 df_length_at_age<-dfB_biol|> 
-  left_join(df_rec) |> # Add ruhne rectangles based on year and haul number
+  left_join(df_rec) |> # Add ruhnu rectangles based on year and haul number
   filter(CatchSpeciesCode==126417) |> 
-  mutate(length=BiologyLengthClass, # shorten names
-        age=BiologyIndividualAge)|> 
+  mutate(length=as.numeric(BiologyLengthClass), # shorten names
+        age=as.numeric(BiologyIndividualAge))|> 
   mutate(length_group=ifelse(length<90, 1, NA)) |> 
   mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
   mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
@@ -291,37 +299,41 @@ df_length_at_age<-dfB_biol|>
   mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
   mutate(length_group=ifelse(length>=180, 8, length_group))
 df_length_at_age
-#View(df_length_at_age)
+#View(df_length_at_age |> select(length, length_group))
 
 # Check for missing rectangle info, should be empty
-df_length_at_age |> filter(is.na(rec_ruhne)==T)
+df_length_at_age |> filter(is.na(rec_ruhnu)==T)
 
-# Age without grouping, nice to know
+# Age without grouping by length, nice to know
 df_pivot<-df_length_at_age |> 
   select(length, age) |> group_by(length, age) |> 
   summarise(n=n())|> # count works as each row is an individual 
   pivot_wider(names_from = age, values_from = n) |> 
   select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
 print(n=35, x=df_pivot)
-sum(df_pivot[,2:17], na.rm=T)# 2786 in 2023-2024 #7803 in 2020-2024
+sum(df_pivot[,2:17], na.rm=T)# 9347
+#View(df_pivot)
+
 
 # Pool older ages to age group 9, remove missing ages
 # Length as the first grouping argument keeps the length groups in correct order in the pivot table
 df<-df_length_at_age |>
   mutate(age=ifelse(age>9, 9, age)) |>   # pool ages >=9 together (10th age group)
   filter(is.na(age)==F) |> # Remove individuals with missing age 
-  group_by(length_group, year, rec_ruhne, age) |> 
+  group_by(length_group, year, rec_ruhnu, age) |> 
   summarise(n=n())
 df
-#View(df_pivot)
-# should be empty
+#View(df)
+# This should be empty
 df |> filter(is.na(age)==T)
 
 # Pivot, not currently used
 df_pivot<-  df|> 
   pivot_wider(names_from = length_group, values_from = n) 
+View(df_pivot)
+
 print(n=350, x=df_pivot) # Looks correct
-sum(df_pivot[,4:11], na.rm=T) #2775
+sum(df_pivot[,4:11], na.rm=T) #9336
 
 
 # nGobs[l,r,y]: Age sample size per length, rectangle and year
@@ -329,25 +341,25 @@ sum(df_pivot[,4:11], na.rm=T) #2775
 # ===================================================================
 df
 # Let's take ages 0-9 (10 age groups)
-G_obs<-array(NA, dim=c(10,8,4,2))
+G_obs<-array(NA, dim=c(10,8,4,Nyears))
 for(i in 1:dim(df)[1]){
-  y<-df$year[i]-2022
-  r<-df$rec_ruhne[i]
-  r<-df$rec_ruhne[i]
+  y<-df$year[i]-(min_years-1)
+  r<-df$rec_ruhnu[i]
+  r<-df$rec_ruhnu[i]
   l<-df$length_group[i]
   a<-df$age[i]+1 # first age groups is 0+ 
   G_obs[a,l,r,y]<-df$n[i]
 }
 G_obs
-sum(G_obs, na.rm=T) # 1210!
+sum(G_obs, na.rm=T) # 9331
 
-nG_obs<-array(NA, dim=c(8,4,2))
-for(y in 1:2){
+nG_obs<-array(NA, dim=c(8,4,Nyears))
+for(y in 1:Nyears){
 for(r in 1:4){
 nG_obs[,r,y]<-as.data.frame(  df |> 
-    filter(year==(y+2022))  |> 
+    filter(year==(y+min_years-1))  |> 
   summarise(ntot=sum(n))|> 
-  pivot_wider(names_from = rec_ruhne, values_from = ntot) |>
+  pivot_wider(names_from = rec_ruhnu, values_from = ntot) |>
     select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
     ungroup() |> 
     select(-length_group, -year))[,r] 
@@ -366,7 +378,7 @@ sum(nG_obs, na.rm=T) # 2775 in 2022-2024
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
 for(i in 1:8){
   for(r in 1:4){
-    for(y in 1:2){
+    for(y in 1:Nyears){
       if(is.na(nG_obs[i,r,y])==T){
       nG_obs[i,r,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
         for(a in 1:10){
@@ -380,6 +392,8 @@ for(i in 1:8){
 }
 G_obs
 nG_obs
+
+G_obs[,,3,6]
 
 
 

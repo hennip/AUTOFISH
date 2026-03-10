@@ -130,20 +130,28 @@ model{
   # meanL: midpoint of each length class
   sigmaL[1:8]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
   TSa<-71.2
-
-  etaH~dbeta(2,2)
+  
+  #etaH~dbeta(2,2)
+  #etaH_tmp~dnorm(0,0.5) 
+  #etaH<-exp(etaH_tmp)/(1+exp(etaH_tmp))# logit-normal similar as beta(1,1)
+  etaH~dlnorm(0.8,0.1)
   etaG~dlnorm(0.8,0.1)
 
   for(s in 1:2){
     etaR[s]~dlnorm(0.8,0.1)
-    etaE[s]~dbeta(1,1)
+    #etaE[s]~dbeta(1,1)
+    #etaE_tmp[s]~dnorm(0,0.5) 
+    #etaE[s]<-exp(etaE_tmp)/(1+exp(etaE_tmp))# logit-normal similar as beta(1,1)
+    etaE[s]~dlnorm(0.8,0.1)
+
     etaL[s]~dlnorm(0.8,0.1)
   }
 
 # 
 #   for(s in 1:2){
 #     etaL[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#dunif(1,10000)#dlnorm(4.6,0.7)
-# #    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
+# #    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) 
+# ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
 #     # spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
 #     # mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
 #     # my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
@@ -185,7 +193,7 @@ model{
 
 }"
 
-#cat(GRAHS,file="GRAHS.txt")
+cat(GRAHS_model1,file="GRAHS1.txt")
 
 #############################
 
@@ -235,15 +243,34 @@ run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = '
          progress.bar=TRUE, jags.refresh=100)
 
 t01<-Sys.time();print(t01)
-run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1000,
+run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
-               sample =10000, adapt = 15000,
+               sample =10000, adapt = 20000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
-save(run1, file="../GRAHS1.RData")
+save(run1, file="../out/GRAHS1.RData")
 t02<-Sys.time();print(t02)
 print("run1 done");print(difftime(t02,t01))
 print("--------------------------------------------------")
 
+plot(run1, var="etaR")
 
+
+run2 <- extend.jags(run1, combine=F, sample=10000, thin=1000, keep.jags.files=T)
+t3<-Sys.time();print(t3)
+print("run2 done"); print(difftime(t3,t2))
+print("--------------------------------------------------")
+save(run2, file="../out/GRAHS1.RData")
+
+run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=T)
+t4<-Sys.time();print(t4)
+print("run3 done"); print(difftime(t4,t3))
+print("--------------------------------------------------")
+save(run3, file="../out/GRAHS1.RData")
+
+run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=T)
+t5<-Sys.time();print(t5)
+print("run4 done"); print(difftime(t5,t4))
+print("--------------------------------------------------")
+save(run4, file="../out/GRAHS1.RData")
 

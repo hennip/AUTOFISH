@@ -1,27 +1,17 @@
 # ----------------
-# ICES Biotic (flat CSV with section headers) - Batch parse and attach SurveyYear
+# ChatGPT code for reading in trawl data files and splitting the haul, catch and 
+# biotic data to separate data frames 
 # ----------------
 
-# Packages
-suppressPackageStartupMessages({
-  library(readr)
-  library(stringr)
-  library(dplyr)
-  library(purrr)
-  library(tidyr)
-  library(tibble)
-})
+input_dir <- pathB # Path defined in packages-and-paths.R
 
-# ===== CONFIG =====
-input_dir <- path  # <-- set this
+# ===== FUNCTIONS =====
 
-# ===== HELPERS =====
-
-
-
-# Return all "flat biotic" candidate files (.csv/.txt) that contain at least one section header
+# Return all "flat biotic" candidate files (.csv/.txt) that contain at least one 
+# section header
 find_biotic_files <- function(dir) {
-  cand <- list.files(dir, pattern = "(?i)\\.(csv|txt)$", full.names = TRUE, recursive = FALSE)
+  cand <- list.files(dir, pattern = "(?i)\\.(csv|txt)$", full.names = TRUE, 
+                     recursive = FALSE)
   keep(cand, function(fp) {
     # Read a small chunk to detect headers
     # (avoid reading whole files to keep this fast)
@@ -31,7 +21,7 @@ find_biotic_files <- function(dir) {
 }
 
 
-# Split sections (Cruise/Haul/Catch/Biology) using line-based pattern, à la your snippet
+# Split sections (Cruise/Haul/Catch/Biology) using line-based pattern
 split_sections <- function(lines) {
   # normalize line endings and trim
   lines <- str_replace_all(lines, "\r", "")
@@ -181,6 +171,3 @@ parsed <- lapply(files, process_biotic_file) %>% compact()
 hauls_all <- parsed %>% map("Haul")    %>% compact() %>% list_rbind()
 catch_all <- parsed %>% map("Catch")   %>% compact() %>% list_rbind()
 bio_all   <- parsed %>% map("Biology") %>% compact() %>% list_rbind()
-cruise_all<- parsed %>% map("Cruise")  %>% compact() %>% list_rbind()  # optional
-
-hauls_all

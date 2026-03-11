@@ -22,13 +22,6 @@ ruhnuLong<-23.26012233
 # 3: SW from ruhnu 
 # 4: SE from ruhnu 
 
-######################
-# How many years in the data?
-
-tmp<-dfB_haul |> group_by(year) |> summarise(n=n())
-
-Nyears<-length(tmp$year)
-min_years<-min(tmp$year)
 
 ###############
 # Haul data
@@ -53,6 +46,14 @@ dfB_haul<-dfB_haul|>
   mutate(rec=as.factor(rec_ruhnu))
 dfB_haul
 #View(dfB_haul)
+
+######################
+# How many years in the data?
+
+tmp<-dfB_haul |> group_by(year) |> summarise(n=n())
+
+Nyears<-length(tmp$year)
+min_years<-min(tmp$year)
 
 df_rec<-dfB_haul |> select(year,rec_ruhnu, HaulNumber)
 #View(df_rec)
@@ -393,7 +394,7 @@ for(i in 1:8){
 G_obs
 nG_obs
 
-G_obs[,,3,6]
+G_obs[,,3,2]
 
 
 

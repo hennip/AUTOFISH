@@ -20,6 +20,6 @@ if(whoisthis=="hp_laptop"){
   pathB<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
 }
 if(whoisthis=="hp_kala1"){path<-"../../dat/AUTOFISH/orig/"}
-if(whoisthis=="es_laptop"){path<-path<-"../../ICES Acoustic database/GRAHS/"}
+if(whoisthis=="es_laptop"){pathB<-path<-"../../ICES Acoustic database/GRAHS/"}
 
 

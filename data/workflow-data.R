@@ -8,20 +8,8 @@ source("packages-and-paths.R")
 # 2. Catch data
 # 3. Biological data, incl. length and age
 ####################################
-
-# If needed, define years to take into account
-min_year<-2023
-max_year<-2024
-
-source("data/read-in-acoustic-data.R") 
-
-
-source("data/read-in-trawl-data.R") 
-
-# Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of ruhnu island (lighthouse) as a limit point
-
-# Coordinates of ruhnu lighthouse according to Wikipedia
+# Coordinates of ruhnu lighthouse according to Wikipedia. These´will be used
+# to refine new rectangles
 ruhnuLat<-57.80135766
 ruhnuLong<-23.26012233
 
@@ -30,6 +18,15 @@ ruhnuLong<-23.26012233
 # 2: NE from ruhnu 
 # 3: SW from ruhnu 
 # 4: SE from ruhnu 
+
+
+# If needed, define years to take into account
+min_year<-2023
+max_year<-2024
+
+source("data/read-in-acoustic-data.R") 
+
+source("data/read-in-trawl-data.R") 
 
 source("data/trawl-hauls.R")
 

@@ -2,7 +2,8 @@
 # Catch data
 ###############
 
-dfB_catch<-catch_all %>% mutate(year=SurveyYear)
+dfB_catch<-catch_all %>% mutate(year=SurveyYear)|> 
+  filter(year>=min_year & year<=max_year)
 #View(dfB_catch)
 
 dfB_catch<-dfB_catch  |>
@@ -145,7 +146,7 @@ numbers_per_length_group<-full_join(numbers_at_length_herring, numbers_at_length
   pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
   arrange(species,year,length_group)
 print(n=100, x=numbers_per_length_group)
-View(numbers_per_length_group)
+#View(numbers_per_length_group)
 
 #===============================
 # Median lengths in length groups

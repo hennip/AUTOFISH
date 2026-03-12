@@ -2,7 +2,8 @@
 # Haul data
 ###############
 
-dfB_haul<-hauls_all %>% mutate(year=SurveyYear)
+dfB_haul<-hauls_all %>% mutate(year=SurveyYear)|> 
+  filter(year>=min_year & year<=max_year)
 
 # How many years in the data?
 tmp<-dfB_haul |> group_by(year) |> summarise(n=n())

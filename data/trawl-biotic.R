@@ -5,9 +5,7 @@
 dfB_biol<-bio_all |> 
   mutate(year=SurveyYear) |> 
   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
-  mutate(year>2022 & year<2025)
-
-#dfB_biol$HaulNumber
+  filter(year>=min_year & year<=max_year)
 
 # Add rectangles and define 8 length groups for herring
 df_length_at_age<-dfB_biol|> 
@@ -55,7 +53,7 @@ df |> filter(is.na(age)==T)
 # Pivot, not currently used
 df_pivot<-  df|> 
   pivot_wider(names_from = length_group, values_from = n) 
-View(df_pivot)
+#View(df_pivot)
 
 print(n=350, x=df_pivot) # Looks correct
 sum(df_pivot[,4:11], na.rm=T) #9336
@@ -118,7 +116,7 @@ for(i in 1:8){
 G_obs
 nG_obs
 
-G_obs[,,3,6]
+#G_obs[,,3,6]
 
 
 

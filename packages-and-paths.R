@@ -25,7 +25,7 @@ if(whoisthis=="hp_laptop"){
   pathA<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
   pathB<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
 }
-if(whoisthis=="hp_kala1"){path<-"../../dat/AUTOFISH/orig/"}
+if(whoisthis=="hp_kala1"){pathA<-pathB<-"../../dat/AUTOFISH/orig/"}
 if(whoisthis=="es_laptop"){pathA<-pathB<-"../../ICES Acoustic database/GRAHS/"}
 
 

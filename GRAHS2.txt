@@ -68,19 +68,20 @@ model{
 
         # approximate dirichlet (set of gamma distributions) with lognormal
         #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
-        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/sum(zL[1:8,r,s,y])
+        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/
+                                  sum(zL[1:Nlengths[s],r,s,y])
 
-        for(l in 1:8){
+        for(l in 1:Nlengths[s]){
           zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
-          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l]
+          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l,s]
         }
         sigmaR[r,s,y]<-sum(sigmaTmp[1:Nlengths[s],r,s,y])
       }
 
-      for(l in 1:8){
+      for(l in 1:Nlengths[1]){ # Age data on herring only
         # Age data
         #################
-        # Gobs: observed number of fish of each age class in length class l
+        # Gobs: observed number of herring of each age class in length class l
         Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
         # qG: age distribution of length class l
 
@@ -93,7 +94,7 @@ model{
         }
       }
       for(a in 1:Nages){
-        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:8,r,y])*N[r,1,y]
+        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:Nlengths[1],r,y])*N[r,1,y]
       }
     }
 
@@ -107,11 +108,12 @@ model{
       tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
     }
     for(s in 1:2){
-      alphaL[1:8,s,y]<-Lstar[1:8,s,y]*(etaL[s]+1)
-      Lstar[1:8,s,y]~ddirich(aL)
-      ML[1:8,s,y]<-log(Lstar[1:8,s,y])-0.5*(1/tauL[1:8,s,y])
-      tauL[1:8,s,y]<-1/log((1/alphaL[1:8,s,y])+1)
+      alphaL[1:Nlengths[s],s,y]<-Lstar[1:Nlengths[s],s,y]*(etaL[s]+1)
+      ML[1:Nlengths[s],s,y]<-log(Lstar[1:Nlengths[s],s,y])-0.5*(1/tauL[1:Nlengths[s],s,y])
+      tauL[1:Nlengths[s],s,y]<-1/log((1/alphaL[1:Nlengths[s],s,y])+1)
     }
+    Lstar[1:Nlengths[1],1,y]~ddirich(aL1)
+    Lstar[1:Nlengths[2],2,y]~ddirich(aL2)
   }
 
   for(s in 1:2){
@@ -131,9 +133,13 @@ model{
     #etaE[s]~dbeta(1,1)
     #etaE_tmp[s]~dnorm(0,0.5) 
     #etaE[s]<-exp(etaE_tmp)/(1+exp(etaE_tmp))# logit-normal similar as beta(1,1)
-    etaE[s]~dlnorm(0.8,0.1)
+    #etaE[s]~dlnorm(0.8,0.1)
+    etaE[s]<-exp(etaEZ[s])
+    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
 
     etaL[s]~dlnorm(0.8,0.1)
+  
+  
   }
 
 # 

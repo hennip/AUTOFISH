@@ -78,19 +78,20 @@ model{
 
         # approximate dirichlet (set of gamma distributions) with lognormal
         #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
-        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/sum(zL[1:8,r,s,y])
+        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/
+                                  sum(zL[1:Nlengths[s],r,s,y])
 
-        for(l in 1:8){
+        for(l in 1:Nlengths[s]){
           zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
-          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l]
+          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l,s]
         }
         sigmaR[r,s,y]<-sum(sigmaTmp[1:Nlengths[s],r,s,y])
       }
 
-      for(l in 1:8){
+      for(l in 1:Nlengths[1]){ # Age data on herring only
         # Age data
         #################
-        # Gobs: observed number of fish of each age class in length class l
+        # Gobs: observed number of herring of each age class in length class l
         Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
         # qG: age distribution of length class l
 
@@ -103,7 +104,7 @@ model{
         }
       }
       for(a in 1:Nages){
-        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:8,r,y])*N[r,1,y]
+        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:Nlengths[1],r,y])*N[r,1,y]
       }
     }
 
@@ -117,11 +118,12 @@ model{
       tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
     }
     for(s in 1:2){
-      alphaL[1:8,s,y]<-Lstar[1:8,s,y]*(etaL[s]+1)
-      Lstar[1:8,s,y]~ddirich(aL)
-      ML[1:8,s,y]<-log(Lstar[1:8,s,y])-0.5*(1/tauL[1:8,s,y])
-      tauL[1:8,s,y]<-1/log((1/alphaL[1:8,s,y])+1)
+      alphaL[1:Nlengths[s],s,y]<-Lstar[1:Nlengths[s],s,y]*(etaL[s]+1)
+      ML[1:Nlengths[s],s,y]<-log(Lstar[1:Nlengths[s],s,y])-0.5*(1/tauL[1:Nlengths[s],s,y])
+      tauL[1:Nlengths[s],s,y]<-1/log((1/alphaL[1:Nlengths[s],s,y])+1)
     }
+    Lstar[1:Nlengths[1],1,y]~ddirich(aL1)
+    Lstar[1:Nlengths[2],2,y]~ddirich(aL2)
   }
 
   for(s in 1:2){
@@ -209,7 +211,8 @@ data<-list(
   Gobs=G_obs, # Number of individuals per age group in each sample
   nGobs=nG_obs, # sample size per age group
   aG=rep(1,10),
-  aL=rep(1,8),
+  aL1=rep(1,8),
+  aL2=rep(1,6),
   meanL=meanL/10 # mean lengths in cm's
 )
 
@@ -223,29 +226,21 @@ parnames=c(
 )
 
 
-<<<<<<< HEAD
-# run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
-#          burnin =1000, modules = "mix",
-#          sample =1000, adapt = 1000,
-#          keep.jags.files=F,
-#          progress.bar=TRUE, jags.refresh=100)
-=======
 run0<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
          burnin =1000, modules = "mix",
          sample =1000, adapt = 1000,
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
->>>>>>> 192bcd45449f12d1dc9bf2f8f76cc0abb8d7696d
 
 t1<-Sys.time();print(t1)
-run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, 
+run1<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, 
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
                sample =10000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
 run<-run1
-save(run, file="../out/GRAHS1.RData")
+save(run, file="../out/GRAHS2.RData")
 t02<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
@@ -262,14 +257,14 @@ t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")
 run<-run2
-save(run, file="../out/GRAHS1.RData")
+save(run, file="../out/GRAHS2.RData")
 
 run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=T)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")
 run<-run3
-save(run, file="../out/GRAHS1.RData")
+save(run, file="../out/GRAHS2.RData")
 
 run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=T)
 t5<-Sys.time();print(t5)

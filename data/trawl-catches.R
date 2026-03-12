@@ -215,16 +215,23 @@ max_group_num<-max(numbers_per_length_group$length_group)
 L_obs<-array(NA, dim=c(max_group_num,4,2,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
-    L_obs[,r,1,y]<-as.data.frame(
-      numbers_per_length_group |> filter(species==1 & year==(y+min_years-1)) |> 
-      ungroup() |> select(-year, -species, -length_group))[,r]
-    
-#    L_obs[,r,2,y]<-as.data.frame(
-#      numbers_per_length_group |> filter(species==2 & year==(y+min_years-1)) |> 
-#      ungroup() |> select(-year, -species, -length_group))[,r]
-  }}
-L_obs
+    for(g in 1:8){ # Herring
+      L_obs[g,r,1,y]<-as.data.frame(
+      numbers_per_length_group |> 
+        filter(species==1 & year==(y+min_years-1) & length_group==g) |>
+        ungroup() |> select(-year, -species, -length_group))[,r]
+    }
+    for(g in 1:6){ # Other species
+      L_obs[g,r,2,y]<-as.data.frame(
+        numbers_per_length_group |> 
+          filter(species==2 & year==(y+min_years-1) & length_group==g) |>
+          ungroup() |> select(-year, -species, -length_group))[,r]
+    }
+  }
+}
 
+L_obs
+nL_obs
 
 # NOTE! REPLACE NA's IN LENGTH DATA WHERE NA NOT SUITABLE OR IN REALITY 0
 ##########################################################################

@@ -194,8 +194,9 @@ dfB_catch |>group_by(year,CatchSpeciesCode) |>
 length_limits<-c(90,105,120,135,150,165,180)
 
 # Number of herring/other species in the sample per rectangle and length group
-numbers_at_length<-dfB_catch|>
-  group_by(year,rec_ruhnu, species, CatchLengthClass)|>  
+numbers_at_length_herring<-dfB_catch|>
+  filter(species==1) |> 
+  group_by(year,rec_ruhnu, CatchLengthClass)|>  
   summarise(n=sum(CatchNumberAtLength)) |> 
   mutate(LengthClass=CatchLengthClass) |> 
   mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
@@ -206,12 +207,34 @@ numbers_at_length<-dfB_catch|>
   mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
   mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  group_by(year,rec_ruhnu, species, length_group) |> 
+  group_by(year, rec_ruhnu, length_group) |> 
   summarise(number_at_length=sum(n)) |> 
   pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
-  arrange(year,species, length_group)
-  
-print(n=50, x=numbers_at_length)
+  arrange(year,length_group)
+print(n=50, x=numbers_at_length_herring)
+
+
+numbers_at_length_other<-dfB_catch|>
+  filter(species==2) |> 
+  group_by(year,rec_ruhnu, CatchLengthClass)|>  
+  summarise(n=sum(CatchNumberAtLength)) |> 
+  mutate(LengthClass=CatchLengthClass) |> 
+  mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
+  mutate(length_group=ifelse(LengthClass>=90  & LengthClass<105, 2, length_group)) |> 
+  mutate(length_group=ifelse(LengthClass>=105 & LengthClass<120, 3, length_group)) |> 
+  mutate(length_group=ifelse(LengthClass>=120 & LengthClass<135, 4, length_group)) |> 
+  mutate(length_group=ifelse(LengthClass>=135 & LengthClass<150, 5, length_group)) |> 
+  mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
+  mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
+  mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
+  group_by(year, rec_ruhnu, length_group) |> 
+  summarise(number_at_length=sum(n)) |> 
+  pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
+  arrange(year,length_group)
+print(n=50, x=numbers_at_length_other)
+
+
+
 
 # mean lengths in 8 length groups
 meanL<-c()

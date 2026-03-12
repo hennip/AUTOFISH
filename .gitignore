@@ -1,7 +1,10 @@
+
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
 
 *.Rproj
+*.txt
 
+runjags*

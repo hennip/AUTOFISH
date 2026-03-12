@@ -64,24 +64,23 @@ model{
         # Length data
         #################
         # Observed number of fish of species s in each length class in rectangle r
-        Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
+        Lobs[1:8,r,s,y]~dmulti(qL[1:8,r,s,y],nLobs[r,s,y])
 
         # approximate dirichlet (set of gamma distributions) with lognormal
         #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
-        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/
-                                  sum(zL[1:Nlengths[s],r,s,y])
+        qL[1:8,r,s,y]<-zL[1:8,r,s,y]/sum(zL[1:8,r,s,y])
 
-        for(l in 1:Nlengths[s]){
+        for(l in 1:8){
           zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
-          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l,s]
+          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l]
         }
-        sigmaR[r,s,y]<-sum(sigmaTmp[1:Nlengths[s],r,s,y])
+        sigmaR[r,s,y]<-sum(sigmaTmp[1:8,r,s,y])
       }
 
-      for(l in 1:Nlengths[1]){ # Age data on herring only
+      for(l in 1:8){
         # Age data
         #################
-        # Gobs: observed number of herring of each age class in length class l
+        # Gobs: observed number of fish of each age class in length class l
         Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
         # qG: age distribution of length class l
 
@@ -94,7 +93,7 @@ model{
         }
       }
       for(a in 1:Nages){
-        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:Nlengths[1],r,y])*N[r,1,y]
+        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:8,r,y])*N[r,1,y]
       }
     }
 
@@ -108,18 +107,15 @@ model{
       tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
     }
     for(s in 1:2){
-      alphaL[1:Nlengths[s],s,y]<-Lstar[1:Nlengths[s],s,y]*(etaL[s]+1)
-      ML[1:Nlengths[s],s,y]<-log(Lstar[1:Nlengths[s],s,y])-0.5*(1/tauL[1:Nlengths[s],s,y])
-      tauL[1:Nlengths[s],s,y]<-1/log((1/alphaL[1:Nlengths[s],s,y])+1)
+      alphaL[1:8,s,y]<-Lstar[1:8,s,y]*(etaL[s]+1)
+      Lstar[1:8,s,y]~ddirich(aL)
+      ML[1:8,s,y]<-log(Lstar[1:8,s,y])-0.5*(1/tauL[1:8,s,y])
+      tauL[1:8,s,y]<-1/log((1/alphaL[1:8,s,y])+1)
     }
-    Lstar[1:Nlengths[1],1,y]~ddirich(aL1)
-    Lstar[1:Nlengths[2],2,y]~ddirich(aL2)
   }
 
-  for(s in 1:2){
-    # meanL: midpoint of each length class
-    sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:Nlengths[s],s],2)
-  }
+  # meanL: midpoint of each length class
+  sigmaL[1:8]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
   TSa<-71.2
   
   #etaH~dbeta(2,2)
@@ -158,7 +154,25 @@ model{
 #     etaR[y,s]~dlnorm(MR[s],tauR[s])
 #   }
 #   }
-
+# #  etaR~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
+#   muE[1]~dunif(1,100000)
+#   cvE[1]~dunif(0.01,2)
+#   ME[1]<-log(muE[1])-0.5/tauE[1]
+#   tauE[1]<-1/(log(cvE[1]*cvE[1]+1))
+#   muR[1]~dunif(1,1000)
+#   cvR[1]~dunif(0.01,2)
+#   MR[1]<-log(muR[1])-0.5/tauR[1]
+#   tauR[1]<-1/(log(cvR[1]*cvR[1]+1))
+# 
+# muE[2]~dunif(1,100000)
+#   cvE[2]~dunif(0.01,2)
+#   ME[2]<-log(muE[2])-0.5/tauE[2]
+#   tauE[2]<-1/(log(cvE[2]*cvE[2]+1))
+#   muR[2]~dunif(1,1000)
+#   cvR[2]~dunif(0.01,2)
+#   MR[2]<-log(muR[2])-0.5/tauR[2]
+#   tauR[2]<-1/(log(cvR[2]*cvR[2]+1))
+  
 
   # Unupdated priors
   ##############################

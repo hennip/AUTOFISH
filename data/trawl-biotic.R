@@ -2,7 +2,10 @@
 # Herring Age data
 ###############
 
-dfB_biol<-bio_all %>% mutate(year=SurveyYear) %>% mutate(HaulNumber=as.numeric(HaulNumber))
+dfB_biol<-bio_all |> 
+  mutate(year=SurveyYear) |> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(year>2022 & year<2025)
 
 #dfB_biol$HaulNumber
 

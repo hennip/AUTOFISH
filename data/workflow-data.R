@@ -1,13 +1,21 @@
 source("packages-and-paths.R")
 
-####################################
-# Read in the trawl data from GRAHS (Gulf of Riga acoustic survey)
-# and modify it for the needs of model run
+# =====================================================
+# Read in the acoustic and trawl data from GRAHS (Gulf of Riga acoustic survey)
+# and modify those for the needs of Bayes model
 # Note that the Biotic-data file contains three data frames:
 # 1. Haul information
 # 2. Catch data
 # 3. Biological data, incl. length and age
 ####################################
+
+# If needed, define years to take into account
+min_year<-2023
+max_year<-2024
+
+source("data/read-in-acoustic-data.R") 
+
+
 source("data/read-in-trawl-data.R") 
 
 # Instead of statistical rectangles, divide the gulf into 4 areas using coordinates

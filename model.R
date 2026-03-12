@@ -5,13 +5,10 @@
 library(rjags)
 library(runjags)
 
-source("data/read-in-acoustic-data.R")
-source("data/read-in-trawl-data.R")
+source("data/workflow-data.R")
 
 
-
-
-GRAHS_model1<-"
+GRAHS_model2<-"
 model{
 
   # Observation model for nautical area scattering coefficients
@@ -77,17 +74,17 @@ model{
         # Length data
         #################
         # Observed number of fish of species s in each length class in rectangle r
-        Lobs[1:8,r,s,y]~dmulti(qL[1:8,r,s,y],nLobs[r,s,y])
+        Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
 
         # approximate dirichlet (set of gamma distributions) with lognormal
         #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
-        qL[1:8,r,s,y]<-zL[1:8,r,s,y]/sum(zL[1:8,r,s,y])
+        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/sum(zL[1:8,r,s,y])
 
         for(l in 1:8){
           zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
           sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l]
         }
-        sigmaR[r,s,y]<-sum(sigmaTmp[1:8,r,s,y])
+        sigmaR[r,s,y]<-sum(sigmaTmp[1:Nlengths[s],r,s,y])
       }
 
       for(l in 1:8){
@@ -127,8 +124,10 @@ model{
     }
   }
 
-  # meanL: midpoint of each length class
-  sigmaL[1:8,s]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
+  for(s in 1:2){
+    # meanL: midpoint of each length class
+    sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:Nlengths[s],s],2)
+  }
   TSa<-71.2
   
   #etaH~dbeta(2,2)
@@ -167,25 +166,7 @@ model{
 #     etaR[y,s]~dlnorm(MR[s],tauR[s])
 #   }
 #   }
-# #  etaR~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-#   muE[1]~dunif(1,100000)
-#   cvE[1]~dunif(0.01,2)
-#   ME[1]<-log(muE[1])-0.5/tauE[1]
-#   tauE[1]<-1/(log(cvE[1]*cvE[1]+1))
-#   muR[1]~dunif(1,1000)
-#   cvR[1]~dunif(0.01,2)
-#   MR[1]<-log(muR[1])-0.5/tauR[1]
-#   tauR[1]<-1/(log(cvR[1]*cvR[1]+1))
-# 
-# muE[2]~dunif(1,100000)
-#   cvE[2]~dunif(0.01,2)
-#   ME[2]<-log(muE[2])-0.5/tauE[2]
-#   tauE[2]<-1/(log(cvE[2]*cvE[2]+1))
-#   muR[2]~dunif(1,1000)
-#   cvR[2]~dunif(0.01,2)
-#   MR[2]<-log(muR[2])-0.5/tauR[2]
-#   tauR[2]<-1/(log(cvR[2]*cvR[2]+1))
-  
+
 
   # Unupdated priors
   ##############################
@@ -197,7 +178,7 @@ model{
 
 }"
 
-cat(GRAHS_model1,file="GRAHS1.txt")
+cat(GRAHS_model2,file="GRAHS2.txt")
 
 #############################
 
@@ -206,6 +187,7 @@ data<-list(
   Nyears=2,
   Nrec=4,
   Nages=10,
+  Nlengths=c(8,6),
   pi=3.14159265358979323846,
   A=A_NM2, # Areas of rectangles, NM^2
   Atot=sum(A_NM2),
@@ -241,11 +223,19 @@ parnames=c(
 )
 
 
+<<<<<<< HEAD
 # run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
 #          burnin =1000, modules = "mix",
 #          sample =1000, adapt = 1000,
 #          keep.jags.files=F,
 #          progress.bar=TRUE, jags.refresh=100)
+=======
+run0<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+         burnin =1000, modules = "mix",
+         sample =1000, adapt = 1000,
+         keep.jags.files=F,
+         progress.bar=TRUE, jags.refresh=100)
+>>>>>>> 192bcd45449f12d1dc9bf2f8f76cc0abb8d7696d
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, 

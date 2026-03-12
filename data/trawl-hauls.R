@@ -9,8 +9,13 @@ tmp<-dfB_haul |> group_by(year) |> summarise(n=n())
 Nyears<-length(tmp$year)
 min_years<-min(tmp$year)
 
-dfB_haul<-dfB_haul|> 
-  mutate(#HaulStartTime=as.Date(HaulStartTime),
+# Define rec_ruhnu 
+# 1: NW from ruhnu 
+# 2: NE from ruhnu 
+# 3: SW from ruhnu 
+# 4: SE from ruhnu 
+dfB_haul2<-dfB_haul|> 
+  mutate(
     HaulNumber=as.numeric(HaulNumber),
     latStart=as.numeric(HaulStartLatitude),
     longStart=as.numeric(HaulStartLongitude),
@@ -22,22 +27,21 @@ dfB_haul<-dfB_haul|>
   mutate(rec_ruhnu=ifelse(latStart<ruhnuLat & longStart>=ruhnuLong, 4,rec_ruhnu)) |>  # 4: SE 
   mutate(minDepth=as.numeric(HaulMinTrawlDepth), maxDepth=as.numeric(HaulMaxTrawlDepth)) |> 
   select( year, rec_ruhnu, latStart, longStart, minDepth, maxDepth, HaulNumber, everything()) |> 
-  #select(-Haul, -Header)|> 
   mutate(rec=as.factor(rec_ruhnu))
-dfB_haul
-#View(dfB_haul)
+dfB_haul2
+#View(dfB_haul2)
 
-df_rec<-dfB_haul |> select(year,rec_ruhnu, HaulNumber)
+df_rec<-dfB_haul2 |> select(year,rec_ruhnu, HaulNumber)
 #View(df_rec)
 
 # Number of hauls per rectangle: Nhaul[r,y]
 Nhaul<-
-  as.matrix(dfB_haul |> group_by(year, rec_ruhnu) |> summarise(n=n()) |> 
+  as.matrix(dfB_haul2 |> group_by(year, rec_ruhnu) |> summarise(n=n()) |> 
               pivot_wider(names_from = year, values_from = n) |> 
               ungroup() |> select(-rec_ruhnu))
 
 
-minmax_depth<-dfB_haul |> arrange(rec) |> group_by(year,rec) |> 
+minmax_depth<-dfB_haul2 |> arrange(rec) |> group_by(year,rec) |> 
   mutate(rec=as.numeric(rec)) |> 
   summarise(min_trawl_depth=min(minDepth), max_trawl_depth=max(maxDepth))#, mean=(min+max)/2)
 

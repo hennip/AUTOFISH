@@ -1,394 +1,173 @@
-source("packages-and-paths.R")
+# ----------------
+# ChatGPT code for reading in trawl data files and splitting the haul, catch and 
+# biotic data to separate data frames 
+# ----------------
 
-####################################
-# Read in the trawl data from GRAHS (Gulf of Riga acoustic survey)
-# and modify it for the needs of model run
-# Note that the Biotic-data file contains three data frames:
-# 1. Haul information
-# 2. Catch data
-# 3. Biological data, incl. length and age
-####################################
+input_dir <- pathB # Path defined in packages-and-paths.R
 
-# Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of Ruhne island (lighthouse) as a limit point
+# ===== FUNCTIONS =====
 
-# Coordinates of Ruhne lighthouse according to Wikipedia
-ruhneLat<-57.80135766
-ruhneLong<-23.26012233
-
-# Divide area to 4 pieces
-# 1: NW from Ruhne 
-# 2: NE from Ruhne 
-# 3: SW from Ruhne 
-# 4: SE from Ruhne 
-
-###############
-# Haul data
-###############
-
-dfB_haul24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=2)[1:16,] |> mutate(year=2024)
-dfB_haul23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=2)[1:17,] |> mutate(year=2023)
-
-dfB_haul<-full_join(dfB_haul24, dfB_haul23) |> as_tibble()
-
-dfB_haul<-dfB_haul|> 
-  mutate(#HaulStartTime=as.Date(HaulStartTime),
-    HaulNumber=as.numeric(HaulNumber),
-    latStart=as.numeric(HaulStartLatitude),
-    longStart=as.numeric(HaulStartLongitude),
-    latStop=as.numeric(HaulStopLatitude),
-    longStop=as.numeric(HaulStopLongitude)) |> 
-  mutate(rec_ruhne=ifelse(latStart>=ruhneLat & longStart<ruhneLong, 1,NA)) |>         # 1: NW
-  mutate(rec_ruhne=ifelse(latStart>=ruhneLat & longStart>=ruhneLong, 2,rec_ruhne)) |> # 2: NE 
-  mutate(rec_ruhne=ifelse(latStart<ruhneLat & longStart<ruhneLong, 3,rec_ruhne)) |>   # 3: SW 
-  mutate(rec_ruhne=ifelse(latStart<ruhneLat & longStart>=ruhneLong, 4,rec_ruhne)) |>  # 4: SE 
-  mutate(minDepth=as.numeric(HaulMinTrawlDepth), maxDepth=as.numeric(HaulMaxTrawlDepth)) |> 
-  select( year, rec_ruhne, latStart, longStart, minDepth, maxDepth, HaulNumber, everything()) |> 
-  select(-Haul, -Header)|> 
-  mutate(rec=as.factor(rec_ruhne))
-dfB_haul
-#View(dfB_haul)
-
-df_rec<-dfB_haul |> select(year,rec_ruhne, HaulNumber)
-#View(df_rec)
-
-# Number of hauls per rectangle: Nhaul[r,y]
-Nhaul<-
-  as.matrix(dfB_haul |> group_by(year, rec_ruhne) |> summarise(n=n()) |> 
-    pivot_wider(names_from = year, values_from = n) |> 
-      ungroup() |> select(-rec_ruhne))
-
-
-minmax_depth<-dfB_haul |> arrange(rec) |> group_by(year,rec) |> 
-  mutate(rec=as.numeric(rec)) |> 
-  summarise(min_trawl_depth=min(minDepth), max_trawl_depth=max(maxDepth))#, mean=(min+max)/2)
-
-
-# df<-dfB_haul |> select(rec, minDepth, maxDepth, HaulNumber) |> 
-#   pivot_longer(cols = minDepth:maxDepth, names_to="minmax",values_to = "depth")
-# 
-# ggplot(data=df, aes(x=HaulNumber, y=depth, group=rec))+
-#   geom_line(aes(col=rec))
-
-#View(dfB_haul)
-
-###############
-# Catch data
-###############
-
-dfB_catch24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=19)[1:(500-20),]|> as_tibble() |> mutate(year=2024)
-dfB_catch23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=20)[1:(485-21),]|> as_tibble() |> mutate(year=2023) 
-
-dfB_catch<-full_join(dfB_catch24,dfB_catch23) 
-  #View(dfB_catch)
-  
-dfB_catch<-dfB_catch  |>
-  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
-  mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
-  mutate(catch=round(catch,0)) |> 
-  mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
-  mutate(CatchLengthClass=as.numeric(CatchLengthClass)) |> 
-  full_join(df_rec) |> 
-  mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
-  select(year,rec_ruhne, everything())|> 
-  select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
-  select(-CatchDataType, -CatchSpeciesValidity)
-dfB_catch
-#View(dfB_catch)
-
-
-# Cobs: total catch per trawl haul
-#########################################
-# group by rec & haul, calculate total catch
-TotCatch<-dfB_catch |>
-  group_by(year,rec_ruhne,HaulNumber) |> 
-  summarise(tot_catch=sum(catch))|> 
-  select(year,rec_ruhne, HaulNumber, tot_catch)
-#View(TotCatch)
-TotCatch
-
-# Cobs[h,r,y]
-# Build tot catch table in which rows are hauls and columns are rectangles 
-C_obs<-array(NA, dim=c(6,4,2))
-for(y in 1:2){
-for(r in 1:4){
-  apu<-1
-  for(i in 1:length(TotCatch$rec_ruhne)){
-    if(TotCatch$year[i]==(y+2022) & TotCatch$rec_ruhne[i]==r){
-      C_obs[apu,r,y]<-TotCatch$tot_catch[i]
-      apu<-apu+1
-    }}}}
-C_obs
-
-# Hobsprop: Proportion of herring in each catch
-###############################################
-# group by rec, haul & species, calculate total catch
-herring<-dfB_catch  |> 
-  group_by(year,rec_ruhne,HaulNumber, species) |> 
-  summarise(tot_catch=sum(catch))|> 
-  select(year,rec_ruhne, HaulNumber, species, tot_catch) |> 
-  filter(species==1) |>  # herring only
-  mutate(herring_catch=tot_catch) |> 
-  select(-tot_catch)
-herring
-  
-dfH<-full_join(herring, TotCatch) |> 
-  mutate(hprop=herring_catch/tot_catch)
-
-
-#HobsProp[h,r,y]
-# Build table for herring proportions in which rows are hauls and columns are rectangles
-Hprops<-array(NA, dim=c(6,4,2))
-for(y in 1:2){
-  for(r in 1:4){
-  apu<-1
-  for(i in 1:length(dfH$rec_ruhne)){
-    if(dfH$year[i]==(y+2022) & dfH$rec_ruhne[i]==r){
-      Hprops[apu,r,y]<-dfH$hprop[i]
-      apu<-apu+1
-    }}}}
-Hprops
-
-
-# nLobs[r,s,y]: Total sample size per rectangle and species
-# Lobs[1:8,r,s,y]: Number of fish of species s in all haul samples at rectangle r from length groups 1:8
-#######################################################################################
-# nLobs
-#==========================
-# catch sample size per ruhne rectangle and species (1=herring, 2=other)
-sample_size<-dfB_catch  |>
-  group_by(year,rec_ruhne,species) |> 
-  summarise(tot_sample=sum(CatchNumberAtLength))#|> 
-sample_size
-
-# Sample size per species and rec in a form that feeds to the model
-nL_obs<-array(NA, dim=c(4,2,2))
-for(y in 1:2){
-nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+2022), species==1) |>  
-            pivot_wider(values_from = tot_sample, names_from = species))[,3]
-nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+2022), species==2) |>  
-            pivot_wider(values_from = tot_sample, names_from = species))[,3]
-}
-nL_obs
-
-# Lobs
-#==========================
-# min and max length per species
-dfB_catch |>group_by(year,CatchSpeciesCode) |>  
-  summarise(min=min(CatchLengthClass), max=max(CatchLengthClass))
-
-# Decide upon 8 length groups
-# limits are upper limits expect the last one which is also a lower limit of the 
-# 8th group
-length_limits<-c(90,105,120,135,150,165,180)
-
-# Number of herring/other species in the sample per rectangle and length group
-numbers_at_length<-dfB_catch|>
-  group_by(year,rec_ruhne, species, CatchLengthClass)|>  
-  summarise(n=sum(CatchNumberAtLength)) |> 
-  mutate(LengthClass=CatchLengthClass) |> 
-  mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
-  mutate(length_group=ifelse(LengthClass>=90  & LengthClass<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=105 & LengthClass<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=120 & LengthClass<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=135 & LengthClass<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  group_by(year,rec_ruhne, species, length_group) |> 
-  summarise(number_at_length=sum(n)) |> 
-  pivot_wider(names_from = rec_ruhne, values_from=number_at_length) |> 
-  arrange(year,species, length_group)
-  
-print(n=50, x=numbers_at_length)
-
-# mean lengths in 8 length groups
-meanL<-c()
-# <90
-meanL<-as.data.frame(dfB_catch|>
-  mutate(length=CatchLengthClass) |> 
-  filter(length<90, species==1) |> select(-species) |> 
-  summarise(meanL=mean(length)))[[1]]
-            
-for(i in 1:6){
-  #i<-1
-  meanL[i+1]<-length_limits[i]+(length_limits[i+1]-length_limits[i])/2
+# Return all "flat biotic" candidate files (.csv/.txt) that contain at least one 
+# section header
+find_biotic_files <- function(dir) {
+  cand <- list.files(dir, pattern = "(?i)\\.(csv|txt)$", full.names = TRUE, 
+                     recursive = FALSE)
+  keep(cand, function(fp) {
+    # Read a small chunk to detect headers
+    # (avoid reading whole files to keep this fast)
+    lines <- tryCatch(readr::read_lines(fp, n_max = 300, locale = locale(encoding = "UTF-8")), error = function(e) character())
+    any(str_detect(lines, "^(Cruise|Haul|Catch|Biology),Header"))
+  })
 }
 
-# >180
-meanL[8]<-
-  as.data.frame(
-  dfB_catch|>
-    mutate(length=CatchLengthClass) |> 
-    filter(length>180, species==1) |> select(-species) |> 
-    summarise(meanL=mean(length))
-  )[[1]]
 
-meanL
-
-
-
-# Sample size per species and rec in a form that feeds to the model
-# Lobs[1:8,r,s,y]
-L_obs<-array(NA, dim=c(8,4,2,2))
-for(y in 1:2){
-  for(r in 1:4){
-  L_obs[,r,1,y]<-as.data.frame(numbers_at_length |> filter(species==1 & year==(y+2022)) |> 
-                               ungroup() |> select(-year, -species, -length_group))[,r]
-  L_obs[,r,2,y]<-as.data.frame(numbers_at_length |> filter(species==2 & year==(y+2022)) |> 
-                               ungroup() |> select(-year, -species, -length_group))[,r]
-}}
-L_obs
-
-
-# NOTE! REPLACE NA's IN LENGTH DATA WHERE NA NOT SUITABLE OR IN REALITY 0
-##########################################################################
-# For computational reasons, sample size can't be missing so imput sample of 500 
-# for all that are currently NA. Numbers per length will be then predicted by the model 
-# (THIS PROPABLY DOES NOT HAPPEN BUT IF IT WOULD, THIS PIECE OF CODE WOULD DEAL WITH IT)
-# AND
-# In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
-for(r in 1:4){
-  for(s in 1:2){
-    for(y in 1:2){
-      if(is.na(nL_obs[r,s,y])==T){
-        nL_obs[r,s,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
-          for(l in 1:8){
-            if(is.na(L_obs[l,r,s,y])==T){
-              L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-            }
-          }
-        }
-    }
+# Split sections (Cruise/Haul/Catch/Biology) using line-based pattern
+split_sections <- function(lines) {
+  # normalize line endings and trim
+  lines <- str_replace_all(lines, "\r", "")
+  lines <- str_trim(lines)
+  
+  hdr_idx <- which(str_detect(lines, "^(Cruise|Haul|Catch|Biology),Header"))
+  if (!length(hdr_idx)) {
+    stop("No section headers found. File may not be an ICES Biotic flat export (e.g., 'Haul,Header,...').")
   }
-}
-L_obs
-nL_obs
-
-###############
-# Herring Age data
-###############
-
-# Read in annual data
-dfB_biol24<-read.csv(str_c(path,"Biotic_2024-ZR038_2025-03-12T10.40.08.950.csv"), skip=500) |> mutate(year=2024)|> as_tibble()
-dfB_biol23<-read.csv(str_c(path,"Biotic_2023-ZR055_2024-02-06T10.01.18.377.csv"), skip=485) |> mutate(year=2023)|> as_tibble()
-#dfB_biol22<-read.csv(str_c(path,"Biotic_2022-ZR033_2023-04-13T07.55.56.180.csv"), skip=509) |> mutate(year=2022)|> as_tibble()
-#dfB_biol21<-read.csv(str_c(path,"Biotic_2021-ZR007_2022-03-11T16.00.12.580.csv"), skip=488) |> mutate(year=2021)|> as_tibble()
-#dfB_biol20<-read.csv(str_c(path,"Biotic_2020-ZR005_2021-04-01T13.30.21.857.csv"), skip=587) |> mutate(year=2020)|> as_tibble()
-
-# Join
-dfB_biol_all<-full_join(dfB_biol24, dfB_biol23) #|> 
-  #full_join(dfB_biol22) |> 
-  #full_join(dfB_biol21) |> 
-  #full_join(dfB_biol20)
-
-dfB_biol<-dfB_biol_all
-
-# Add rectangles and define 8 length groups for herring
-df_length_at_age<-dfB_biol|> 
-  left_join(df_rec) |> # Add ruhne rectangles based on year and haul number
-  filter(CatchSpeciesCode==126417) |> 
-  mutate(length=BiologyLengthClass, # shorten names
-        age=BiologyIndividualAge)|> 
-  mutate(length_group=ifelse(length<90, 1, NA)) |> 
-  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(length>=180, 8, length_group))
-df_length_at_age
-#View(df_length_at_age)
-
-# Check for missing rectangle info, should be empty
-df_length_at_age |> filter(is.na(rec_ruhne)==T)
-
-# Age without grouping, nice to know
-df_pivot<-df_length_at_age |> 
-  select(length, age) |> group_by(length, age) |> 
-  summarise(n=n())|> # count works as each row is an individual 
-  pivot_wider(names_from = age, values_from = n) |> 
-  select(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,`13`,`14`,`NA`)
-print(n=35, x=df_pivot)
-sum(df_pivot[,2:17], na.rm=T)# 2786 in 2023-2024 #7803 in 2020-2024
-
-# Pool older ages to age group 9, remove missing ages
-# Length as the first grouping argument keeps the length groups in correct order in the pivot table
-df<-df_length_at_age |>
-  mutate(age=ifelse(age>9, 9, age)) |>   # pool ages >=9 together (10th age group)
-  filter(is.na(age)==F) |> # Remove individuals with missing age 
-  group_by(length_group, year, rec_ruhne, age) |> 
-  summarise(n=n())
-df
-
-# should be empty
-df |> filter(is.na(age)==T)
-
-# Pivot, not currently used
-df_pivot<-  df|> 
-  pivot_wider(names_from = length_group, values_from = n) 
-print(n=350, x=df_pivot) # Looks correct
-sum(df_pivot[,4:11], na.rm=T) #2775
-
-
-# nGobs[l,r,y]: Age sample size per length, rectangle and year
-# Gobs[1:Nages,l,r,y]: Sample size on age samples from length group l
-# ===================================================================
-df
-# Let's take ages 0-9 (10 age groups)
-G_obs<-array(NA, dim=c(10,8,4,2))
-for(i in 1:dim(df)[1]){
-  y<-df$year[i]-2022
-  r<-df$rec_ruhne[i]
-  r<-df$rec_ruhne[i]
-  l<-df$length_group[i]
-  a<-df$age[i]+1 # first age groups is 0+ 
-  G_obs[a,l,r,y]<-df$n[i]
-}
-G_obs
-sum(G_obs, na.rm=T) # 1210!
-
-nG_obs<-array(NA, dim=c(8,4,2))
-for(y in 1:2){
-for(r in 1:4){
-nG_obs[,r,y]<-as.data.frame(  df |> 
-    filter(year==(y+2022))  |> 
-  summarise(ntot=sum(n))|> 
-  pivot_wider(names_from = rec_ruhne, values_from = ntot) |>
-    select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
-    ungroup() |> 
-    select(-length_group, -year))[,r] 
-}
-}
-nG_obs
   
-#nG_obs<-as.matrix(nG_obs)
-sum(nG_obs, na.rm=T) # 2775 in 2022-2024
-
-# NOTE! REPLACE NA's IN AGE DATA WHERE NA NOT SUITABLE OR ACTUALLY 0
-#####################################################################
-# For computational reasons, sample size can't be missing so imput sample of 500 
-# for all that are currently NA. Number per age will be predicted by the model
-# AND
-# In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
-for(i in 1:8){
-  for(r in 1:4){
-    for(y in 1:2){
-      if(is.na(nG_obs[i,r,y])==T){
-      nG_obs[i,r,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
-        for(a in 1:10){
-          if(is.na(G_obs[a,i,r,y])==T){
-            G_obs[a,i,r,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-          }
-        }
+  # Parse each header line to get section name and column names
+  hdrs <- lapply(hdr_idx, function(i) {
+    parts <- str_split(lines[i], ",", simplify = TRUE)
+    section <- parts[1]
+    # columns start from field 3 onward
+    cols <- parts[3:ncol(parts)]
+    list(section = section, cols = cols)
+  })
+  
+  headers <- setNames(lapply(hdrs, `[[`, "cols"), sapply(hdrs, `[[`, "section"))
+  
+  # Helper to split a CSV record line into fields with simple comma split
+  # (This matches your approach; if quoted commas exist, a more complex parser would be needed)
+  split_record <- function(line) str_split(line, ",", simplify = TRUE)
+  
+  # Build each section's data frame of 'Record' lines
+  recs <- lapply(names(headers), function(sec) {
+    idx <- which(str_detect(lines, paste0("^", sec, ",Record")))
+    cols <- headers[[sec]]
+    
+    if (!length(idx)) {
+      out <- as.data.frame(matrix(nrow = 0, ncol = length(cols)))
+      colnames(out) <- cols
+      return(out)
+    }
+    
+    # Extract fields after the first 2 tokens (section + 'Record')
+    rows <- lapply(idx, function(i) {
+      parts <- split_record(lines[i])
+      # drop first two tokens
+      vals <- parts[3:length(parts)]
+      # pad or truncate to match header length
+      if (length(vals) < length(cols)) {
+        vals <- c(vals, rep(NA_character_, length(cols) - length(vals)))
+      } else if (length(vals) > length(cols)) {
+        vals <- vals[seq_along(cols)]
       }
-    }
-  }
+      vals
+    })
+    
+    df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
+    colnames(df) <- cols
+    df
+  })
+  
+  names(recs) <- names(headers)
+  recs
 }
-G_obs
-nG_obs
 
+# Extract YEAR in priority order: Cruise date cols -> Haul date cols -> filename
+extract_survey_year <- function(sec_list, source_file) {
+  # Try Cruise section first
+  find_year_in_df <- function(df) {
+    if (is.null(df) || !nrow(df)) return(NA_integer_)
+    # Candidate columns that often carry date/year-like content
+    cand_cols <- names(df)[str_detect(names(df), "(?i)(date|time|year)")]
+    if (!length(cand_cols)) cand_cols <- names(df)
+    
+    # Look for a 4-digit year 19xx or 20xx in values
+    vals <- df[, cand_cols, drop = FALSE] %>% unlist(use.names = FALSE) %>% as.character()
+    yr <- str_extract(vals, "(19|20)\\d{2}")
+    yr <- yr[!is.na(yr)]
+    if (length(yr)) return(as.integer(yr[1])) else return(NA_integer_)
+  }
+  
+  yr <- NA_integer_
+  
+  if (!is.null(sec_list$Cruise)) {
+    yr <- find_year_in_df(sec_list$Cruise)
+    if (!is.na(yr)) return(yr)
+  }
+  
+  if (!is.null(sec_list$Haul)) {
+    yr <- find_year_in_df(sec_list$Haul)
+    if (!is.na(yr)) return(yr)
+  }
+  
+  # Fallback: infer from filename
+  bn <- basename(source_file)
+  yr <- str_extract(bn, "(19|20)\\d{2}")
+  if (!is.na(yr)) return(as.integer(yr))
+  
+  NA_integer_
+}
 
+# Convert empty strings to NA for cleanliness
+empty_to_na <- function(df) {
+  df %>% mutate(across(everything(), ~ ifelse(. %in% c("", "NA", "NaN"), NA, .)))
+}
 
+# Gracefully parse one file into sections + attach SurveyYear and SourceFile
+process_biotic_file <- function(fp) {
+  lines <- readr::read_lines(fp, locale = locale(encoding = "UTF-8"))
+  sec <- tryCatch(split_sections(lines), error = function(e) {
+    warning("Skipping (no parseable sections): ", fp, " | ", conditionMessage(e))
+    return(NULL)
+  })
+  if (is.null(sec)) return(NULL)
+  
+  required_sections <- c("Haul", "Catch", "Biology")
+  missing_sections <- setdiff(required_sections, names(sec))
+  if (length(missing_sections)) {
+    warning("File missing sections [", paste(missing_sections, collapse = ", "), "]: ", fp)
+  }
+  
+  survey_year <- extract_survey_year(sec, fp)
+  
+  add_meta <- function(df) {
+    if (is.null(df)) return(NULL)
+    if (!nrow(df)) return(NULL)
+    df <- df %>% empty_to_na()
+    df <- df %>% mutate(SurveyYear = survey_year, SourceFile = basename(fp), .before = 1)
+    tibble::as_tibble(df)
+  }
+  
+  list(
+    Haul    = add_meta(sec$Haul),
+    Catch   = add_meta(sec$Catch),
+    Biology = add_meta(sec$Biology),
+    Cruise  = add_meta(sec$Cruise)  # optional; can be useful for QA
+  )
+}
 
+# ===== RUN =====
+
+files <- find_biotic_files(input_dir)
+
+if (!length(files)) {
+  stop("No ICES Biotic 'flat' files found in: ", input_dir)
+} else {
+  message("Found ", length(files), " candidate file(s).")
+}
+
+parsed <- lapply(files, process_biotic_file) %>% compact()
+
+# Bind across files for each section (only non-empty)
+hauls_all <- parsed %>% map("Haul")    %>% compact() %>% list_rbind()
+catch_all <- parsed %>% map("Catch")   %>% compact() %>% list_rbind()
+bio_all   <- parsed %>% map("Biology") %>% compact() %>% list_rbind()

@@ -128,7 +128,7 @@ model{
   }
 
   # meanL: midpoint of each length class
-  sigmaL[1:8]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
+  sigmaL[1:8,s]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
   TSa<-71.2
   
   #etaH~dbeta(2,2)
@@ -142,9 +142,13 @@ model{
     #etaE[s]~dbeta(1,1)
     #etaE_tmp[s]~dnorm(0,0.5) 
     #etaE[s]<-exp(etaE_tmp)/(1+exp(etaE_tmp))# logit-normal similar as beta(1,1)
-    etaE[s]~dlnorm(0.8,0.1)
+    #etaE[s]~dlnorm(0.8,0.1)
+    etaE[s]<-exp(etaEZ[s])
+    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
 
     etaL[s]~dlnorm(0.8,0.1)
+  
+  
   }
 
 # 
@@ -224,53 +228,63 @@ data<-list(
   nGobs=nG_obs, # sample size per age group
   aG=rep(1,10),
   aL=rep(1,8),
-  meanL=meanL
+  meanL=meanL/10 # mean lengths in cm's
 )
 
 parnames=c(
+  "muH",
   "PopAge",
   "Lstar",
-  "cv_nasc",
+  "cv_nasc", "cv_nascX", "etaX",
   "etaR", "etaE", "etaL","etaG","etaH",
   "Ntot","N"
 )
 
 
-run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
-         burnin =1000, modules = "mix",
-         sample =1000, adapt = 1000,
-         keep.jags.files=F,
-         progress.bar=TRUE, jags.refresh=100)
+# run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+#          burnin =1000, modules = "mix",
+#          sample =1000, adapt = 1000,
+#          keep.jags.files=F,
+#          progress.bar=TRUE, jags.refresh=100)
 
-t01<-Sys.time();print(t01)
-run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=100,
+t1<-Sys.time();print(t1)
+run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, 
+               method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
-               sample =10000, adapt = 20000,
+               sample =10000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
-save(run1, file="../out/GRAHS1.RData")
-t02<-Sys.time();print(t02)
-print("run1 done");print(difftime(t02,t01))
+run<-run1
+save(run, file="../out/GRAHS1.RData")
+t02<-Sys.time();print(t2)
+print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-plot(run1, var="etaR")
+plot(run1, var="etaE")
+chains<-as.mcmc.list(run2)
+traceplot(chains[,"etaE[1]"])
+summary(run1, var="Ntot")
 
 
-run2 <- extend.jags(run1, combine=F, sample=10000, thin=1000, keep.jags.files=T)
+
+run2 <- extend.jags(run1, combine=F, sample=10000, thin=500, keep.jags.files=T)
 t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")
-save(run2, file="../out/GRAHS1.RData")
+run<-run2
+save(run, file="../out/GRAHS1.RData")
 
 run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=T)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")
-save(run3, file="../out/GRAHS1.RData")
+run<-run3
+save(run, file="../out/GRAHS1.RData")
 
 run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=T)
 t5<-Sys.time();print(t5)
 print("run4 done"); print(difftime(t5,t4))
 print("--------------------------------------------------")
-save(run4, file="../out/GRAHS1.RData")
+run<-run4
+save(run, file="../out/GRAHS1.RData")
 

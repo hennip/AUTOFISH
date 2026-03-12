@@ -180,7 +180,7 @@ cat(BIAS,file="BIAS_ms/BIAS_TSfixed0712.txt")
 source("BIAS_ms/BIAS_data_age_new.r")
 
 
-data<-list(
+dataBIASold<-list(
   Nages=9,
   pi=3.14159265358979323846,
   Nyears=6,

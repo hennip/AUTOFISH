@@ -205,6 +205,10 @@ medianL_other[6]<-
   )[[1]]
 medianL_other
 
+meanL<-array(NA, dim=c(8,2))
+meanL[,1]<-medianL_herring
+meanL[1:6,2]<-medianL_other
+
 # ==============================================
 
 # Sample size per species and rec in a form that feeds to the model
@@ -246,10 +250,15 @@ for(r in 1:4){
     for(y in 1:Nyears){
       if(is.na(nL_obs[r,s,y])==T){
         nL_obs[r,s,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
-          for(l in 1:8){
+          for(l in 1:6){ # Both herring and other
             if(is.na(L_obs[l,r,s,y])==T){
               L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
+            for(l in 7:8){ # only herring
+              if(s==1 & is.na(L_obs[l,r,s,y])==T){
+                L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+              }
+            }  
           }
         }
     }

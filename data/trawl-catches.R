@@ -10,7 +10,7 @@ dfB_catch<-dfB_catch  |>
   mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
   mutate(catch=round(catch,0)) |> 
   mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
-  mutate(CatchLengthClass=as.numeric(CatchLengthClass)) |> 
+  mutate(length=as.numeric(CatchLengthClass)) |> 
   full_join(df_rec) |> 
   mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
   select(year,rec_ruhnu, everything())|> 
@@ -103,96 +103,125 @@ for(y in 1:Nyears){
 }
 nL_obs
 
-# Lobs
+# Lobs 
 #==========================
 # min and max length per species
 dfB_catch |>group_by(year,CatchSpeciesCode) |>  
-  summarise(min=min(CatchLengthClass), max=max(CatchLengthClass))
+  summarise(min=min(length), max=max(length))
 
-# Decide upon length groups
-# limits are upper limits expect the last one which is also a lower limit of the 
-# last group
-length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
-length_limits_other<-c(60,80,100,120,140) # 6 groups for other species
+# Define length groups per species and calculate
+# number of individuals in each group
+# NOTE! Number of groups differs for different species
+
+numbers_at_length<-dfB_catch  |> 
+  group_by(year,rec_ruhnu, species, length)|>  
+summarise(n=sum(CatchNumberAtLength)) 
+numbers_at_length
 
 # Number of herring/other species in the sample per rectangle and length group
-numbers_at_length_herring<-dfB_catch|>
+numbers_at_length_herring<-numbers_at_length|>
   filter(species==1) |> 
-  group_by(year,rec_ruhnu, CatchLengthClass)|>  
-  summarise(n=sum(CatchNumberAtLength)) |> 
-  mutate(LengthClass=CatchLengthClass) |> 
-  mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
-  mutate(length_group=ifelse(LengthClass>=90  & LengthClass<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=105 & LengthClass<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=120 & LengthClass<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=135 & LengthClass<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  group_by(year, rec_ruhnu, length_group) |> 
-  summarise(number_at_length=sum(n)) |> 
-  pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
-  arrange(year,length_group)
-print(n=50, x=numbers_at_length_herring)
+  mutate(length_group=ifelse(length<90, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=180, 8, length_group)) 
 
-
-numbers_at_length_other<-dfB_catch|>
+numbers_at_length_other<-numbers_at_length|>
   filter(species==2) |> 
-  group_by(year,rec_ruhnu, CatchLengthClass)|>  
-  summarise(n=sum(CatchNumberAtLength)) |> 
-  mutate(LengthClass=CatchLengthClass) |> 
-  mutate(length_group=ifelse(LengthClass<90, 1, NA)) |> 
-  mutate(length_group=ifelse(LengthClass>=90  & LengthClass<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=105 & LengthClass<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=120 & LengthClass<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=135 & LengthClass<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=150 & LengthClass<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=165 & LengthClass<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(LengthClass>=180, 8, length_group)) |> 
-  group_by(year, rec_ruhnu, length_group) |> 
+  mutate(length_group=ifelse(length<60, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=60  & length<80, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=80 & length<100, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=100 & length<120, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<140, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=140, 6, length_group))
+
+numbers_per_length_group<-full_join(numbers_at_length_herring, numbers_at_length_other)|> 
+  group_by(species, year, rec_ruhnu, length_group) |> 
   summarise(number_at_length=sum(n)) |> 
   pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
-  arrange(year,length_group)
-print(n=50, x=numbers_at_length_other)
+  arrange(species,year,length_group)
+print(n=100, x=numbers_per_length_group)
+View(numbers_per_length_group)
 
+#===============================
+# Median lengths in length groups
+#===============================
+medianL_herring<-medianL_other<-c()
 
-
-
-# mean lengths in 8 length groups
-meanL<-c()
-# <90
-meanL<-as.data.frame(dfB_catch|>
-                       mutate(length=CatchLengthClass) |> 
-                       filter(length<90, species==1) |> select(-species) |> 
-                       summarise(meanL=mean(length)))[[1]]
-
+# ========== Herring  =======================
+# herring <90: filter small individuals and calculate their median length
+medianL_herring<-as.data.frame(dfB_catch|>
+              filter(length<90, species==1) |> select(-species) |> 
+              summarise(medianL=median(length)))[[1]]
 for(i in 1:6){
-  #i<-1
-  meanL[i+1]<-length_limits[i]+(length_limits[i+1]-length_limits[i])/2
+  medianL_herring[i+1]<-length_limits_herring[i]+
+    (length_limits_herring[i+1]-length_limits_herring[i])/2
 }
 
+
 # >180
-meanL[8]<-
+medianL_herring[8]<-
   as.data.frame(
     dfB_catch|>
-      mutate(length=CatchLengthClass) |> 
       filter(length>180, species==1) |> select(-species) |> 
-      summarise(meanL=mean(length))
+      summarise(medianL=median(length))
   )[[1]]
+medianL_herring
 
-meanL
+# ========== Other species  =======================
 
+# Just to chekc out: median lengths of different species other than herring
+dfB_catch|>
+  filter(#length>140, 
+    species==2) |> 
+  group_by(CatchSpeciesCode) |> 
+  summarise(x=median(length), n=n()) |> 
+  arrange(x)
 
+# Other species than herring <60mm: filter small individuals 
+# and calculate their median length
+medianL_other<-as.data.frame(dfB_catch|>
+                               filter(length<60, species==2) |> select(-species) |> 
+                               summarise(medianL=median(length)))[[1]]
+# median lengths in groups 2-5
+for(i in 1:4){
+  medianL_other[i+1]<-length_limits_other[i]+
+    (length_limits_other[i+1]-length_limits_other[i])/2
+}
+
+# Last group, individuals >140mm
+# DO NOT ACCOUNT FOR LAMBREY IN CALCULATING THE median LENGTH OF THE LAST GROUP!!!
+medianL_other[6]<-
+  as.data.frame(
+    dfB_catch|>
+      # 101172 is river lambrey
+      filter(length>140, species==2, CatchSpeciesCode!= 101172) |> 
+      summarise(medianL=median(length))
+  )[[1]]
+medianL_other
+
+# ==============================================
 
 # Sample size per species and rec in a form that feeds to the model
 # Lobs[1:8,r,s,y]
-L_obs<-array(NA, dim=c(8,4,2,Nyears))
+max_group_num<-numbers_per_length_group |>group_by(species) |> 
+  summarise(max=max(length_group))
+
+max_group_num<-max(numbers_per_length_group$length_group)
+L_obs<-array(NA, dim=c(max_group_num,4,2,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
-    L_obs[,r,1,y]<-as.data.frame(numbers_at_length |> filter(species==1 & year==(y+min_years-1)) |> 
-                                   ungroup() |> select(-year, -species, -length_group))[,r]
-    L_obs[,r,2,y]<-as.data.frame(numbers_at_length |> filter(species==2 & year==(y+min_years-1)) |> 
-                                   ungroup() |> select(-year, -species, -length_group))[,r]
+    L_obs[,r,1,y]<-as.data.frame(
+      numbers_per_length_group |> filter(species==1 & year==(y+min_years-1)) |> 
+      ungroup() |> select(-year, -species, -length_group))[,r]
+    
+#    L_obs[,r,2,y]<-as.data.frame(
+#      numbers_per_length_group |> filter(species==2 & year==(y+min_years-1)) |> 
+#      ungroup() |> select(-year, -species, -length_group))[,r]
   }}
 L_obs
 

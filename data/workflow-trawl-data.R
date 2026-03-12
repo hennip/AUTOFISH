@@ -24,7 +24,17 @@ ruhnuLong<-23.26012233
 # 4: SE from ruhnu 
 
 source("data/trawl-hauls.R")
+
+# Define length groups for each species/species group
+# limits are upper limits expect the last one which is also the lower limit 
+# of the last group
+# NOTE THAT THE UPPER AND LOWER LIMITS NEED TO BE DEFINED
+# IN trawl-catches.R AS WELL!!!
+length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
+length_limits_other<-c(60,80,100,120,140) # 6 groups for other species
 source("data/trawl-catches.R")
+
+
 source("data/trawl-biotic.R")
 
 

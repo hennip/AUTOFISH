@@ -104,12 +104,12 @@ model{
         }
       }
       for(a in 1:Nages){
-        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:Nlengths[1],r,y])*N[r,1,y]
+        n_herring_at_age[a,r,y]<-sum(qGtmp1[a,1:Nlengths[1],r,y])*N[r,1,y]
       }
     }
 
     for(a in 1:Nages){
-      PopAge[a,y]<-sum(qGtmp2[a,1:Nrec,y])/Ntot[1,y]
+      PopAge[a,y]<-sum(n_herring_at_age[a,1:Nrec,y])/Ntot[1,y]
     }
     for(l in 1:8){
       alphaG[1:Nages,l,y]<-Gstar[1:Nages,l,y]*etaG
@@ -140,34 +140,19 @@ model{
 
   for(s in 1:2){
     etaR[s]~dlnorm(0.8,0.1)
-    #etaE[s]~dbeta(1,1)
     #etaE_tmp[s]~dnorm(0,0.5) 
     #etaE[s]<-exp(etaE_tmp)/(1+exp(etaE_tmp))# logit-normal similar as beta(1,1)
     #etaE[s]~dlnorm(0.8,0.1)
     etaE[s]<-exp(etaEZ[s])
-    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
-
+    etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
     etaL[s]~dlnorm(0.8,0.1)
-  
-  
   }
 
-# 
-#   for(s in 1:2){
-#     etaL[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#dunif(1,10000)#dlnorm(4.6,0.7)
-# #    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-#     # spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
-#     # mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
-#     # my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
-# #    etaE[s]<-exp(etaEZ[s])
-#   # etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
-# #    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
-#   for(y in 1:Nyears){
-#     etaE[y,s]~dlnorm(ME[s],tauE[s])
-#     etaR[y,s]~dlnorm(MR[s],tauR[s])
-#   }
-#   }
+# spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
+# mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
+# my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
+# etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
 
 
   # Unupdated priors
@@ -245,10 +230,11 @@ t02<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-plot(run1, var="etaE")
-chains<-as.mcmc.list(run2)
+plot(run, var="eta")
+
+chains<-as.mcmc.list(run)
 traceplot(chains[,"etaE[1]"])
-summary(run1, var="Ntot")
+summary(run, var="Ntot")
 
 
 

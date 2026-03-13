@@ -107,10 +107,10 @@ nL_obs
 # Lobs 
 #==========================
 # min and max length per species
-dfB_catch |>group_by(year,CatchSpeciesCode) |>  
-  summarise(min=min(length), max=max(length))
+print(x=dfB_catch |>group_by(CatchSpeciesCode) |>  
+  summarise(median= median(length),min=min(length), max=max(length)), n=100)
 
-# Define length groups per species and calculate
+  # Define length groups per species and calculate
 # number of individuals in each group
 # NOTE! Number of groups differs for different species
 
@@ -118,6 +118,7 @@ numbers_at_length<-dfB_catch  |>
   group_by(year,rec_ruhnu, species, length)|>  
 summarise(n=sum(CatchNumberAtLength)) 
 numbers_at_length
+#View(numbers_at_length)
 
 # Number of herring/other species in the sample per rectangle and length group
 numbers_at_length_herring<-numbers_at_length|>

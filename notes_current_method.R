@@ -16,6 +16,9 @@ pathA<-pathB<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
 dfA24<-read.csv(str_c(pathA,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> as_tibble() |> mutate(year=2024)
 source("data/read-in-trawl-data.R") 
 
+rec_areas<-read_xlsx(str_c("../../01-Projects/AUTOFISH/dat/ICES_rec_areas.xlsx")) 
+
+
 
 dfA24
 catch_all
@@ -32,20 +35,17 @@ df_hauls<-hauls_all|> filter(SurveyYear==choose_year)
 df_bio<-bio_all|> filter(SurveyYear==choose_year)
 
 # First define the ICES rectangles and then sum over NASC from different depth layers
-df<-df_acou |> mutate(rec=ices.rect2(LogLongitude, LogLatitude)) |> 
+df_edsu<-df_acou |> mutate(rec=ices.rect2(LogLongitude, LogLatitude)) |> 
   select(rec, everything()) |> 
     group_by(year, rec, LogDistance) |> 
     summarise(edsu=sum(DataValue)) # elementary distance sampling unit
 
 # Take mean NASC per ICES rectangle
-df2<-df |> group_by(year, rec) |> 
-  summarise(mean_edsu=mean(edsu))
-  df2
-  
-# View(df)
-# 
-# View(df_hauls)
-# View(df_catch)
+df_nasc<-df_edsu |> group_by(year, rec) |> 
+  summarise(mean_nasc=mean(edsu)) |> 
+  left_join(rec_areas)|> 
+  mutate(HaulStatisticalRectangle=rec)
+  df_nasc
 
 df_haul_rec<-df_hauls |> select(SurveyYear, HaulNumber, HaulStatisticalRectangle)
 
@@ -65,12 +65,10 @@ tot_catch_per_haul<-df4|>
 p_species_per_rectangle<-df4  |> left_join(tot_catch_per_haul) |> 
   mutate(p_haul=CatchSpeciesCategoryNumber/tot_catch*100) |> 
   group_by(SurveyYear, CatchSpeciesCode,HaulStatisticalRectangle) |> 
-  summarise(p_rec=mean(p_haul)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
+  summarise(p_species_per_rec=mean(p_haul)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
 print(x=p_species_per_rectangle, n=100)
 
-
-#p_per_length_per_haul<-
-  sample_size_per_length<-df3 |> 
+sample_size_per_length<-df3 |> 
   group_by(SurveyYear, CatchSpeciesCode, HaulNumber) |> 
   summarise(sample_size_per_length=sum(CatchNumberAtLength))
 
@@ -100,7 +98,6 @@ View(df_pp)
 tmp<-df_pp |> group_by(HaulNumber) |> summarise(sumx=sum(x))
 print(tmp, n=50)
 
-
 df_sigma<-df_pp |> mutate(d=9.5325669476e-07) |> # d is the same for all clupeids
 #  mutate(d=ifelse(CatchSpeciesCode==xxxx, 9.1, d) # Example on how to change d for a specific species xxxx
   mutate(sigma=d*(CatchLengthClass/10+0.2)^2) |>  # sigma=d*(L_cm+offset_cm)^2
@@ -113,21 +110,33 @@ df_sigma_haul<-df_sigma |> mutate(sigma_x_pp=sigma*pp) |> select(sigma_x_pp, eve
 View(df_sigma_haul)
 
 df_sigma_rectangle <- df_sigma_haul |> group_by(HaulStatisticalRectangle) |> 
-  summarise(sigma_rectangle=mean(sigma_haul))
+  summarise(sigma_rectangle=mean(sigma_haul)) 
 df_sigma_rectangle
   
 
 
 
+df_nasc_per_rectangle<-df_nasc |> left_join(df_sigma_rectangle) |> 
+  filter(is.na(sigma_rectangle)==F) #|> 
+  
 
 
+pivot_p_per_species<-p_species_per_rectangle |> ungroup() |> 
+  select(CatchSpeciesCode, HaulStatisticalRectangle, p_species_per_rec) |> 
+  pivot_wider(names_from = CatchSpeciesCode, values_from = p_species_per_rec) 
 
 
+#full_join(df_nasc_per_rectangle, pivot_p_per_species) |> 
+df_species<-full_join(df_nasc_per_rectangle, p_species_per_rectangle) |> 
+  select(-HaulStatisticalRectangle) |> 
+  mutate(N_per_NM2=mean_nasc/sigma_rectangle/1000000,
+         Ntot=N_per_NM2*A_NM2) |> 
+  select(year, rec, N_per_NM2, Ntot, everything()) |> 
+  mutate(n_per_species_per_rectangle=p_species_per_rec/100*Ntot)
+View(df_species)
 
-
-
-
-
+df_species |>   select(-SurveyYear, -p_species_per_rec) |> 
+  pivot_wider(names_from = CatchSpeciesCode, values_from = n_per_species_per_rectangle)
 
 
 

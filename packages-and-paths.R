@@ -19,6 +19,8 @@ suppressPackageStartupMessages({
   library(tibble)
   library(runjags)
   library(coda)
+  library(mapplots)
+  
 })
 
 if(whoisthis=="hp_laptop"){

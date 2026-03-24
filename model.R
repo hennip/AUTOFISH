@@ -1,5 +1,5 @@
 #
-# Korvataan silakkam??r?n sovitus silakkaosuuden sovituksella
+# Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
 # => binomijakauman approksimointi beta-jakaumalla
 #
 library(rjags)

@@ -178,12 +178,12 @@ data<-list(
   pi=3.14159265358979323846,
   A=A_NM2, # Areas of rectangles, NM^2
   Atot=sum(A_NM2),
-
+  
   NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
   R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
   pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
   LOG= tot_nasc_per_log_plus_one$LOG,
-
+  
   Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
   Nhaul=Nhaul, # Number of hauls per rectangle

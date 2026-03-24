@@ -76,7 +76,7 @@ tot_nasc_per_log<-dfA2_typed |> group_by(year, rec, LogDistance) |>
   )|> 
   group_by(year, rec) |> 
   mutate(LOG = row_number())|>  # Add running number for logs per rectangle. Note! grouping by rec and year is mandatory
-  select(year, rec, LOG, everything())
+ select(year, rec, LOG, everything())
 tot_nasc_per_log
 #View(tot_nasc_per_log)
 
@@ -92,9 +92,9 @@ necho<-as.matrix(Necho_per_rec)
 
 # Area of each rectangle in square NM's
 A_NM2<-c(819.8155089,# NW
-         1014.006703,# NE
-         536.3622401,# SW
-         1558.658342# SE
+     1014.006703,# NE
+     536.3622401,# SW
+     1558.658342# SE
 )
 rec_areas_NM2<-tibble(rec=1:4, A_NM2)
 

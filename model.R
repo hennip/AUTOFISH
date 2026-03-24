@@ -230,7 +230,7 @@ t2<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-#plot(run, var="eta")
+plot(run, var="eta")
 #chains<-as.mcmc.list(run)
 #traceplot(chains[,"etaE[1]"])
 summary(run, var="Ntot")

@@ -33,7 +33,7 @@ sdX~dunif(0.001,10)
 y=c(0.1,0.3,0.5,0.6,0.6,0.65,0.7,NA,0.8,0.9)
 
 
-run0<- run.jags(m2, monitor= c("a", "b", "sd","y",
+run_no_NA<- run.jags(m2, monitor= c("a", "b", "sd","y",
                                "aX", "bX", "sdX"),
                 data=list(x=x,y=y, N=length(x)),
                 n.chains = 2, method = 'parallel', thin=1,
@@ -41,11 +41,14 @@ run0<- run.jags(m2, monitor= c("a", "b", "sd","y",
                 sample =10000, adapt = 1000,
                 keep.jags.files=F,
                 progress.bar=TRUE, jags.refresh=100)
+run<-run_no_NA
+run<-run0
 
-summary(run0)
-plot(run0)
+summary(run)
+plot(run, var="a")
 
-chains<-as.mcmc(run0)
+chains<-as.mcmc(run)
+
 par(mfrow=c(2,2))
 plot(density(chains[,"a"]), main="a", xlab="")
 lines(density(chains[,"aX"]))

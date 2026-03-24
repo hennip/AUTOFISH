@@ -1,176 +1,176 @@
-source("packages-and-paths.R")
+# ----------------
+# ICES Acoustic (flat CSV with section headers) - Build one joint tibble (Data + SurveyYear)
+# Only files starting with "Acoustic"
+# ----------------
 
-####################################
-# Read in the acoustic data from GRAHS (Gulf of Riga acoustic survey)
-# and modify it for the needs of model run
-####################################
+suppressPackageStartupMessages({
+  library(readr)
+  library(stringr)
+  library(dplyr)
+  library(purrr)
+  library(tidyr)
+  library(tibble)
+})
 
-# Instead of statistical rectangles, divide the gulf into 4 areas using coordinates
-# of Ruhnu island (lighthouse) as a limit point
+# ===== CONFIG =====
+input_dir <- path  # <-- set this folder
 
-# Coordinates of Ruhnu lighthouse according to Wikipedia
-ruhnuLat<-57.80135766
-ruhnuLong<-23.26012233
+# ===== HELPERS =====
 
-################################
-# Acoustic data
+# Find candidate files: basenames start with "Acoustic" and contain "Data,Header"
+find_acoustic_files <- function(dir) {
+  cand <- list.files(
+    dir,
+    pattern = "(?i)^Acoustic.*\\.(csv|txt)$",
+    full.names = TRUE,
+    recursive = FALSE
+  )
+  keep(cand, function(fp) {
+    lines <- tryCatch(
+      readr::read_lines(fp, n_max = 300, locale = locale(encoding = "UTF-8")),
+      error = function(e) character()
+    )
+    any(str_detect(lines, "^Data,Header"))
+  })
+}
 
-#dfA25<-read.csv(str_c(pathA,"Acoustic_2025-ZR012_2026-03-03T10.07.30.860.csv"), skip=11) |> as_tibble() |> mutate(year=2025)
-dfA24<-read.csv(str_c(pathA,"Acoustic_2024-ZR038_2025-03-12T10.25.26.053.csv"), skip=11) |> as_tibble() |> mutate(year=2024)
-dfA23<-read.csv(str_c(pathA,"Acoustic_2023-ZR055_2024-02-05T18.20.41.813.csv"), skip=11) |> as_tibble() |> mutate(year=2023) 
-dfA<-full_join(dfA24, dfA23) #%>% full_join(dfA25)
-#View(dfA)
-################################
+# Split all present sections by the "Section,Header/Record" pattern
+split_sections <- function(lines) {
+  lines <- str_replace_all(lines, "\r", "")
+  lines <- str_trim(lines)
+  
+  hdr_idx <- which(str_detect(
+    lines,
+    "^(Instrument|Calibration|DataAcquisition|DataProcessing|EchoType|Cruise|Log|Data),Header"
+  ))
+  if (!length(hdr_idx)) {
+    stop("No section headers found. Not an ICES Acoustic flat export?")
+  }
+  
+  hdrs <- lapply(hdr_idx, function(i) {
+    parts   <- str_split(lines[i], ",", simplify = TRUE)
+    section <- parts[1]
+    cols    <- parts[3:ncol(parts)]
+    list(section = section, cols = cols)
+  })
+  
+  headers <- setNames(lapply(hdrs, `[[`, "cols"), sapply(hdrs, `[[`, "section"))
+  
+  split_record <- function(line) str_split(line, ",", simplify = TRUE)
+  
+  recs <- lapply(names(headers), function(sec) {
+    idx  <- which(str_detect(lines, paste0("^", sec, ",Record")))
+    cols <- headers[[sec]]
+    
+    if (!length(idx)) {
+      out <- as.data.frame(matrix(nrow = 0, ncol = length(cols)))
+      colnames(out) <- cols
+      return(out)
+    }
+    
+    rows <- lapply(idx, function(i) {
+      parts <- split_record(lines[i])
+      vals  <- parts[3:length(parts)]  # drop 'Section,Record'
+      # pad/truncate to header length
+      if (length(vals) < length(cols)) {
+        vals <- c(vals, rep(NA_character_, length(cols) - length(vals)))
+      } else if (length(vals) > length(cols)) {
+        vals <- vals[seq_along(cols)]
+      }
+      vals
+    })
+    
+    df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
+    colnames(df) <- cols
+    df
+  })
+  
+  names(recs) <- names(headers)
+  recs
+}
 
+# Extract SurveyYear (priority: CruiseStartDate -> LogTime -> filename)
+extract_survey_year <- function(sec_list, source_file) {
+  extract_year <- function(x) {
+    y <- str_extract(x, "(19|20)\\d{2}")
+    suppressWarnings(as.integer(y))
+  }
+  
+  # a) Prefer CruiseStartDate (or similar) in Cruise section
+  if (!is.null(sec_list$Cruise) && nrow(sec_list$Cruise)) {
+    cols <- names(sec_list$Cruise)
+    cand <- cols[str_detect(cols, "(?i)CruiseStartDate|StartDate|Start")]
+    if (!length(cand)) cand <- cols
+    vals <- sec_list$Cruise[, cand, drop = FALSE] %>% unlist(use.names = FALSE) %>% as.character()
+    yrs  <- vals %>% map_int(~ extract_year(.x))
+    yrs  <- yrs[!is.na(yrs)]
+    if (length(yrs)) return(yrs[1])
+  }
+  
+  # b) Otherwise use LogTime (or any date/time-like) in Data section
+  if (!is.null(sec_list$Data) && nrow(sec_list$Data)) {
+    dtcol <- names(sec_list$Data)[str_detect(names(sec_list$Data), "(?i)LogTime|Time|Date")]
+    if (length(dtcol)) {
+      vals <- sec_list$Data[[dtcol[1]]] %>% as.character()
+      vals <- vals[!is.na(vals) & nzchar(vals)]
+      if (length(vals)) {
+        yr <- extract_year(vals[1])
+        if (!is.na(yr)) return(yr)
+      }
+    }
+  }
+  
+  # c) Fallback: year in filename (prefer after "Acoustic_")
+  bn <- basename(source_file)
+  y1 <- str_match(bn, "(?i)Acoustic_-\\d{2})")[,2]
+  if (!is.na(y1)) return(as.integer(y1))
+  y2 <- str_extract(bn, "(19|20)\\d{2}")
+  if (!is.na(y2)) return(as.integer(y2))
+  
+  NA_integer_
+}
 
-# Divide area to 4 pieces:
-# 1: NW from ruhnu 
-# 2: NE from ruhnu 
-# 3: SW from ruhnu 
-# 4: SE from ruhnu 
+# Clean empty placeholders to NA
+empty_to_na <- function(df) {
+  if (!nrow(df)) return(as_tibble(df))
+  df %>% mutate(across(everything(), ~ ifelse(. %in% c("", "NA", "NaN"), NA, .)))
+}
 
-# Define rec_ruhnu based on coordinates of the lighthouse the locations of the cruise track
-# shorten names for depth, pick up variables needed later
-dfA2<-dfA |> 
-  mutate(rec_ruhnu=ifelse(LogLatitude>=ruhnuLat & LogLongitude<ruhnuLong, 1,NA)) |>   # 1: NW
-  mutate(rec_ruhnu=ifelse(LogLatitude>=ruhnuLat & LogLongitude>=ruhnuLong, 2,rec_ruhnu)) |>      # 2: NE 
-  mutate(rec_ruhnu=ifelse(LogLatitude<ruhnuLat & LogLongitude<ruhnuLong, 3,rec_ruhnu)) |>        # 3: SW 
-  mutate(rec_ruhnu=ifelse(LogLatitude<ruhnuLat & LogLongitude>=ruhnuLong, 4,rec_ruhnu))|>        # 4: SE  
-mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
-  select(rec_ruhnu, DataValue, depthLow, depthUpp, everything()) |> 
-  select(-Data, -Header) |> 
-  mutate(rec=rec_ruhnu)
-dfA2
-#View(dfA2)  
+# Parse one file -> tibble of Data with SurveyYear (no other returns)
+process_acoustic_file_to_data <- function(fp) {
+  lines <- readr::read_lines(fp, locale = locale(encoding = "UTF-8"))
+  
+  sec <- tryCatch(split_sections(lines), error = function(e) {
+    warning("Skipping (no parseable sections): ", fp, " | ", conditionMessage(e))
+    return(NULL)
+  })
+  if (is.null(sec) || is.null(sec$Data)) return(NULL)
+  
+  year <- extract_survey_year(sec, fp)
+  
+  sec$Data %>%
+    as_tibble() %>%
+    empty_to_na() %>%
+    mutate(SurveyYear = year, .before = 1) %>%
+    # If you also want to keep source filename, uncomment next line:
+    # mutate(SourceFile = basename(fp), .after = SurveyYear) %>%
+    identity()
+}
 
-# Sum nasc over different depths (in 1st version the depth is not accounted for)
-tot_nasc_per_log<-dfA2 |> group_by(year, rec, LogDistance) |> 
-  summarise(number_of_layers=n(), sum_nasc=sum(DataValue),
-            min_depthUpp=min(depthUpp), 
-            max_depthLow=max(depthLow), 
-            mean_depth=(min_depthUpp+max_depthLow)/2)|>
-  mutate(radius=mean_depth*tan((pi/180)*3.5), # angle of 3.5 degrees
-         #circle=pi*radius^2, #m2
-         width_m=2*radius,
-         width_NM=width_m*(1/1852),
-         
-         area_m2=width_m*1852, # Area in m^2 per 1NM (=1852 m) of cruise track,
-         area_NM2=width_NM*1, # # Area in NM^2 per 1NM of cruise track
-         test_m2=1852^2*area_NM2 # USE THIS CORRECTION IF USING M2's rather than NM2's! may(?) influence how smooth computation is, although no practical difference as long as keeping it systematic 
-  )|> 
-  group_by(year, rec) |> 
-  mutate(LOG = row_number())|>  # Add running number for logs per rectangle. Note! grouping by rec and year is mandatory
- select(year, rec, LOG, everything())
-tot_nasc_per_log
-#View(tot_nasc_per_log)
+# ===== RUN =====
 
-# propA[1:Necho[r,y],r,y]
+files <- find_acoustic_files(input_dir)
+if (!length(files)) {
+  stop("No 'Acoustic*.csv|.txt' ICES Acoustic flat files found in: ", input_dir)
+} else {
+  message("Found ", length(files), " acoustic file(s).")
+}
 
+# One joint tibble
+acoustic_data_all <- files %>%
+  map(process_acoustic_file_to_data) %>%
+  compact() %>%
+  bind_rows()
 
-#Necho[r,y]
-Necho_per_rec<-tot_nasc_per_log |> group_by(year, rec) |> summarise(n=n()) |> 
-  pivot_wider(names_from = year, values_from = n) |> select(-rec)
-Necho_per_rec
-
-necho<-as.matrix(Necho_per_rec)
-
-# Area of each rectangle in square NM's
-A_NM2<-c(819.8155089,# NW
-     1014.006703,# NE
-     536.3622401,# SW
-     1558.658342# SE
-)
-rec_areas_NM2<-tibble(rec=1:4, A_NM2)
-
-# We still one row of data per rectangle specifying the area that was NOT 
-# covered by the survey track (i.e. more than 99.9% of it)
-
-# Join rectangle areas, calculate proportion of the area observed (pA) for each LOG
-pA1<-tot_nasc_per_log |>  ungroup()|> 
-  select(year, rec, LOG, sum_nasc, area_NM2) |> 
-  full_join(rec_areas_NM2) |> 
-  mutate(pA=area_NM2/A_NM2) 
-pA1
-
-# Calculate the sum of the area covered per rectangle and proportion observed/not observed
-pA2<-
-  pA1|> 
-  group_by(year, rec) |> 
-  summarise(area_covered_NM2=sum(area_NM2)) |> 
-  full_join(rec_areas_NM2) |> 
-  mutate(area_not_covered_NM2=A_NM2-area_covered_NM2) |> 
-  mutate(prop_covered=area_covered_NM2/A_NM2) |> 
-  mutate(prop_not_covered=area_not_covered_NM2/A_NM2) |> 
-  select(year, rec, A_NM2, everything())
-pA2 |> as.data.frame()# print as data.frame to see all digits
-
-# pick & rename the columns needed for the input data 
-pA3<-pA2 |> select(year, rec, prop_not_covered) |>
-  mutate(pA=prop_not_covered) |> select(-prop_not_covered)|> as.data.frame()
-pA3
-
-# Give NA NASC value and LOG number as max(LOG[r,y])+1
-# -> this way the dimensions will match in the model
-
-nasc_plus_one<-pA3 |> mutate(sum_nasc=NA)
-log_plus_one<-tot_nasc_per_log |> summarise(max_LOG=max(LOG)) |> mutate(LOG=max_LOG+1)
-
- plus_one<-full_join(nasc_plus_one, log_plus_one) |> select(-max_LOG)
-
- tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |> 
-   full_join(plus_one)
- 
- # nascY is year index in the model, must be the same length as sum_nasc
- nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
- nascY
- 
-
-# # Testing stuff
-# ################################################################################
-# 
-# # psi: indicator of whether the depth is less than 25m
-# tmp<-dfA2 |> mutate(psi=ifelse(depthLow>25, 1, 0)) |> group_by(LogDistance, psi, rec) |> 
-#   summarise(nasc_tot=sum(DataValue))
-# tmp
-# # About 15% of observations is from deeper layers than 25m
-# tmp |> group_by(psi) |> summarise(tot=sum(nasc_tot))
-# 
-# # Run minmax_depth from trawl data (code below)
-# # delta: does the acoustic go lower than the trawl data in corresponding ruhnu-rectangle?
-# tmp2<-full_join(dfA2, minmax_depth) |> 
-#   select(min_trawl_depth, max_trawl_depth, rec, DataValue, depthUpp, depthLow, LogDistance, LogLatitude, LogLongitude) |> 
-#   arrange(rec) |> 
-#   mutate(delta=ifelse(depthLow>max_trawl_depth, 1, 0))
-# 
-# View(tmp2)
-# 
-# 
-# 
-# # Calculate autocorrelation of nascs as the distance increases (chatGPT)
-# #######################################################################
-# obs <- tmp3$sum_nasc
-# max_lag <- length(obs) - 1
-# lag_cor <- numeric(max_lag)
-# for (h in 1:max_lag) {
-#   lag_cor[h] <- cor(obs[1:(length(obs)-h)], 
-#                     obs[(1+h):length(obs)])
-# }
-# lag_cor
-# 
-# plot(1:max_lag, lag_cor, type = "b",
-#      xlab = "Distance (km)",
-#      ylab = "Pearson Correlation",
-#      main = "Spatial Correlation vs Distance")
-# abline(h = 0, lty = 2)
-# 
-# acf(obs, lag.max = 5) # Compact solution!
-# #######################################################################
-# 
-# 
-# 
-# 
-# tmp |> filter(LogDistance==174)
-# 
-# 
-# ggplot(data=tmp2, aes(x=LogDistance, y=sum_nasc))+
-#   geom_col()
+# Quick peek
+acoustic_data_all %>% glimpse()

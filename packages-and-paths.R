@@ -1,6 +1,7 @@
 # First define which computer is this. This helps defining the path.
 # After running line whoisthis, comment it out again 
 # to avoid unnecessary conflict solving in git.
+source("../whoisthis.R")
 
 #whoisthis<-"hp_laptop"
 #whoisthis<-"hp_kala1"
@@ -19,6 +20,8 @@ suppressPackageStartupMessages({
   library(tibble)
   library(runjags)
   library(coda)
+  library(mapplots)
+  
 })
 
 if(whoisthis=="hp_laptop"){

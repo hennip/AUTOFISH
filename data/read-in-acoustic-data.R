@@ -3,17 +3,8 @@
 # Only files starting with "Acoustic"
 # ----------------
 
-suppressPackageStartupMessages({
-  library(readr)
-  library(stringr)
-  library(dplyr)
-  library(purrr)
-  library(tidyr)
-  library(tibble)
-})
-
 # ===== CONFIG =====
-input_dir <- path  # <-- set this folder
+input_dir <- pathA  # <-- set this folder
 
 # ===== HELPERS =====
 

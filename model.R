@@ -149,10 +149,11 @@ model{
   }
 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-# spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
-# mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
-# my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
-# etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
+# spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
+# mita pienempi etaR, sita v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
+# myohemmin voitais tehda tama niin etta etaR riippuu kalojen maarasta 
+# -> vahan kalaa, suurempi keskittyminen samoille paikoille.
+# etaE voisi periaatteessa riippua kalojen maarasta, mutta pidetaan nyt samana yli vuosien
 
 
   # Unupdated priors

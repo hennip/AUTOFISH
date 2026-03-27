@@ -314,15 +314,15 @@ df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |>
   mutate(p_age_at_length=n/sum_per_length_class)
 View(df_p_age_at_length)
 
-pivot_p_age_at_length_herring<-df_p_age_at_length|> 
+pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
   pivot_wider(names_from = BiologyIndividualAge, values_from = p_age_at_length) |> 
   arrange(CatchSpeciesCode,ICES_SD,BiologyLengthClass) |> 
   select(SurveyYear, ICES_SD,CatchSpeciesCode, BiologyLengthClass,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,everything())
 
-pivot_p_age_at_length_herring
+pivot_p_age_at_length
 
 View(pivot_p_age_at_length_herring)
-
+write_xlsx(pivot_p_age_at_length, "../pivot_p_age_at_length.xlsx")
 
 

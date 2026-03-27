@@ -83,7 +83,6 @@ df_tot_catch_per_rec<-df_catch_per_species|>
   group_by(SurveyYear, HaulStatisticalRectangle) |> 
   summarise(tot_catch_per_rec=sum(CatchSpeciesCategoryNumber))
 
-
 # Percentage of each species per rectangle
 # Logically this should be calculated by pooling together all hauls in 
 # a rectangle, but in the current method the rectangle specific percentage is 
@@ -94,16 +93,6 @@ df_p_species_per_rectangle<-df_catch_per_species  |>
   group_by(SurveyYear, HaulStatisticalRectangle, CatchSpeciesCode) |>
   summarise(p_species_per_rec=mean(p_species)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
 print(x=df_p_species_per_rectangle, n=100)
-
-# # New approach; Hauls pooled together per rectangle
-# df_p_species_per_rectangle<-df_catch_per_species  |>
-#   group_by(SurveyYear, HaulStatisticalRectangle) |> 
-#   mutate(catch_per_species_per_rectangle=
-#            sum(CatchSpeciesCategoryNumber))|>
-#      left_join(df_tot_catch_per_rec) |> 
-#   mutate(p_species_per_rec=catch_per_species_per_rectangle/tot_catch_per_rec*100)
-# print(x=df_p_species_per_rectangle, n=100)
-
 
 # Just to check these sum to 100
 df_p_species_per_rectangle |> summarise(sum=sum(p_species_per_rec))
@@ -184,7 +173,7 @@ pivot_p_per_species<-df_p_species_per_rectangle |> ungroup() |>
   pivot_wider(names_from = CatchSpeciesCode, values_from = p_species_per_rec) 
 pivot_p_per_species
 
-# Join percentage of species per rectangle (unpivoted) with other
+# Join percentage of species per rectangle (unpivoted) with the other
 # rectangle specific data
 # Calculate number of individuals per species per NM2, 
 # total number of individuals and 
@@ -205,8 +194,8 @@ df_species |>
   pivot_wider(names_from = CatchSpeciesCode, values_from = n_per_species_per_rectangle)
 
 
-
-# Following excel (at least trying to)
+# Following the excel way of doing, assume all hauls have equal weights
+# regardless of the sample size 
 
 # take first the average pp over hauls, all species included
 df_mean_pp_per_rec<-df_pp |> 
@@ -217,13 +206,9 @@ df_mean_pp_per_rec<-df_pp |>
   summarise(mean_pp=mean(pp))
 df_mean_pp_per_rec  
 
-
-# then take just herring and calculate p per length over all herring
-# in that rectangle
+# then calculate p per length per species per rectangle
 df_sum_pp_per_species<-df_mean_pp_per_rec |> 
-  #filter(CatchSpeciesCode==126417) |> 
   summarise(sum_pp_per_species=sum(mean_pp))
-
 
 df_pp2<-df_mean_pp_per_rec |> 
   left_join(df_sum_pp_per_species) |> 
@@ -234,27 +219,10 @@ df_pp2
 print(x=df_pp2|>summarise(sum(pp2)), 
       n=100)
 
-# Divide the number per species per sd into individuals per length
-# per each rectangle
+# Divide the number per species per sd into individuals per length per rectangle
 
 df_species
 df_pp2
-
-# # one species at first
-# 
-# n_per_rec_herring<-df_species |> filter(CatchSpeciesCode==126417) |> 
-#   select(rec,n_per_species_per_rectangle)
-# 
-# pp2_per_length_herring<-df_pp2|> ungroup() |> filter(CatchSpeciesCode==126417)|> 
-#   mutate(rec=HaulStatisticalRectangle)|> select(rec,pp2,CatchLengthClass)
-# 
-# df_n_per_length_herring<-left_join(pp2_per_length_herring,n_per_rec_herring) |> 
-#   mutate(n_per_length=pp2*n_per_species_per_rectangle) |> 
-#   select(-n_per_species_per_rectangle, -pp2) |> 
-#   select(year, everything())
-# 
-# View(df_n_per_length_herring)
-
 
 n_per_rec<-df_species |>
   select(rec,CatchSpeciesCode,n_per_species_per_rectangle)
@@ -272,9 +240,9 @@ pivot_n_per_length<-df_n_per_length|>
   pivot_wider(names_from = CatchSpeciesCode, values_from = n_per_length) |> 
   arrange(rec,CatchLengthClass)
 
-View(pivot_n_per_length)
+# View(pivot_n_per_length)
 
-# Ages
+# Age at length
 
 # The SD and rectangle link
 df_rec_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |> 
@@ -283,46 +251,40 @@ df_rec_SD
 
 df_hauls_rec<-df_hauls |> select(SurveyYear,HaulNumber,HaulStatisticalRectangle)
 
-
 df_n_per_length |> filter(CatchSpeciesCode==126417)
 
-tmp<-bio_all |> #filter(CatchSpeciesCode==126417)|> 
+df_bio_SD<-bio_all |>
   select(HaulNumber,CatchSpeciesCode,BiologyIndividualAge,BiologyLengthClass) |> 
   left_join(df_hauls_rec) |> 
   select(SurveyYear, CatchSpeciesCode,HaulStatisticalRectangle,HaulNumber, everything()) |> 
 left_join(df_rec_SD)
-View(tmp)
+#View(df_bio_SD)
 
-n_per_age_length<-tmp |> 
+n_per_age_length<-df_bio_SD |> 
   group_by(SurveyYear, CatchSpeciesCode, BiologyIndividualAge,BiologyLengthClass, ICES_SD) |> 
   summarise(n=n())|> 
   select(SurveyYear,ICES_SD, CatchSpeciesCode,  everything()) |> 
   arrange(SurveyYear, ICES_SD)
-
-View(n_per_age_length)
+#View(n_per_age_length)
   
-# sum the number of individuals per length class and calculate the percentage
+# Sum the number of individuals per length class and calculate the percentage
 # at each age
-
 df_sum_per_length_class<-n_per_age_length |> ungroup() |> 
   group_by(SurveyYear, CatchSpeciesCode,ICES_SD,BiologyLengthClass) |> 
   summarise(sum_per_length_class=sum(n)) |> 
   select(SurveyYear,ICES_SD,CatchSpeciesCode, everything())
-View(df_sum_per_length_class)
+#View(df_sum_per_length_class)
 
 df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |> 
   mutate(p_age_at_length=n/sum_per_length_class)
-View(df_p_age_at_length)
+#View(df_p_age_at_length)
 
 pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
   pivot_wider(names_from = BiologyIndividualAge, values_from = p_age_at_length) |> 
   arrange(CatchSpeciesCode,ICES_SD,BiologyLengthClass) |> 
   select(SurveyYear, ICES_SD,CatchSpeciesCode, BiologyLengthClass,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,everything())
-
 pivot_p_age_at_length
 
-View(pivot_p_age_at_length_herring)
+#View(pivot_p_age_at_length_herring)
 write_xlsx(pivot_p_age_at_length, "../pivot_p_age_at_length.xlsx")
-
-

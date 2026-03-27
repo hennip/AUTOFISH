@@ -10,6 +10,7 @@ source("../whoisthis.R")
 
 suppressPackageStartupMessages({
   library(readxl)
+  library(writexl)
   library(tidyverse)
   library(forcats)
   library(readr)

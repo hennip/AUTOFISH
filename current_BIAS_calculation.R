@@ -240,62 +240,89 @@ print(x=df_pp2|>summarise(sum(pp2)),
 df_species
 df_pp2
 
-# one species at first
+# # one species at first
+# 
+# n_per_rec_herring<-df_species |> filter(CatchSpeciesCode==126417) |> 
+#   select(rec,n_per_species_per_rectangle)
+# 
+# pp2_per_length_herring<-df_pp2|> ungroup() |> filter(CatchSpeciesCode==126417)|> 
+#   mutate(rec=HaulStatisticalRectangle)|> select(rec,pp2,CatchLengthClass)
+# 
+# df_n_per_length_herring<-left_join(pp2_per_length_herring,n_per_rec_herring) |> 
+#   mutate(n_per_length=pp2*n_per_species_per_rectangle) |> 
+#   select(-n_per_species_per_rectangle, -pp2) |> 
+#   select(year, everything())
+# 
+# View(df_n_per_length_herring)
 
-n_per_rec_herring<-df_species |> filter(CatchSpeciesCode==126417) |> 
-  select(rec,n_per_species_per_rectangle)
 
-pp2_per_length_herring<-df_pp2|> ungroup() |> filter(CatchSpeciesCode==126417)|> 
-  mutate(rec=HaulStatisticalRectangle)|> select(rec,pp2,CatchLengthClass)
+n_per_rec<-df_species |>
+  select(rec,CatchSpeciesCode,n_per_species_per_rectangle)
 
-df_n_per_length_herring<-left_join(pp2_per_length_herring,n_per_rec_herring) |> 
+pp2_per_length<-df_pp2|> ungroup() |> 
+  mutate(rec=HaulStatisticalRectangle)|> 
+  select(rec,CatchSpeciesCode,pp2,CatchLengthClass)
+
+df_n_per_length<-left_join(pp2_per_length,n_per_rec) |> 
   mutate(n_per_length=pp2*n_per_species_per_rectangle) |> 
   select(-n_per_species_per_rectangle, -pp2) |> 
-  select(year, everything())
+  select(year, everything()) 
 
-View(df_n_per_length_herring)
+pivot_n_per_length<-df_n_per_length|> 
+  pivot_wider(names_from = CatchSpeciesCode, values_from = n_per_length) |> 
+  arrange(rec,CatchLengthClass)
 
+View(pivot_n_per_length)
 
-View(df_species)
+# Ages
 
 # The SD and rectangle link
 df_rec_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |> 
   mutate(HaulStatisticalRectangle=rec) |> select(-rec)
+df_rec_SD
 
-df_species_SD<-df_species |> group_by(year, ICES_SD, CatchSpeciesCode) |> 
-  summarise(n_per_species_per_SD=sum(n_per_species_per_rectangle))
-#View(df_species_SD)
-
-# pp2's are the proportions per species that are used for 
-df_pp2
+df_hauls_rec<-df_hauls |> select(SurveyYear,HaulNumber,HaulStatisticalRectangle)
 
 
+df_n_per_length |> filter(CatchSpeciesCode==126417)
 
+tmp<-bio_all |> #filter(CatchSpeciesCode==126417)|> 
+  select(HaulNumber,CatchSpeciesCode,BiologyIndividualAge,BiologyLengthClass) |> 
+  left_join(df_hauls_rec) |> 
+  select(SurveyYear, CatchSpeciesCode,HaulStatisticalRectangle,HaulNumber, everything()) |> 
+left_join(df_rec_SD)
+View(tmp)
 
+n_per_age_length<-tmp |> 
+  group_by(SurveyYear, CatchSpeciesCode, BiologyIndividualAge,BiologyLengthClass, ICES_SD) |> 
+  summarise(n=n())|> 
+  select(SurveyYear,ICES_SD, CatchSpeciesCode,  everything()) |> 
+  arrange(SurveyYear, ICES_SD)
+
+View(n_per_age_length)
   
-#  filter(ICES_SD==28, CatchSpeciesCode==126417)
-  
-tmp2<-tmp |> left_join(df_rec_SD) |> 
-  select(-HaulStatisticalRectangle) #|> 
-  
-View(tmp2)
+# sum the number of individuals per length class and calculate the percentage
+# at each age
 
-#select(ICES_SD, n_per_species_per_rectangle) |> 
-  
+df_sum_per_length_class<-n_per_age_length |> ungroup() |> 
+  group_by(SurveyYear, CatchSpeciesCode,ICES_SD,BiologyLengthClass) |> 
+  summarise(sum_per_length_class=sum(n)) |> 
+  select(SurveyYear,ICES_SD,CatchSpeciesCode, everything())
+View(df_sum_per_length_class)
 
+df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |> 
+  mutate(p_age_at_length=n/sum_per_length_class)
+View(df_p_age_at_length)
 
-  # Age-length key per sub division for herring and sprat
-  
-  View(bio_all)
+pivot_p_age_at_length_herring<-df_p_age_at_length|> 
+  select(-n, -sum_per_length_class) |> 
+  pivot_wider(names_from = BiologyIndividualAge, values_from = p_age_at_length) |> 
+  arrange(CatchSpeciesCode,ICES_SD,BiologyLengthClass) |> 
+  select(SurveyYear, ICES_SD,CatchSpeciesCode, BiologyLengthClass,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,everything())
 
+pivot_p_age_at_length_herring
 
+View(pivot_p_age_at_length_herring)
 
-
-
-
-bio_all |> select(BiologyIndividualAge,BiologyLengthClass)
-
-bio_all$BiologyIndividualAge
-bio_all$BiologyLengthClass
 
 

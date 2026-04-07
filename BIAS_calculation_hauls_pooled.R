@@ -252,7 +252,7 @@ df_bio_SD<-bio_all |>
   select(HaulNumber,CatchSpeciesCode,BiologyIndividualAge,BiologyLengthClass) |> 
   left_join(df_hauls_rec) |> 
   select(SurveyYear, CatchSpeciesCode,HaulStatisticalRectangle,HaulNumber, everything()) |> 
-left_join(df_rec_SD)
+  left_join(df_rec_SD)
 #View(df_bio_SD)
 
 n_per_age_length<-df_bio_SD |> 
@@ -261,7 +261,7 @@ n_per_age_length<-df_bio_SD |>
   select(SurveyYear,ICES_SD, CatchSpeciesCode,  everything()) |> 
   arrange(SurveyYear, ICES_SD)
 #View(n_per_age_length)
-  
+
 # Sum the number of individuals per length class and calculate the percentage
 # at each age
 df_sum_per_length_class<-n_per_age_length |> ungroup() |> 

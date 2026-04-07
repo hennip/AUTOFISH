@@ -87,11 +87,17 @@ df_tot_catch_per_rec<-df_catch_per_species|>
 # Logically this should be calculated by pooling together all hauls in 
 # a rectangle, but in the current method the rectangle specific percentage is 
 # calculated as mean of haul specific percentages 
+# df_p_species_per_rectangle<-df_catch_per_species  |>
+#   left_join(df_tot_catch_per_haul) |>
+#   mutate(p_species=CatchSpeciesCategoryNumber/tot_catch_per_haul*100) |>
+#   group_by(SurveyYear, HaulStatisticalRectangle, CatchSpeciesCode) |>
+#   summarise(p_species_per_rec=mean(p_species)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
+# New approach; Hauls pooled together per rectangle
 df_p_species_per_rectangle<-df_catch_per_species  |>
-  left_join(df_tot_catch_per_haul) |>
-  mutate(p_species=CatchSpeciesCategoryNumber/tot_catch_per_haul*100) |>
-  group_by(SurveyYear, HaulStatisticalRectangle, CatchSpeciesCode) |>
-  summarise(p_species_per_rec=mean(p_species)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
+  group_by(SurveyYear, HaulStatisticalRectangle, CatchSpeciesCode) |> 
+  summarise(catch_per_species_per_rectangle=sum(CatchSpeciesCategoryNumber))|>
+  left_join(df_tot_catch_per_rec) |> 
+  mutate(p_species_per_rec=catch_per_species_per_rectangle/tot_catch_per_rec*100)
 print(x=df_p_species_per_rectangle, n=100)
 
 # Just to check these sum to 100

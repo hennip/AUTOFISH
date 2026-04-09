@@ -106,58 +106,26 @@ tmp<-df_p_per_length |>
   summarise(sum=sum(p_per_length))
 #View(tmp)
 
-
 # Number of hauls per rectangle and per species
 df_n_hauls_per_case<- df_p_per_length|> 
-  #filter(CatchSpeciesCode== 101172, HaulStatisticalRectangle=="44H3") |> 
   group_by(HaulStatisticalRectangle,CatchSpeciesCode) |> 
-  summarise(n=n_distinct(HaulNumber)) #|> select(n, everything()) 
+  summarise(n=n_distinct(HaulNumber))
 print(x=df_n_hauls_per_case, n=100)
 
+# Rectangle specific proportion of individuals of certain length is the
+# mean over length class specific percentages
 df_p_per_length_per_rec<-df_p_per_length |>  
   group_by(SurveyYear, HaulStatisticalRectangle, CatchSpeciesCode, CatchLengthClass) |> 
   summarise(sum_p_per_length_per_rec=sum(p_per_length)) |> 
   left_join(df_n_hauls_per_case) |>
   mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n)
+write_xlsx(df_p_per_length_per_rec, "../df_p_per_length_per_rec.xlsx")
 
+# check that all sum to 100
 tmp<-df_p_per_length_per_rec|> 
   summarise(sum_p=sum(mean_p_per_length_per_rec))
 print(x=tmp, n=100)
 
-
-
-
-
-# TÄHÄN NYT JÄÄ TÄMÄ, MIKSI TULEE <100? TULEE SIKSI ETTÄ AINA EI OLE KO. LAJIA KO. KOOSSA
-# JOTEN EI VOI AINA JAKAA TROOLAUSTEN LUKUMÄÄRÄLLÄ
-df_p_per_length_per_rec<-df_p_per_length |> 
-  group_by(SurveyYear, HaulStatisticalRectangle, CatchSpeciesCode, CatchLengthClass) |> 
-  summarise(sum_p_per_length_per_rec=sum(p_per_length)) |> 
-  left_join(df_n_hauls_per_rec) |> 
-  mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n_hauls_per_rec)
-#write_xlsx(df_p_per_length_per_rec, "../p_per_length_per_rec.xlsx")
-
-
-  
-
-df_p_per_length |> 
-  filter(CatchSpeciesCode== 101172, HaulStatisticalRectangle=="44H3") |> 
- mutate(n=n_distinct(HaulNumber)) |> select(n, everything()) |>  
-   group_by(SurveyYear, CatchLengthClass) |> 
-  summarise(mean_p_per_length_per_rec=sum(p_per_length)/n)
-
-
-tmp<-df_p_per_length|>
-  filter(CatchSpeciesCode== 101172, HaulStatisticalRectangle=="44H3") |> 
-  group_by(SurveyYear,HaulNumber,HaulStatisticalRectangle#, CatchSpeciesCode
-           ) |> 
-  summarise(sum_p=sum(p_per_length))
-print(x=tmp, n=200)
-
-
-tmp<-df_p_per_length_per_rec|> 
-  filter(CatchSpeciesCode== 101172, HaulStatisticalRectangle=="44H3")
-  print(x=tmp, n=100)
 
 
 # Haul specific 

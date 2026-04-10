@@ -40,7 +40,9 @@ df_n_hauls_per_rec<-df_hauls_rec |> group_by(rec) |>
 df_catch<-catch_all|> filter(SurveyYear==choose_year) |> 
   mutate(CatchSpeciesCategoryNumber=as.numeric(CatchSpeciesCategoryNumber),
          CatchNumberAtLength=as.numeric(CatchNumberAtLength),
-         CatchLengthClass=as.numeric(CatchLengthClass))
+         CatchLengthClass=as.numeric(CatchLengthClass),
+         CatchWeightAtLength=as.numeric(CatchWeightAtLength),
+         CatchNumberAtLength=as.numeric(CatchNumberAtLength))
 
 # Join rectangles to catch table
 df_catch_w_rec<-df_catch |> 
@@ -365,37 +367,56 @@ write_xlsx(pivot_p_age_at_length, "../pivot_p_age_at_length.xlsx")
 # ================================
 
 # The age length key is SD based
-age_length_key<-df_p_age_at_length |> 
-  filter(CatchSpeciesCode==126417, ICES_SD==28.1)
-#print(x=age_length_key, n=100)
+age_length_key<-df_p_age_at_length |>
+  mutate(BiologyIndividualAge=as.numeric(BiologyIndividualAge)) #|> 
+  #filter(CatchSpeciesCode==126417| CatchSpeciesCode==126425)
+  #print(x=age_length_key, n=100)
 
 df2<-df_n_per_length |> 
   left_join(df_rec_SD)|> 
-  filter(CatchSpeciesCode==126417, ICES_SD==28.1) |> 
-  select(ICES_SD,rec,CatchLengthClass, n_per_length)
+ #filter(CatchSpeciesCode==126417| CatchSpeciesCode==126425) |>
+  select(CatchSpeciesCode,ICES_SD,rec,CatchLengthClass, n_per_length)
 #print(x=df2, n=50)
 
-df1<-age_length_key |> filter(BiologyLengthClass==120) |> 
+df1<-age_length_key |> #filter(BiologyLengthClass==120) |> 
   ungroup() |> 
-  select(ICES_SD, BiologyLengthClass, BiologyIndividualAge, p_age_at_length)
+  select(CatchSpeciesCode,ICES_SD, BiologyLengthClass, BiologyIndividualAge, p_age_at_length)
 
-df2 |> filter(CatchLengthClass==120) |> 
+
+# JOSTAIN SYYSTÄ JOIN ANTAA KEYN MYÖS MUILLE LAJEILLE KUIN SILAKALLE JA KILULLE
+# MISTÄ JOHTUU?
+df3<-df2 |> #filter(CatchLengthClass==120) |> 
   mutate(BiologyLengthClass=CatchLengthClass) |> 
-  full_join(df1, relationship="many-to-many") |> 
-  mutate(n_per_age=p_age_at_length*n_per_length)
+  left_join(df1, relationship="many-to-many") |> 
+  mutate(n_age_at_length=p_age_at_length*n_per_length)
+
+#df3<-df3 |> filter(CatchSpeciesCode==126505)
+print(x=df3, n=100)
+
+df4<-df3 |> group_by(CatchSpeciesCode,#ICES_SD, 
+  rec, BiologyIndividualAge) |> 
+  summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
+  pivot_wider(names_from = BiologyIndividualAge, values_from = n_at_age) |> 
+  mutate(Ntot=sum(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`, na.rm = T)) |> 
+  select(CatchSpeciesCode,rec,Ntot,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,everything())
+
+print(x=df4, n=100)
+write_xlsx(df4, "../number_at_age.xlsx")
 
 
-
-
-
-N<-length(df2$CatchLengthClass)
-for(i in 1:N){
-  i<-1
-  X<-df2$CatchLengthClass[i]
-  df2$n_per_length[i]
+df_w<-df_catch |> mutate(mean_weight_at_length=CatchWeightAtLength /CatchNumberAtLength) |> 
+  full_join(df_hauls_rec) |> 
+left_join(df_n_hauls_per_case)
   
-  age_length_key |> filter(BiologyLengthClass==X)
-  
-}
+
+
+#Other species on an extra sheet on EST_BIAS...xlsx
+# Abundance per length group per rectangle
+# mean weight per length per rectangle
+
+
+
+
+
 
 

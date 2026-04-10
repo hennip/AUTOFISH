@@ -383,8 +383,6 @@ df1<-age_length_key |> #filter(BiologyLengthClass==120) |>
   select(CatchSpeciesCode,ICES_SD, BiologyLengthClass, BiologyIndividualAge, p_age_at_length)
 
 
-# JOSTAIN SYYSTÄ JOIN ANTAA KEYN MYÖS MUILLE LAJEILLE KUIN SILAKALLE JA KILULLE
-# MISTÄ JOHTUU?
 df3<-df2 |> #filter(CatchLengthClass==120) |> 
   mutate(BiologyLengthClass=CatchLengthClass) |> 
   left_join(df1, relationship="many-to-many") |> 

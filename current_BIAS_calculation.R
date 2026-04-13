@@ -88,7 +88,6 @@ df_nasc
 # Basic data wrangling
 # ==============================================================================
 
-
 # Catch sample sizes per length per haul
 df_sample_size_per_length<-df_catch_w_rec |> 
   group_by(SurveyYear, CatchSpeciesCode, HaulNumber) |> 
@@ -113,7 +112,7 @@ tmp<-df_p_per_length |>
 # Number of hauls per rectangle and per species
 df_n_hauls_per_case<- df_p_per_length|>
   group_by(rec,CatchSpeciesCode) |>
-  summarise(n=n_distinct(HaulNumber))
+  summarise(n_hauls_per_case=n_distinct(HaulNumber))
 print(x=df_n_hauls_per_case, n=100)
 
 # Rectangle specific proportion of individuals of certain length is the
@@ -122,7 +121,7 @@ df_p_per_length_per_rec<-df_p_per_length |>
   group_by(SurveyYear, rec, CatchSpeciesCode, CatchLengthClass) |>
   summarise(sum_p_per_length_per_rec=sum(p_per_length)) |>
   left_join(df_n_hauls_per_case) |>
-  mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n)
+  mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n_hauls_per_case)
 write_xlsx(df_p_per_length_per_rec, "../df_p_per_length_per_rec.xlsx")
 
 # check that all sum to 100
@@ -131,10 +130,8 @@ tmp<-df_p_per_length_per_rec|>
 print(x=tmp, n=100)
 
 
-
 # Haul specific 
 # ==============
-
 # Total catch per haul per species
 df_catch_per_species<-df_catch_w_rec |> 
   select(SurveyYear, HaulNumber,rec, CatchSpeciesCode, CatchSpeciesCategoryNumber) |> 
@@ -153,7 +150,6 @@ df_p_species_per_haul<-df_catch_per_species  |>
 
 # Rectangle specific 
 # ==============
-
 # Total catch per rectangle, all species
 df_tot_catch_per_rec<-df_catch_per_species|> 
   group_by(SurveyYear, rec) |> 
@@ -163,7 +159,6 @@ df_tot_catch_per_rec<-df_catch_per_species|>
 # ==============================================================================
 # Black magic begins here
 # ==============================================================================
-
 
 # Percentage of each species per rectangle
 # ==============================================================================
@@ -195,7 +190,6 @@ print(df_pp |> group_by(HaulNumber) |> summarise(sumx=sum(pp)),
 # ================================
 # SIGMA CALCULATIONS
 # ================================
-
 
 # For each row in the df_pp, calculate sigma
 df_sigma<-df_pp |> 
@@ -271,9 +265,8 @@ df_mean_pp_per_rec<-df_pp |>
   #summarise(mean_pp=mean(pp)) # THIS PROBABLY IS INCORRECT
   summarise(sum_pp=sum(pp)) |> 
   left_join(df_n_hauls_per_case) |> 
-  mutate(mean_pp=sum_pp/n) # THIS SHOULD BE MORE CORRECT
+  mutate(mean_pp=sum_pp/n_hauls_per_case) # THIS SHOULD BE MORE CORRECT
 df_mean_pp_per_rec  
-
 
 # then calculate p per length per species per rectangle
 df_sum_pp_per_species<-df_mean_pp_per_rec |> 
@@ -309,7 +302,6 @@ write_xlsx(pivot_n_per_length, "../pivot_n_per_length.xlsx")
 # ================================
 # Age at length
 # ================================
-
 
 # The SD and rectangle link
 df_rec_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |> 
@@ -357,60 +349,89 @@ pivot_p_age_at_length<-df_p_age_at_length|>
   select(SurveyYear, ICES_SD,CatchSpeciesCode, BiologyLengthClass,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,everything()) 
 pivot_p_age_at_length
 
-#View(pivot_p_age_at_length_herring) 
 write_xlsx(pivot_p_age_at_length, "../pivot_p_age_at_length.xlsx")
 
 # Abundance at age for herring and sprat
 # ================================
 
-# Herring
-# ================================
-
 # The age length key is SD based
 age_length_key<-df_p_age_at_length |>
-  mutate(BiologyIndividualAge=as.numeric(BiologyIndividualAge)) #|> 
-  #filter(CatchSpeciesCode==126417| CatchSpeciesCode==126425)
-  #print(x=age_length_key, n=100)
+  mutate(BiologyIndividualAge=as.numeric(BiologyIndividualAge)) 
 
 df2<-df_n_per_length |> 
   left_join(df_rec_SD)|> 
- #filter(CatchSpeciesCode==126417| CatchSpeciesCode==126425) |>
   select(CatchSpeciesCode,ICES_SD,rec,CatchLengthClass, n_per_length)
-#print(x=df2, n=50)
 
-df1<-age_length_key |> #filter(BiologyLengthClass==120) |> 
+df1<-age_length_key |> 
   ungroup() |> 
   select(CatchSpeciesCode,ICES_SD, BiologyLengthClass, BiologyIndividualAge, p_age_at_length)
 
-
-df3<-df2 |> #filter(CatchLengthClass==120) |> 
+df_n_at_age<-df2 |>
   mutate(BiologyLengthClass=CatchLengthClass) |> 
   left_join(df1, relationship="many-to-many") |> 
   mutate(n_age_at_length=p_age_at_length*n_per_length)
+print(x=df_n_at_age, n=100)
 
-#df3<-df3 |> filter(CatchSpeciesCode==126505)
-print(x=df3, n=100)
-
-df4<-df3 |> group_by(CatchSpeciesCode,#ICES_SD, 
+pivot_n_at_age<-df_n_at_age |> group_by(CatchSpeciesCode, 
   rec, BiologyIndividualAge) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
   pivot_wider(names_from = BiologyIndividualAge, values_from = n_at_age) |> 
   mutate(Ntot=sum(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`, na.rm = T)) |> 
   select(CatchSpeciesCode,rec,Ntot,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,everything())
+print(x=pivot_n_at_age, n=100)
+write_xlsx(pivot_n_at_age, "../number_at_age.xlsx")
 
-print(x=df4, n=100)
-write_xlsx(df4, "../number_at_age.xlsx")
+# Weight/Biomass
+# ================================
 
-
-df_w<-df_catch |> mutate(mean_weight_at_length=CatchWeightAtLength /CatchNumberAtLength) |> 
+df_mean_w_at_length_per_haul<-df_catch |> 
+  mutate(mean_w_at_length_per_haul=CatchWeightAtLength /CatchNumberAtLength) |> 
   full_join(df_hauls_rec) |> 
-left_join(df_n_hauls_per_case)
+  select(rec,HaulNumber,CatchSpeciesCode, CatchLengthClass, mean_w_at_length_per_haul) 
+
+df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 
+  group_by(rec,CatchSpeciesCode, CatchLengthClass) |> 
+  summarise(sum_w=sum(mean_w_at_length_per_haul)) |> 
+  left_join(df_n_hauls_per_case) |> 
+  mutate(mean_w_at_length=sum_w/n_hauls_per_case)
+
+df_n_at_age |> 
+  left_join(df_mean_w_at_length_per_rec, relationship="many-to-many") |> 
+  mutate(tot_w_per_age=mean_w_at_length*n_per_length)
   
+# Number at length for other species than herring & sprat
+df_n_other<-df_n_per_length|> filter(CatchSpeciesCode!=126417 & CatchSpeciesCode!=126425) |> 
+  ungroup() |> group_by(rec, CatchLengthClass) |>
+  summarise(n=sum(n_per_length, na.rm = T))
+
+df_n_other_tot<-df_n_other |> 
+  summarise(Ntot=sum(n))
+
+pivot_n_other<-df_n_other |> arrange(CatchLengthClass) |> 
+  pivot_wider(names_from=CatchLengthClass, values_from=n) |> 
+  left_join(df_n_other_tot) |> 
+  select(rec, Ntot, everything())
+
+
+# ==========================
+# RESULT FILE
+# ==========================
+# Writes a data frame to an xlsx file. To create an xlsx with (multiple) named sheets, 
+# simply set x to a named list of data frames.
+AH<-pivot_n_at_age|> filter(CatchSpeciesCode==126417)
+AS<-pivot_n_at_age|> filter(CatchSpeciesCode==126425)
+
+res<-list(AH=AH, AS=AS, AO=pivot_n_other)
+
+write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2024_new.xlsx")
 
 
 #Other species on an extra sheet on EST_BIAS...xlsx
 # Abundance per length group per rectangle
 # mean weight per length per rectangle
+
+CatchNumberAtLength
+CatchWeightAtLength
 
 
 

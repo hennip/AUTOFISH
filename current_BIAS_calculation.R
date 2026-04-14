@@ -84,7 +84,7 @@ df_nasc
 
 # Catch sample sizes per length per haul
 df_sample_size_per_length<-df_catch_w_rec |> 
-  group_by(SurveyYear, species, HaulNumber) |> 
+  group_by(species, HaulNumber) |> 
   summarise(sample_size_per_length=sum(CatchNumberAtLength))
 
 # Join sample sizes per length with the catch table 
@@ -92,10 +92,10 @@ df_sample_size_per_length<-df_catch_w_rec |>
 df_p_per_length<-df_catch_w_rec |> 
   left_join(df_sample_size_per_length) |> 
   mutate(p_per_length=CatchNumberAtLength/sample_size_per_length*100) |> 
-  select(SurveyYear, rec, HaulNumber, species,CatchLengthClass, p_per_length, everything()) 
+  select(rec, HaulNumber, species,CatchLengthClass, p_per_length, everything()) 
 df_p_per_length
 #View(df_p_per_length)
-write_xlsx(df_p_per_length, "../p_per_length.xlsx")
+#write_xlsx(df_p_per_length, "../p_per_length.xlsx")
 
 # THIS JUST INTERESTING TO SEE?
 tmp<-df_p_per_length |> 
@@ -112,11 +112,11 @@ print(x=df_n_hauls_per_case, n=100)
 # Rectangle specific proportion of individuals of certain length is the
 # mean over length class specific percentages
 df_p_per_length_per_rec<-df_p_per_length |>
-  group_by(SurveyYear, rec, species, CatchLengthClass) |>
+  group_by(rec, species, CatchLengthClass) |>
   summarise(sum_p_per_length_per_rec=sum(p_per_length)) |>
   left_join(df_n_hauls_per_case) |>
   mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n_hauls_per_case)
-write_xlsx(df_p_per_length_per_rec, "../df_p_per_length_per_rec.xlsx")
+#write_xlsx(df_p_per_length_per_rec, "../df_p_per_length_per_rec.xlsx")
 
 # check that all sum to 100
 tmp<-df_p_per_length_per_rec|>
@@ -128,12 +128,12 @@ print(x=tmp, n=100)
 # ==============
 # Total catch per haul per species
 df_catch_per_species<-df_catch_w_rec |> 
-  select(SurveyYear, HaulNumber,rec, species, CatchSpeciesCategoryNumber) |> 
+  select(HaulNumber,rec, species, CatchSpeciesCategoryNumber) |> 
   distinct() 
 
 # Total catch per haul, all species
 df_tot_catch_per_haul<-df_catch_per_species|> 
-  group_by(SurveyYear, HaulNumber, rec) |> 
+  group_by(HaulNumber, rec) |> 
   summarise(tot_catch_per_haul=sum(CatchSpeciesCategoryNumber))
 
 # Proportion of each species per haul
@@ -146,7 +146,7 @@ df_p_species_per_haul<-df_catch_per_species  |>
 # ==============
 # Total catch per rectangle, all species
 df_tot_catch_per_rec<-df_catch_per_species|> 
-  group_by(SurveyYear, rec) |> 
+  group_by(rec) |> 
   summarise(tot_catch_per_rec=sum(CatchSpeciesCategoryNumber))
 
 
@@ -162,7 +162,7 @@ df_tot_catch_per_rec<-df_catch_per_species|>
 df_p_species_per_rectangle<-df_catch_per_species  |>
   left_join(df_tot_catch_per_haul) |>
   mutate(p_species=CatchSpeciesCategoryNumber/tot_catch_per_haul*100) |>
-  group_by(SurveyYear, rec, species) |>
+  group_by(rec, species) |>
   summarise(p_species_per_rec=mean(p_species)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
 print(x=df_p_species_per_rectangle, n=100)
 
@@ -240,7 +240,7 @@ print(df_species, n=100)
 
 # Pivot: Number of individuals per species per rectangle
 df_species |>   
-  select(-SurveyYear, -p_species_per_rec) |> 
+  select(-p_species_per_rec) |> 
   pivot_wider(names_from = species, values_from = n_per_species_per_rectangle)
 
 # ================================
@@ -287,10 +287,10 @@ df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec) |>
   select(-n_per_species_per_rectangle, -pp2) |> 
   select(year, everything()) 
 
-pivot_n_per_length<-df_n_per_length|> 
-  pivot_wider(names_from = species, values_from = n_per_length) |> 
-  arrange(rec,CatchLengthClass)
-write_xlsx(pivot_n_per_length, "../pivot_n_per_length.xlsx")
+#pivot_n_per_length<-df_n_per_length|> 
+#  pivot_wider(names_from = species, values_from = n_per_length) |> 
+#  arrange(rec,CatchLengthClass)
+#write_xlsx(pivot_n_per_length, "../pivot_n_per_length.xlsx")
 # View(pivot_n_per_length)
 
 # ================================
@@ -313,22 +313,22 @@ df_rec_ICES_SD
 df_bio_SD<-df_bio |> #bio_all |>
   select(HaulNumber,species,age,BiologyLengthClass) |> 
   left_join(df_hauls_rec) |> 
-  select(SurveyYear, species,rec,HaulNumber, everything()) |> 
+  select(species,rec,HaulNumber, everything()) |> 
 left_join(df_rec_ICES_SD)
 #View(df_bio_SD)
 
 n_per_age_length<-df_bio_SD |> 
-  group_by(SurveyYear, species, age,BiologyLengthClass, ICES_SD) |> 
+  group_by(species, age,BiologyLengthClass, ICES_SD) |> 
   summarise(n=n())|> 
-  select(SurveyYear,ICES_SD, species,  everything()) |> 
-  arrange(SurveyYear, ICES_SD)
+  select(ICES_SD, species,  everything()) |> 
+  arrange(ICES_SD)
 #View(n_per_age_length)
   
 # Sum the number of individuals per length class 
 df_sum_per_length_class<-n_per_age_length |> ungroup() |> 
-  group_by(SurveyYear, species,ICES_SD,BiologyLengthClass) |> 
+  group_by(species,ICES_SD,BiologyLengthClass) |> 
   summarise(sum_per_length_class=sum(n)) |> 
-  select(SurveyYear,ICES_SD,species, everything())
+  select(ICES_SD,species, everything())
 #View(df_sum_per_length_class)
 
 # Calculate the percentage at age per length class
@@ -338,9 +338,8 @@ df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |>
 
 pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
-  pivot_wider(names_from = age, values_from = p_age_at_length) |> 
-  arrange(species,ICES_SD,BiologyLengthClass) |> 
-  select(SurveyYear, ICES_SD,species, BiologyLengthClass,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,everything()) 
+  arrange(species,ICES_SD,BiologyLengthClass,age) |> 
+  pivot_wider(names_from = age, values_from = p_age_at_length) #|> 
 pivot_p_age_at_length
 
 #write_xlsx(pivot_p_age_at_length, "../pivot_p_age_at_length.xlsx")
@@ -373,18 +372,27 @@ pivot_n_at_age<-df_n_at_age |> group_by(species,
   ungroup()
 print(x=pivot_n_at_age, n=100)
 
-# Number at length for other species than herring & sprat
-df_n_other<-df_n_per_length|> filter(species!=126417 & species!=126425) |> 
-  ungroup() |> group_by(rec, CatchLengthClass) |>
-  summarise(n=sum(n_per_length, na.rm = T))
+# Other species per rec and length
 
-df_n_other_tot<-df_n_other |> 
-  summarise(Ntot=sum(n))
+pivot_n_per_length<-df_n_per_length |>
+  group_by(rec, species) |> 
+  arrange(CatchLengthClass,species, rec) |> 
+  pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
+  select(-year)
+pivot_n_per_length
 
-pivot_n_other<-df_n_other |> arrange(CatchLengthClass) |> 
-  pivot_wider(names_from=CatchLengthClass, values_from=n) |> 
-  left_join(df_n_other_tot) |> 
-  select(rec, Ntot, everything())
+# # Number at length for other species than herring & sprat
+# df_n_other<-df_n_per_length|> filter(species!=126417 & species!=126425) |> 
+#   ungroup() |> group_by(rec, CatchLengthClass) |>
+#   summarise(n=sum(n_per_length, na.rm = T))
+# 
+# df_n_other_tot<-df_n_other |> 
+#   summarise(Ntot=sum(n))
+# 
+# pivot_n_other<-df_n_other |> arrange(CatchLengthClass) |> 
+#   pivot_wider(names_from=CatchLengthClass, values_from=n) |> 
+#   left_join(df_n_other_tot) |> 
+#   select(rec, Ntot, everything())
 
 
 # Weight/Biomass
@@ -434,37 +442,46 @@ pivot_bm_at_age<-df_bm_at_age |>
   ungroup()
 print(x=pivot_bm_at_age, n=100)
 
-# Biomass at length for other species than herring & sprat
-df_bm_other<-df_bm_per_length_ICES_SD|> 
-  filter(species!=126417 & species!=126425) |> 
-  ungroup() |> group_by(rec, CatchLengthClass) |>
-  summarise(bm=sum(bm_per_length, na.rm = T))
+# # Biomass at length for other species than herring & sprat
+
+pivot_bm_per_length<-df_bm_per_length_ICES_SD  |> 
+  group_by(rec, species) |> 
+  arrange(CatchLengthClass,species, rec) |> 
+  pivot_wider(names_from=CatchLengthClass, values_from = bm_per_length)
+pivot_bm_per_length
 
 
-pivot_bm_other<-df_bm_other |> arrange(CatchLengthClass) |> 
-  pivot_wider(names_from=CatchLengthClass, values_from=bm) |> 
-  mutate(BMtot=rowSums(across(c(`9`:`250`)), na.rm = T)) |> 
-  select(rec, BMtot, everything())
-pivot_bm_other
+
+# df_bm_other<-df_bm_per_length_ICES_SD|> 
+#   filter(species!=126417 & species!=126425) |> 
+#   ungroup() |> group_by(rec, CatchLengthClass) |>
+#   summarise(bm=sum(bm_per_length, na.rm = T))
+# 
+# pivot_bm_other<-df_bm_other |> arrange(CatchLengthClass) |> 
+#   pivot_wider(names_from=CatchLengthClass, values_from=bm) |> 
+#   mutate(BMtot=rowSums(across(c(`9`:`250`)), na.rm = T)) |> 
+#   select(rec, BMtot, everything())
+# pivot_bm_other
 
 # ==========================
 # RESULT FILE
 # ==========================
 AH<-pivot_n_at_age|> filter(species==126417) |> select(-species)
 AS<-pivot_n_at_age|> filter(species==126425)|> select(-species)
+AO<-pivot_n_per_length|>filter(species!=126417 & species!=126425)
+
 WH<-pivot_bm_at_age|> filter(species==126417)|> select(-species)
 WS<-pivot_bm_at_age|> filter(species==126425)|> select(-species)
+WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
 # To create an xlsx with (multiple) named sheets, 
 # simply set x to a named list of data frames.
-res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=pivot_n_other, WO=pivot_bm_other)
+res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2024_new.xlsx")
 
 
-
-
-
+print(x=pivot_n_at_age, n=100)
 
 
 

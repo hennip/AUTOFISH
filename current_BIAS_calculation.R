@@ -287,11 +287,6 @@ df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec) |>
   select(-n_per_species_per_rectangle, -pp2) |> 
   select(year, everything()) 
 
-#pivot_n_per_length<-df_n_per_length|> 
-#  pivot_wider(names_from = species, values_from = n_per_length) |> 
-#  arrange(rec,CatchLengthClass)
-#write_xlsx(pivot_n_per_length, "../pivot_n_per_length.xlsx")
-# View(pivot_n_per_length)
 
 # ================================
 # Age at length
@@ -363,41 +358,28 @@ df_n_at_age<-df_n_per_length_ICES_SD |>
   mutate(n_age_at_length=p_age_at_length*n_per_length)
 print(x=df_n_at_age, n=100)
 
-pivot_n_at_age<-df_n_at_age |> group_by(species, 
-  rec, age) |> 
+pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
+  arrange(age, species, rec) |> 
   pivot_wider(names_from = age, values_from = n_at_age) |> 
-  mutate(Ntot=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
-  select(species,rec,Ntot,everything()) |> 
+  mutate(NTOT=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
+  rename(N0=`0`,N1=`1`,N2=`2`,N3=`3`,N4=`4`,N5=`5`,N6=`6`,N7=`7`,N8=`8`,
+         N9=`9`,N10=`10`,N11=`11`,N12=`12`)|> 
+  select(species,rec,NTOT,everything()) |> 
   ungroup()
 print(x=pivot_n_at_age, n=100)
 
 # Other species per rec and length
-
 pivot_n_per_length<-df_n_per_length |>
   group_by(rec, species) |> 
   arrange(CatchLengthClass,species, rec) |> 
   pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
-  select(-year)
+  select(-year) |> select(species, rec, everything())
 pivot_n_per_length
-
-# # Number at length for other species than herring & sprat
-# df_n_other<-df_n_per_length|> filter(species!=126417 & species!=126425) |> 
-#   ungroup() |> group_by(rec, CatchLengthClass) |>
-#   summarise(n=sum(n_per_length, na.rm = T))
-# 
-# df_n_other_tot<-df_n_other |> 
-#   summarise(Ntot=sum(n))
-# 
-# pivot_n_other<-df_n_other |> arrange(CatchLengthClass) |> 
-#   pivot_wider(names_from=CatchLengthClass, values_from=n) |> 
-#   left_join(df_n_other_tot) |> 
-#   select(rec, Ntot, everything())
 
 
 # Weight/Biomass
 # ================================
-
 
 # Mean weight at length per species per haul
 df_mean_w_at_length_per_haul<-df_catch |> 
@@ -414,7 +396,7 @@ df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |>
   mutate(mean_w_at_length=sum_w/n_hauls_per_case) #OK
 
 # Biomass per length per rectangle = n per length per rec * mean w_at length
-# Unit is grams times millions individuals =millions of grams= tonnes
+# Unit is grams times millions individuals = millions of grams = tonnes
 df_bm_at_length<-df_n_per_length |> 
   left_join(df_mean_w_at_length_per_rec, relationship="many-to-many") |> 
   mutate(bm_per_length=mean_w_at_length*n_per_length)
@@ -437,13 +419,14 @@ pivot_bm_at_age<-df_bm_at_age |>
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
   arrange(species,age) |> 
   pivot_wider(names_from = age, values_from = bm_at_age) |> 
-  mutate(BMtot=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
-  select(species, rec, BMtot, everything()) |> 
+  mutate(WTOT=rowSums(across(c(`0`:`12`)), na.rm = T)) |>
+  rename(W0=`0`,W1=`1`,W2=`2`,W3=`3`,W4=`4`,W5=`5`,W6=`6`,W7=`7`,W8=`8`,
+         W9=`9`,W10=`10`,W11=`11`,W12=`12`)|> 
+  select(species, rec, WTOT, everything()) |> 
   ungroup()
 print(x=pivot_bm_at_age, n=100)
 
-# # Biomass at length for other species than herring & sprat
-
+# Biomass per length for other species than herring & sprat
 pivot_bm_per_length<-df_bm_per_length_ICES_SD  |> 
   group_by(rec, species) |> 
   arrange(CatchLengthClass,species, rec) |> 
@@ -451,23 +434,11 @@ pivot_bm_per_length<-df_bm_per_length_ICES_SD  |>
 pivot_bm_per_length
 
 
-
-# df_bm_other<-df_bm_per_length_ICES_SD|> 
-#   filter(species!=126417 & species!=126425) |> 
-#   ungroup() |> group_by(rec, CatchLengthClass) |>
-#   summarise(bm=sum(bm_per_length, na.rm = T))
-# 
-# pivot_bm_other<-df_bm_other |> arrange(CatchLengthClass) |> 
-#   pivot_wider(names_from=CatchLengthClass, values_from=bm) |> 
-#   mutate(BMtot=rowSums(across(c(`9`:`250`)), na.rm = T)) |> 
-#   select(rec, BMtot, everything())
-# pivot_bm_other
-
 # ==========================
 # RESULT FILE
 # ==========================
-AH<-pivot_n_at_age|> filter(species==126417) |> select(-species)
-AS<-pivot_n_at_age|> filter(species==126425)|> select(-species)
+AH<-pivot_n_at_age|> filter(species==126417) |> select(-species, -`NA`)
+AS<-pivot_n_at_age|> filter(species==126425)|> select(-species, -`NA`)
 AO<-pivot_n_per_length|>filter(species!=126417 & species!=126425)
 
 WH<-pivot_bm_at_age|> filter(species==126417)|> select(-species)
@@ -480,10 +451,6 @@ res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2024_new.xlsx")
 
-
 print(x=pivot_n_at_age, n=100)
-
-
-
 
 

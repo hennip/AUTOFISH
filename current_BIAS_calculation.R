@@ -52,7 +52,8 @@ df_catch_w_rec<-df_catch |>
 
 df_bio<-bio_all|> filter(SurveyYear==choose_year) |> 
   mutate(BiologyLengthClass =as.numeric(BiologyLengthClass ),
-         species=CatchSpeciesCode)
+         species=CatchSpeciesCode,
+         age=BiologyIndividualAge)
 
 rec_areas<-rec_areas 
 
@@ -310,14 +311,14 @@ df_rec_ICES_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |>
 df_rec_ICES_SD
 
 df_bio_SD<-df_bio |> #bio_all |>
-  select(HaulNumber,species,BiologyIndividualAge,BiologyLengthClass) |> 
+  select(HaulNumber,species,age,BiologyLengthClass) |> 
   left_join(df_hauls_rec) |> 
   select(SurveyYear, species,rec,HaulNumber, everything()) |> 
 left_join(df_rec_ICES_SD)
 #View(df_bio_SD)
 
 n_per_age_length<-df_bio_SD |> 
-  group_by(SurveyYear, species, BiologyIndividualAge,BiologyLengthClass, ICES_SD) |> 
+  group_by(SurveyYear, species, age,BiologyLengthClass, ICES_SD) |> 
   summarise(n=n())|> 
   select(SurveyYear,ICES_SD, species,  everything()) |> 
   arrange(SurveyYear, ICES_SD)
@@ -337,7 +338,7 @@ df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |>
 
 pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
-  pivot_wider(names_from = BiologyIndividualAge, values_from = p_age_at_length) |> 
+  pivot_wider(names_from = age, values_from = p_age_at_length) |> 
   arrange(species,ICES_SD,BiologyLengthClass) |> 
   select(SurveyYear, ICES_SD,species, BiologyLengthClass,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`, `8`,`9`,`10`,`11`,`12`,everything()) 
 pivot_p_age_at_length
@@ -349,9 +350,9 @@ pivot_p_age_at_length
 
 # The age length key is SD based
 age_length_key<-df_p_age_at_length |>
-  mutate(BiologyIndividualAge=as.numeric(BiologyIndividualAge)) |> 
+  mutate(age=as.numeric(age)) |> 
   ungroup() |> 
-  select(species,ICES_SD, BiologyLengthClass, BiologyIndividualAge, p_age_at_length)
+  select(species,ICES_SD, BiologyLengthClass, age, p_age_at_length)
 
 df_n_per_length_ICES_SD<-df_n_per_length |> 
   left_join(df_rec_ICES_SD)|> 
@@ -364,9 +365,9 @@ df_n_at_age<-df_n_per_length_ICES_SD |>
 print(x=df_n_at_age, n=100)
 
 pivot_n_at_age<-df_n_at_age |> group_by(species, 
-  rec, BiologyIndividualAge) |> 
+  rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
-  pivot_wider(names_from = BiologyIndividualAge, values_from = n_at_age) |> 
+  pivot_wider(names_from = age, values_from = n_at_age) |> 
   mutate(Ntot=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
   select(species,rec,Ntot,everything()) |> 
   ungroup()
@@ -424,10 +425,10 @@ print(x=df_bm_at_age, n=100)
 
 pivot_bm_at_age<-df_bm_at_age |> 
   filter(species==126417 | species==126425) |> 
-  group_by(species, rec, BiologyIndividualAge) |> 
+  group_by(species, rec, age) |> 
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
-  arrange(species,BiologyIndividualAge) |> 
-  pivot_wider(names_from = BiologyIndividualAge, values_from = bm_at_age) |> 
+  arrange(species,age) |> 
+  pivot_wider(names_from = age, values_from = bm_at_age) |> 
   mutate(BMtot=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
   select(species, rec, BMtot, everything()) |> 
   ungroup()

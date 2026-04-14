@@ -305,12 +305,11 @@ df_rec_ICES_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |>
                           rec=="45H4", 28.1, ICES_SD)) 
 df_rec_ICES_SD
 
-df_bio_SD<-df_bio |> #bio_all |>
+df_bio_SD<-df_bio |>
   select(HaulNumber,species,age,BiologyLengthClass) |> 
   left_join(df_hauls_rec) |> 
   select(species,rec,HaulNumber, everything()) |> 
 left_join(df_rec_ICES_SD)
-#View(df_bio_SD)
 
 n_per_age_length<-df_bio_SD |> 
   group_by(species, age,BiologyLengthClass, ICES_SD) |> 
@@ -324,12 +323,10 @@ df_sum_per_length_class<-n_per_age_length |> ungroup() |>
   group_by(species,ICES_SD,BiologyLengthClass) |> 
   summarise(sum_per_length_class=sum(n)) |> 
   select(ICES_SD,species, everything())
-#View(df_sum_per_length_class)
 
 # Calculate the percentage at age per length class
 df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |> 
   mutate(p_age_at_length=n/sum_per_length_class)
-#View(df_p_age_at_length)
 
 pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
@@ -337,7 +334,6 @@ pivot_p_age_at_length<-df_p_age_at_length|>
   pivot_wider(names_from = age, values_from = p_age_at_length) #|> 
 pivot_p_age_at_length
 
-#write_xlsx(pivot_p_age_at_length, "../pivot_p_age_at_length.xlsx")
 
 # Abundance at age for herring and sprat
 # ================================
@@ -360,21 +356,23 @@ print(x=df_n_at_age, n=100)
 
 pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
-  arrange(age, species, rec) |> 
+  left_join(df_rec_ICES_SD) |> 
+  arrange(age, species, ICES_SD,rec) |> 
   pivot_wider(names_from = age, values_from = n_at_age) |> 
   mutate(NTOT=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
   rename(N0=`0`,N1=`1`,N2=`2`,N3=`3`,N4=`4`,N5=`5`,N6=`6`,N7=`7`,N8=`8`,
          N9=`9`,N10=`10`,N11=`11`,N12=`12`)|> 
-  select(species,rec,NTOT,everything()) |> 
+  select(species,ICES_SD,rec,NTOT,everything()) |> 
   ungroup()
 print(x=pivot_n_at_age, n=100)
 
 # Other species per rec and length
 pivot_n_per_length<-df_n_per_length |>
+  left_join(df_rec_ICES_SD) |> 
   group_by(rec, species) |> 
-  arrange(CatchLengthClass,species, rec) |> 
+  arrange(CatchLengthClass,species, ICES_SD,rec) |> 
   pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
-  select(-year) |> select(species, rec, everything())
+  select(-year) |> select(species, ICES_SD,rec, everything())
 pivot_n_per_length
 
 
@@ -417,12 +415,13 @@ pivot_bm_at_age<-df_bm_at_age |>
   filter(species==126417 | species==126425) |> 
   group_by(species, rec, age) |> 
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
-  arrange(species,age) |> 
+  left_join(df_rec_ICES_SD)|> 
+  arrange(age,species,ICES_SD) |> 
   pivot_wider(names_from = age, values_from = bm_at_age) |> 
   mutate(WTOT=rowSums(across(c(`0`:`12`)), na.rm = T)) |>
   rename(W0=`0`,W1=`1`,W2=`2`,W3=`3`,W4=`4`,W5=`5`,W6=`6`,W7=`7`,W8=`8`,
          W9=`9`,W10=`10`,W11=`11`,W12=`12`)|> 
-  select(species, rec, WTOT, everything()) |> 
+  select(species,ICES_SD, rec, WTOT, everything()) |> 
   ungroup()
 print(x=pivot_bm_at_age, n=100)
 
@@ -433,16 +432,15 @@ pivot_bm_per_length<-df_bm_per_length_ICES_SD  |>
   pivot_wider(names_from=CatchLengthClass, values_from = bm_per_length)
 pivot_bm_per_length
 
-
 # ==========================
 # RESULT FILE
 # ==========================
-AH<-pivot_n_at_age|> filter(species==126417) |> select(-species, -`NA`)
-AS<-pivot_n_at_age|> filter(species==126425)|> select(-species, -`NA`)
+AH<-pivot_n_at_age|> filter(species==126417) |> select( -`NA`)
+AS<-pivot_n_at_age|> filter(species==126425)|> select( -`NA`)
 AO<-pivot_n_per_length|>filter(species!=126417 & species!=126425)
 
-WH<-pivot_bm_at_age|> filter(species==126417)|> select(-species)
-WS<-pivot_bm_at_age|> filter(species==126425)|> select(-species)
+WH<-pivot_bm_at_age|> filter(species==126417)
+WS<-pivot_bm_at_age|> filter(species==126425)
 WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
 # To create an xlsx with (multiple) named sheets, 
@@ -450,7 +448,4 @@ WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2024_new.xlsx")
-
-print(x=pivot_n_at_age, n=100)
-
 

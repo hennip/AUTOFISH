@@ -374,8 +374,9 @@ pivot_n_at_age<-df_n_at_age |> group_by(CatchSpeciesCode,
   rec, BiologyIndividualAge) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
   pivot_wider(names_from = BiologyIndividualAge, values_from = n_at_age) |> 
-  mutate(Ntot=sum(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`, na.rm = T)) |> 
-  select(CatchSpeciesCode,rec,Ntot,`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,everything())
+  mutate(Ntot=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
+  select(CatchSpeciesCode,rec,Ntot,everything()) |> 
+  ungroup()
 print(x=pivot_n_at_age, n=100)
 
 # Number at length for other species than herring & sprat
@@ -411,6 +412,7 @@ df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |>
   mutate(mean_w_at_length=sum_w/n_hauls_per_case) #OK
 
 # Biomass per length per rectangle = n per length per rec * mean w_at length
+# Unit is grams times millions individuals =millions of grams= tonnes
 df_bm_at_length<-df_n_per_length |> 
   left_join(df_mean_w_at_length_per_rec, relationship="many-to-many") |> 
   mutate(bm_per_length=mean_w_at_length*n_per_length)
@@ -420,6 +422,7 @@ df_bm_per_length_ICES_SD<-df_bm_at_length |>
   left_join(df_rec_ICES_SD)|> 
   select(CatchSpeciesCode,ICES_SD,rec,CatchLengthClass, bm_per_length)
 
+# Biomass per age for herring and sprat
 df_bm_at_age<-df_bm_per_length_ICES_SD |>
   mutate(BiologyLengthClass=CatchLengthClass) |> 
   left_join(age_length_key, relationship="many-to-many") |> 
@@ -427,29 +430,44 @@ df_bm_at_age<-df_bm_per_length_ICES_SD |>
 print(x=df_bm_at_age, n=100)
 
 pivot_bm_at_age<-df_bm_at_age |> 
+  filter(CatchSpeciesCode==126417 | CatchSpeciesCode==126425) |> 
   group_by(CatchSpeciesCode, rec, BiologyIndividualAge) |> 
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
-  #arrange(BiologyIndividualAge) |> 
-  pivot_wider(names_from = rec, values_from = bm_at_age) |> 
-  mutate(Ntot=sum(`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`, na.rm = T)) |> 
-  select(CatchSpeciesCode,rec,Ntot,#`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,
-         everything())
+  arrange(CatchSpeciesCode,BiologyIndividualAge) |> 
+  pivot_wider(names_from = BiologyIndividualAge, values_from = bm_at_age) |> 
+  mutate(BMtot=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
+  select(CatchSpeciesCode, rec, BMtot, everything()) |> 
+  ungroup()
 print(x=pivot_bm_at_age, n=100)
 
-  
+# Biomass at length for other species than herring & sprat
+df_bm_other<-df_bm_per_length_ICES_SD|> 
+  filter(CatchSpeciesCode!=126417 & CatchSpeciesCode!=126425) |> 
+  ungroup() |> group_by(rec, CatchLengthClass) |>
+  summarise(bm=sum(bm_per_length, na.rm = T))
 
+
+pivot_bm_other<-df_bm_other |> arrange(CatchLengthClass) |> 
+  pivot_wider(names_from=CatchLengthClass, values_from=bm) |> 
+  mutate(BMtot=rowSums(across(c(`9`:`250`)), na.rm = T)) |> 
+  select(rec, BMtot, everything())
+pivot_bm_other
 
 # ==========================
 # RESULT FILE
 # ==========================
-# Writes a data frame to an xlsx file. To create an xlsx with (multiple) named sheets, 
-# simply set x to a named list of data frames.
-AH<-pivot_n_at_age|> filter(CatchSpeciesCode==126417)
-AS<-pivot_n_at_age|> filter(CatchSpeciesCode==126425)
+AH<-pivot_n_at_age|> filter(CatchSpeciesCode==126417) |> select(-CatchSpeciesCode)
+AS<-pivot_n_at_age|> filter(CatchSpeciesCode==126425)|> select(-CatchSpeciesCode)
+WH<-pivot_bm_at_age|> filter(CatchSpeciesCode==126417)|> select(-CatchSpeciesCode)
+WS<-pivot_bm_at_age|> filter(CatchSpeciesCode==126425)|> select(-CatchSpeciesCode)
 
-res<-list(AH=AH, AS=AS, AO=pivot_n_other)
+# To create an xlsx with (multiple) named sheets, 
+# simply set x to a named list of data frames.
+res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=pivot_n_other, WO=pivot_bm_other)
 
 write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2024_new.xlsx")
+
+
 
 
 #Other species on an extra sheet on EST_BIAS...xlsx

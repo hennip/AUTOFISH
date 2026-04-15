@@ -1,4 +1,3 @@
-source("packages-and-paths.R")
 
 ####################################
 # Read in the acoustic data from GRAHS (Gulf of Riga acoustic survey)

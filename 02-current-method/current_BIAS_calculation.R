@@ -425,6 +425,11 @@ pivot_bm_at_age<-df_bm_at_age |>
   ungroup()
 print(x=pivot_bm_at_age, n=100)
 
+# Mean weight at age
+pivot_bm_at_age 
+
+
+
 # Biomass per length for other species than herring & sprat
 pivot_bm_per_length<-df_bm_per_length_ICES_SD  |> 
   group_by(rec, species) |> 

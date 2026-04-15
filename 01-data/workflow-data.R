@@ -1,4 +1,3 @@
-source("packages-and-paths.R")
 
 # =====================================================
 # Read in the acoustic and trawl data from GRAHS (Gulf of Riga acoustic survey)
@@ -8,6 +7,9 @@ source("packages-and-paths.R")
 # 2. Catch data
 # 3. Biological data, incl. length and age
 ####################################
+
+source("00-basics/packages-and-paths.R")
+
 # Coordinates of ruhnu lighthouse according to Wikipedia. These´will be used
 # to refine new rectangles
 ruhnuLat<-57.80135766
@@ -24,11 +26,12 @@ ruhnuLong<-23.26012233
 min_year<-2023
 max_year<-2024
 
-source("data/read-in-acoustic-data.R") 
+source("01-data/read-in-acoustic-data.R") 
+source("01-data/modify-acoustic-data.R") 
 
-source("data/read-in-trawl-data.R") 
+source("01-data/read-in-trawl-data.R") 
 
-source("data/trawl-hauls.R")
+source("01-data/trawl-hauls.R")
 
 # Define length groups for each species/species group
 # limits are upper limits expect the last one which is also the lower limit 
@@ -37,9 +40,8 @@ source("data/trawl-hauls.R")
 # IN trawl-catches.R AS WELL!!!
 length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
 length_limits_other<-c(60,80,100,120,140) # 6 groups for other species
-source("data/trawl-catches.R")
+source("01-data/trawl-catches.R")
 
-
-source("data/trawl-biotic.R")
+source("01-data/trawl-biotic.R")
 
 

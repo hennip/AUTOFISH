@@ -1,4 +1,4 @@
-source("packages-and-paths.R")
+source("00-basics/packages-and-paths.R")
 
 #source("data/read-in-acoustic-data.R") 
 
@@ -12,7 +12,7 @@ source("packages-and-paths.R")
 pathA<-pathB<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
 dfA24<-read.csv(str_c(pathA,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
   as_tibble() |> mutate(year=2024)
-source("data/read-in-trawl-data.R") 
+source("01-data/read-in-trawl-data.R") 
 
 # Rectangle specific areas as NM^2
 rec_areas<-read_xlsx(str_c("../../01-Projects/AUTOFISH/dat/ICES_rec_areas.xlsx")) 
@@ -283,7 +283,7 @@ df_pp2_per_length<-df_pp2|> ungroup() |>
   select(rec,species,pp2,CatchLengthClass)
 
 df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec) |> 
-  mutate(n_per_length=pp2*n_per_species_per_rectangle) |> 
+  mutate(n_per_length=round(pp2*n_per_species_per_rectangle,3)) |> 
   select(-n_per_species_per_rectangle, -pp2) |> 
   select(year, everything()) 
 
@@ -391,7 +391,13 @@ df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |>
   group_by(rec,species, CatchLengthClass) |> 
   summarise(sum_w=sum(mean_w_at_length_per_haul, na.rm=T)) |> 
   left_join(df_n_hauls_per_case) |> 
-  mutate(mean_w_at_length=sum_w/n_hauls_per_case) #OK
+  mutate(mean_w_at_length=round(sum_w/n_hauls_per_case,2)) #OK
+
+pivot_mean_weight_per_length<-df_mean_w_at_length_per_rec |> 
+  select(rec, species,CatchLengthClass, mean_w_at_length) |> 
+  group_by(rec, species, CatchLengthClass) |> 
+  arrange(CatchLengthClass, species, rec) |> 
+  pivot_wider(values_from = mean_w_at_length, names_from = CatchLengthClass)
 
 # Biomass per length per rectangle = n per length per rec * mean w_at length
 # Unit is grams times millions individuals = millions of grams = tonnes
@@ -426,9 +432,13 @@ pivot_bm_at_age<-df_bm_at_age |>
 print(x=pivot_bm_at_age, n=100)
 
 # Mean weight at age
-pivot_bm_at_age 
+df_mean_weight_at_age<-df_bm_at_age|> full_join(df_n_at_age) |> 
+  group_by(species, rec, age) |> 
+  summarise(mean_weight_at_age=round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
 
-
+pivot_mean_weight_at_age <-df_mean_weight_at_age |> 
+  pivot_wider(names_from = age, values_from = mean_weight_at_age)
+  
 
 # Biomass per length for other species than herring & sprat
 pivot_bm_per_length<-df_bm_per_length_ICES_SD  |> 
@@ -444,9 +454,14 @@ AH<-pivot_n_at_age|> filter(species==126417) |> select( -`NA`)
 AS<-pivot_n_at_age|> filter(species==126425)|> select( -`NA`)
 AO<-pivot_n_per_length|>filter(species!=126417 & species!=126425)
 
-WH<-pivot_bm_at_age|> filter(species==126417)
-WS<-pivot_bm_at_age|> filter(species==126425)
-WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
+#WH<-pivot_bm_at_age|> filter(species==126417)
+#WS<-pivot_bm_at_age|> filter(species==126425)
+#WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
+
+WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)
+WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)
+WO<-pivot_mean_weight_per_length
+
 
 #ST sheet
 df_sigma_rectangle |> 

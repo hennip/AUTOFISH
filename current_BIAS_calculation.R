@@ -443,6 +443,14 @@ WH<-pivot_bm_at_age|> filter(species==126417)
 WS<-pivot_bm_at_age|> filter(species==126425)
 WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
+#ST sheet
+df_sigma_rectangle |> 
+  left_join(df_rec_ICES_SD)|> 
+  rename(RECT=rec, SD=ICES_SD) |> 
+  mutate(SIGMA=round(sigma_rectangle*10000,digits=3),
+         YEAR=choose_year) |> 
+  select(-sigma_rectangle)
+
 # To create an xlsx with (multiple) named sheets, 
 # simply set x to a named list of data frames.
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)

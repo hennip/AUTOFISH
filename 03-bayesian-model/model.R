@@ -2,10 +2,8 @@
 # Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
 # => binomijakauman approksimointi beta-jakaumalla
 #
-library(rjags)
-library(runjags)
 
-source("data/workflow-data.R")
+source("01-data/workflow-data.R")
 
 
 GRAHS_model2<-"
@@ -169,6 +167,12 @@ model{
 cat(GRAHS_model2,file="GRAHS2.txt")
 
 #############################
+
+# A_NM2<-c(819.8155089,# NW
+#          1014.006703,# NE
+#          536.3622401,# SW
+#          1558.658342# SE
+# )
 
 
 data<-list(

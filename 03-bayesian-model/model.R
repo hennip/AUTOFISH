@@ -1,17 +1,12 @@
 #
-# Korvataan silakkam??r?n sovitus silakkaosuuden sovituksella
+# Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
 # => binomijakauman approksimointi beta-jakaumalla
 #
-library(rjags)
-library(runjags)
 
-source("data/read-in-acoustic-data.R")
-source("data/read-in-trawl-data.R")
+source("01-data/workflow-data.R")
 
 
-
-
-GRAHS_model1<-"
+GRAHS_model2<-"
 model{
 
   # Observation model for nautical area scattering coefficients
@@ -77,23 +72,24 @@ model{
         # Length data
         #################
         # Observed number of fish of species s in each length class in rectangle r
-        Lobs[1:8,r,s,y]~dmulti(qL[1:8,r,s,y],nLobs[r,s,y])
+        Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
 
         # approximate dirichlet (set of gamma distributions) with lognormal
         #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
-        qL[1:8,r,s,y]<-zL[1:8,r,s,y]/sum(zL[1:8,r,s,y])
+        qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/
+                                  sum(zL[1:Nlengths[s],r,s,y])
 
-        for(l in 1:8){
+        for(l in 1:Nlengths[s]){
           zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
-          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l]
+          sigmaTmp[l,r,s,y]<-qL[l,r,s,y]*sigmaL[l,s]
         }
-        sigmaR[r,s,y]<-sum(sigmaTmp[1:8,r,s,y])
+        sigmaR[r,s,y]<-sum(sigmaTmp[1:Nlengths[s],r,s,y])
       }
 
-      for(l in 1:8){
+      for(l in 1:Nlengths[1]){ # Age data on herring only
         # Age data
         #################
-        # Gobs: observed number of fish of each age class in length class l
+        # Gobs: observed number of herring of each age class in length class l
         Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
         # qG: age distribution of length class l
 
@@ -102,16 +98,16 @@ model{
 
         for(a in 1:Nages){
           zG[a,l,r,y]~dlnorm(MG[a,l,y],tauG[a,l,y])
-          qGtmp1[a,l,r,y]<-qL[l,r,1,y]*qG[a,l,r,y]
+          pH_at_age[a,l,r,y]<-qL[l,r,1,y]*qG[a,l,r,y] # Proportion of herring at age on length
         }
       }
       for(a in 1:Nages){
-        qGtmp2[a,r,y]<-sum(qGtmp1[a,1:8,r,y])*N[r,1,y]
+        nH_at_age[a,r,y]<-sum(pH_at_age[a,1:Nlengths[1],r,y])*N[r,1,y] # Number of herring at age
       }
     }
 
     for(a in 1:Nages){
-      PopAge[a,y]<-sum(qGtmp2[a,1:Nrec,y])/Ntot[1,y]
+      PopAge[a,y]<-sum(nH_at_age[a,1:Nrec,y])/Ntot[1,y]
     }
     for(l in 1:8){
       alphaG[1:Nages,l,y]<-Gstar[1:Nages,l,y]*etaG
@@ -120,16 +116,19 @@ model{
       tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
     }
     for(s in 1:2){
-      alphaL[1:8,s,y]<-Lstar[1:8,s,y]*(etaL[s]+1)
-      Lstar[1:8,s,y]~ddirich(aL)
-      ML[1:8,s,y]<-log(Lstar[1:8,s,y])-0.5*(1/tauL[1:8,s,y])
-      tauL[1:8,s,y]<-1/log((1/alphaL[1:8,s,y])+1)
+      alphaL[1:Nlengths[s],s,y]<-Lstar[1:Nlengths[s],s,y]*(etaL[s]+1)
+      ML[1:Nlengths[s],s,y]<-log(Lstar[1:Nlengths[s],s,y])-0.5*(1/tauL[1:Nlengths[s],s,y])
+      tauL[1:Nlengths[s],s,y]<-1/log((1/alphaL[1:Nlengths[s],s,y])+1)
     }
+    Lstar[1:Nlengths[1],1,y]~ddirich(aL1)
+    Lstar[1:Nlengths[2],2,y]~ddirich(aL2)
   }
 
-  # meanL: midpoint of each length class
-  sigmaL[1:8]<-4*pi*pow(10,-TSa/10)*pow(meanL[1:8],2)
-  TSa<-71.2
+  for(s in 1:2){
+    # meanL: midpoint of each length class
+    sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,TSa/10)*pow(meanL[1:Nlengths[s],s],2)
+  }
+  TSa<- -71.2
   
   #etaH~dbeta(2,2)
   #etaH_tmp~dnorm(0,0.5) 
@@ -139,49 +138,21 @@ model{
 
   for(s in 1:2){
     etaR[s]~dlnorm(0.8,0.1)
-    #etaE[s]~dbeta(1,1)
     #etaE_tmp[s]~dnorm(0,0.5) 
     #etaE[s]<-exp(etaE_tmp)/(1+exp(etaE_tmp))# logit-normal similar as beta(1,1)
-    etaE[s]~dlnorm(0.8,0.1)
-
+    #etaE[s]~dlnorm(0.8,0.1)
+    etaE[s]<-exp(etaEZ[s])
+    etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
     etaL[s]~dlnorm(0.8,0.1)
   }
 
-# 
-#   for(s in 1:2){
-#     etaL[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#dunif(1,10000)#dlnorm(4.6,0.7)
-# #    etaR[s]~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-#     # spatiaalisen vaihtelun m??r?, voitaisiin ehk? pit?? samana vuosien yli (ainakin alkuun)
-#     # mit? pienempi etaR, sit? v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
-#     # my?hemmin voitais tehd? t?m? niin ett? etaR riippuu kalojen m??r?st? -> v?h?n kalaa, suurempi keskittyminen samoille paikoille.
-# #    etaE[s]<-exp(etaEZ[s])
-#   # etaE voisi periaatteessa riippua kalojen m??r?st?, mutta pidet??n nyt samana yli vuosien
-# #    etaEZ[s]~dnorm(13,0.0000001)  # t?m? parametrisointi voi auttaa JAGSin kanssa
-#   for(y in 1:Nyears){
-#     etaE[y,s]~dlnorm(ME[s],tauE[s])
-#     etaR[y,s]~dlnorm(MR[s],tauR[s])
-#   }
-#   }
-# #  etaR~dlnorm(0.8,0.1)#dlnorm(4.6,0.7)#~dunif(10,1000) # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
-#   muE[1]~dunif(1,100000)
-#   cvE[1]~dunif(0.01,2)
-#   ME[1]<-log(muE[1])-0.5/tauE[1]
-#   tauE[1]<-1/(log(cvE[1]*cvE[1]+1))
-#   muR[1]~dunif(1,1000)
-#   cvR[1]~dunif(0.01,2)
-#   MR[1]<-log(muR[1])-0.5/tauR[1]
-#   tauR[1]<-1/(log(cvR[1]*cvR[1]+1))
-# 
-# muE[2]~dunif(1,100000)
-#   cvE[2]~dunif(0.01,2)
-#   ME[2]<-log(muE[2])-0.5/tauE[2]
-#   tauE[2]<-1/(log(cvE[2]*cvE[2]+1))
-#   muR[2]~dunif(1,1000)
-#   cvR[2]~dunif(0.01,2)
-#   MR[2]<-log(muR[2])-0.5/tauR[2]
-#   tauR[2]<-1/(log(cvR[2]*cvR[2]+1))
-  
+# spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
+# mita pienempi etaR, sita v?hemm?n kalat jakautuneet ruutujen pinta-alan mukaan.
+# myohemmin voitais tehda tama niin etta etaR riippuu kalojen maarasta 
+# -> vahan kalaa, suurempi keskittyminen samoille paikoille.
+# etaE voisi periaatteessa riippua kalojen maarasta, mutta pidetaan nyt samana yli vuosien
+
 
   # Unupdated priors
   ##############################
@@ -193,24 +164,31 @@ model{
 
 }"
 
-cat(GRAHS_model1,file="GRAHS1.txt")
+cat(GRAHS_model2,file="GRAHS2.txt")
 
 #############################
+
+# A_NM2<-c(819.8155089,# NW
+#          1014.006703,# NE
+#          536.3622401,# SW
+#          1558.658342# SE
+# )
 
 
 data<-list(
   Nyears=2,
   Nrec=4,
   Nages=10,
+  Nlengths=c(8,6),
   pi=3.14159265358979323846,
   A=A_NM2, # Areas of rectangles, NM^2
   Atot=sum(A_NM2),
-
+  
   NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
   R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
   pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
   LOG= tot_nasc_per_log_plus_one$LOG,
-
+  
   Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
   Nhaul=Nhaul, # Number of hauls per rectangle
@@ -223,54 +201,65 @@ data<-list(
   Gobs=G_obs, # Number of individuals per age group in each sample
   nGobs=nG_obs, # sample size per age group
   aG=rep(1,10),
-  aL=rep(1,8),
-  meanL=meanL
+  aL1=rep(1,8),
+  aL2=rep(1,6),
+  meanL=meanL/10 # mean lengths in cm's
 )
 
 parnames=c(
+  "muH",
   "PopAge",
   "Lstar",
-  "cv_nasc",
+  "cv_nasc", "cv_nascX", "etaX",
   "etaR", "etaE", "etaL","etaG","etaH",
   "Ntot","N"
 )
 
+# 
+# run0<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+#          burnin =1000, modules = "mix",
+#          sample =1000, adapt = 1000,
+#          keep.jags.files=F,
+#          progress.bar=TRUE, jags.refresh=100)
 
-run0<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
-         burnin =1000, modules = "mix",
-         sample =1000, adapt = 1000,
-         keep.jags.files=F,
-         progress.bar=TRUE, jags.refresh=100)
-
-t01<-Sys.time();print(t01)
-run1<-run.jags(GRAHS_model1, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=100,
+t1<-Sys.time();print(t1)
+run1<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, 
+               method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
-               sample =10000, adapt = 20000,
+               sample =10000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
-save(run1, file="../out/GRAHS1.RData")
-t02<-Sys.time();print(t02)
-print("run1 done");print(difftime(t02,t01))
+run<-run1
+save(run, file="../out/GRAHS2.RData")
+t2<-Sys.time();print(t2)
+print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-plot(run1, var="etaR")
+plot(run, var="eta")
+#chains<-as.mcmc.list(run)
+#traceplot(chains[,"etaE[1]"])
+summary(run, var="Ntot")
 
 
-run2 <- extend.jags(run1, combine=F, sample=10000, thin=1000, keep.jags.files=T)
+
+run2 <- extend.jags(run1, combine=F, sample=10000, thin=1000, keep.jags.files=F)
 t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")
-save(run2, file="../out/GRAHS1.RData")
+run<-run2
+save(run, file="../out/GRAHS2.RData")
 
-run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=T)
+run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=F)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")
-save(run3, file="../out/GRAHS1.RData")
+run<-run3
+save(run, file="../out/GRAHS2.RData")
 
-run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=T)
+run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=F)
 t5<-Sys.time();print(t5)
 print("run4 done"); print(difftime(t5,t4))
 print("--------------------------------------------------")
-save(run4, file="../out/GRAHS1.RData")
+run<-run4
+save(run, file="../out/GRAHS1.RData")
 

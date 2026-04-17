@@ -1,4 +1,3 @@
-source("packages-and-paths.R")
 
 ####################################
 # Read in the acoustic data from GRAHS (Gulf of Riga acoustic survey)
@@ -37,7 +36,7 @@ dfA2<-dfA |>
   mutate(rec_ruhnu=ifelse(LogLatitude>=ruhnuLat & LogLongitude>=ruhnuLong, 2,rec_ruhnu)) |>      # 2: NE 
   mutate(rec_ruhnu=ifelse(LogLatitude<ruhnuLat & LogLongitude<ruhnuLong, 3,rec_ruhnu)) |>        # 3: SW 
   mutate(rec_ruhnu=ifelse(LogLatitude<ruhnuLat & LogLongitude>=ruhnuLong, 4,rec_ruhnu))|>        # 4: SE  
-mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
+  mutate(depthLow=SampleChannelDepthLower, depthUpp=SampleChannelDepthUpper)|>
   select(rec_ruhnu, DataValue, depthLow, depthUpp, everything()) |> 
   #select(-Data, -Header) |> 
   mutate(rec=rec_ruhnu)
@@ -131,15 +130,15 @@ pA3
 nasc_plus_one<-pA3 |> mutate(sum_nasc=NA)
 log_plus_one<-tot_nasc_per_log |> summarise(max_LOG=max(LOG)) |> mutate(LOG=max_LOG+1)
 
- plus_one<-full_join(nasc_plus_one, log_plus_one) |> select(-max_LOG)
+plus_one<-full_join(nasc_plus_one, log_plus_one) |> select(-max_LOG)
 
- tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |> 
-   full_join(plus_one)
- 
- # nascY is year index in the model, must be the same length as sum_nasc
- nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
- nascY
- 
+tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |> 
+  full_join(plus_one)
+
+# nascY is year index in the model, must be the same length as sum_nasc
+nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
+nascY
+
 
 # # Testing stuff
 # ################################################################################

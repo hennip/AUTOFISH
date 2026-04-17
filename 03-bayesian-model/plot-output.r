@@ -1,52 +1,56 @@
 # These graphs are the ones in the manuscript (/ecoknows deliverable)
 
 
-load(file="prg/output/BIAS_15_06_muH_R_0.01.RData")
-load(file="prg/output/BIAS_15_06_muH_R_0.001.RData")
+load("../../01-Projects/AUTOFISH/out/GRAHS1.RData")
 
+run<-run1
 
-chains<-window(chains,start=1000000)
+summary(run1, var="etaH")
+chains<-as.mcmc.list(run1)
+
+#chains<-window(chains,start=1000000)
 #summary(chains)
 
-vuosi<-c(2007:2012)
-nyears<-6
-
-ageOld<-read.table("data/der/AgeDist_oldEstimates.txt", header=T)
-source("prg/model/TrawlData/StandardLengthEstimates.r")
-LengthObs<-Pst
+Years<-c(2023:2024)
+nyears<-length(Years)
 
 
-
-
-source("prg/model/BIAS_data_age_new.r")
-data<-list(
-  pi=3.14159265358979323846,
-  Nyears=6,
-  Cobs=Ntot,
-  #Hobs=Nherring,
-  HobsProp=HerringProp,
-  aG=star2,
-  Gobs=Age,
-  nGobs=AgeTot,
-  aL=star,
-  Lobs=L,
-  nLobs=Ltot,
-  meanL=meanL,
-  Nobs=length(echo$Rec),
-  Nrec=28,
-  Necho=Nlog+1,
-  Atot=Atot,# total area of interest
-  A=A, # Areas of rectangles
-  LOG=echo$LOG,
-  pA=echo$pA, # proportion of echo area out of total rectangle
-  R=echo$Rec, #rectangle
-  nascY=echo$Y,
-  NASC=echo$ch1+echo$ch2 # NASC's from two depth layers
-)
-summary(data)
-
-cbind(apply(data$HobsProp,2,mean,na.rm=T), apply(data$HobsProp,2,sd, na.rm=T))
-
+# #ageOld<-read.table("data/der/AgeDist_oldEstimates.txt", header=T)
+# #source("prg/model/TrawlData/StandardLengthEstimates.r")
+# LengthObs<-Pst
+# 
+# 
+# 
+# 
+# source("prg/model/BIAS_data_age_new.r")
+# data<-list(
+#   pi=3.14159265358979323846,
+#   Nyears=6,
+#   Cobs=Ntot,
+#   #Hobs=Nherring,
+#   HobsProp=HerringProp,
+#   aG=star2,
+#   Gobs=Age,
+#   nGobs=AgeTot,
+#   aL=star,
+#   Lobs=L,
+#   nLobs=Ltot,
+#   meanL=meanL,
+#   Nobs=length(echo$Rec),
+#   Nrec=28,
+#   Necho=Nlog+1,
+#   Atot=Atot,# total area of interest
+#   A=A, # Areas of rectangles
+#   LOG=echo$LOG,
+#   pA=echo$pA, # proportion of echo area out of total rectangle
+#   R=echo$Rec, #rectangle
+#   nascY=echo$Y,
+#   NASC=echo$ch1+echo$ch2 # NASC's from two depth layers
+# )
+# summary(data)
+# 
+# cbind(apply(data$HobsProp,2,mean,na.rm=T), apply(data$HobsProp,2,sd, na.rm=T))
+# 
 
 #################
 # Traces
@@ -65,7 +69,7 @@ traceplot(chains[,"cv_nasc"],main=expression(CV[nasc]), cex.main=1.2, col=c("bla
 plot(density(chains[,"cv_nasc"][[1]]),main=expression(CV[nasc]))
 lines(density(chains[,"cv_nascX"][[1]]))
 
-plot(density(chains[,"etaH"][[1]]),main=expression(CV[nasc]))
+plot(density(chains[,"etaH"][[1]]),main=expression(eta^H))
 lines(density(chains[,"etaX"][[1]]))
  
 cex.main=1.2, col=c("black", "gray"))
@@ -85,7 +89,7 @@ gelman.diag(chains[,"cv_nasc"])
 
 
 par(mfrow=c(2,3),mar=c(2.5,4,4,1))
-traceplot(chains[,"muH[1]"],main="muH[1]")
+traceplot(chains[,"muH[1,1]"],main="muH[1,1]")
 traceplot(chains[,"muH[2]"],main="muH[2]")
 traceplot(chains[,"muH[3]"],main="muH[3]")
 traceplot(chains[,"muH[4]"],main="muH[4]")
@@ -122,11 +126,12 @@ for(i in 1:nyears){
 
 
 
+summary(run1, var="Ntot[1,1]") # Herring, 2023
+summary(run1, var="Ntot[1,2]")# Herring, 2024
 
-
-par(mfrow=c(4,7),mar=c(2,4,3,1))
+par(mfrow=c(2,2),mar=c(2,4,3,1))
 for(y in 1:nyears){
-for(i in 1:28){
+for(i in 1:2){
   traceplot(chains[,paste(sep="","N[",i,",1,",y,"]")],
   main=paste(sep="","N, r=",i," y=",y))
 }

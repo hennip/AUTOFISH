@@ -39,6 +39,9 @@ suppressPackageStartupMessages({
 })
 
 if(computer_name=="hp_laptop"){
+  
+  path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
+  
   pathA<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
   pathB<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
 }

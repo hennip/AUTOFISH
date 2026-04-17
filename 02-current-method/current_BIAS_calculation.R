@@ -2,16 +2,11 @@ source("00-basics/packages-and-paths.R")
 
 #source("data/read-in-acoustic-data.R") 
 
-# ices.rect2-function example:
-# lon <- c(21.97854644, 23.03531506)
-# lat <- c(57.76010658, 57.83974327)
-# # Convert to ICES rectangles
-# rect <- ices.rect2(lon, lat); rect
-
-# BIAS survey data for 2024 => change path
-pathA<-pathB<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
-dfA24<-read.csv(str_c(pathA,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
+# BIAS survey data for 2024
+# NOTE!!! Define path_BIAS in 00-basics/packages-and-paths.R !!!
+dfA24<-read.csv(str_c(path_BIAS,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
   as_tibble() |> mutate(year=2024)
+
 source("01-data/read-in-trawl-data.R") 
 
 # Rectangle specific areas as NM^2
@@ -59,8 +54,13 @@ rec_areas<-rec_areas
 
 
 # ==============================================================================
-# CALCULATIONS --- CALL THIS SOMETHING ELSE
+# BASIC DATA WRANGLING
 # ==============================================================================
+# ices.rect2-function example:
+# lon <- c(21.97854644, 23.03531506)
+# lat <- c(57.76010658, 57.83974327)
+# # Convert to ICES rectangles
+# rect <- ices.rect2(lon, lat); rect
 
 # Define ICES rectangles for each data point 
 # and sum over NASC from different depth layers
@@ -77,10 +77,6 @@ df_nasc<-df_edsu |>
   summarise(mean_nasc=mean(edsu)) |> 
   left_join(rec_areas)
 df_nasc
-
-
-# Basic data wrangling
-# ==============================================================================
 
 # Catch sample sizes per length per haul
 df_sample_size_per_length<-df_catch_w_rec |> 
@@ -452,11 +448,12 @@ pivot_bm_per_length
 # ==========================
 AH<-pivot_n_at_age|> filter(species==126417) |> select( -`NA`)
 AS<-pivot_n_at_age|> filter(species==126425)|> select( -`NA`)
-AO<-pivot_n_per_length|>filter(species!=126417 & species!=126425)
+AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
 
-#WH<-pivot_bm_at_age|> filter(species==126417)
-#WS<-pivot_bm_at_age|> filter(species==126425)
-#WO<-pivot_bm_per_length|>filter(species!=126417 & species!=126425)
+# Biomass per species if of interest
+#pivot_bm_at_age|> filter(species==126417)
+#pivot_bm_at_age|> filter(species==126425)
+#pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
 WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)
 WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)

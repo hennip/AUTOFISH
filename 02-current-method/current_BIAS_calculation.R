@@ -10,7 +10,7 @@ dfA24<-read.csv(str_c(path_BIAS,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.cs
 source("01-data/read-in-trawl-data.R") 
 
 # Rectangle specific areas as NM^2
-rec_areas<-read_xlsx(str_c("../../01-Projects/AUTOFISH/dat/ICES_rec_areas.xlsx")) 
+rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
 
 dfA24
 catch_all

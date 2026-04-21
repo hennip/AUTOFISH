@@ -40,10 +40,10 @@ suppressPackageStartupMessages({
 
 if(computer_name=="hp_laptop"){
   
-  path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
+  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
   
-  pathA<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
-  pathB<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
+  #pathA<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
+  #pathB<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
 }
 if(computer_name=="hp_kala1"){pathA<-pathB<-"../../dat/AUTOFISH/orig/"}
 if(computer_name=="es_laptop"){pathA<-pathB<-"../../ICES Acoustic database/GRAHS/"}

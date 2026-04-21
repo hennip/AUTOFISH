@@ -433,14 +433,17 @@ df_mean_weight_at_age<-df_bm_at_age|> full_join(df_n_at_age) |>
   summarise(mean_weight_at_age=round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
 
 pivot_mean_weight_at_age <-df_mean_weight_at_age |> 
-  pivot_wider(names_from = age, values_from = mean_weight_at_age)
+  pivot_wider(names_from = age, values_from = mean_weight_at_age) |> 
+  left_join(df_rec_ICES_SD) |> select(species, ICES_SD, rec, everything()) 
   
-
 # Biomass per length for other species than herring & sprat
 pivot_bm_per_length<-df_bm_per_length_ICES_SD  |> 
   group_by(rec, species) |> 
   arrange(CatchLengthClass,species, rec) |> 
-  pivot_wider(names_from=CatchLengthClass, values_from = bm_per_length)
+  pivot_wider(names_from=CatchLengthClass, values_from = bm_per_length)|> 
+  #mutate(WTOT=round(rowSums(across(c(`9`:`175`)), na.rm = T),2)) |> 
+  select(species, ICES_SD, rec, #WTOT, 
+         everything())
 pivot_bm_per_length
 
 # ==========================
@@ -463,10 +466,13 @@ WO<-pivot_mean_weight_per_length
 #ST sheet
 df_sigma_rectangle |> 
   left_join(df_rec_ICES_SD)|> 
-  rename(RECT=rec, SD=ICES_SD) |> 
   mutate(SIGMA=round(sigma_rectangle*10000,digits=3),
          YEAR=choose_year) |> 
-  select(-sigma_rectangle)
+  select(-sigma_rectangle) |> 
+  left_join(df_nasc|> select(-year, -ICES_SD)) |> 
+  rename(RECT=rec, SD=ICES_SD, SA=mean_nasc) |> 
+  select(SD, RECT, A_NM2, SA, SIGMA)
+  
 
 # To create an xlsx with (multiple) named sheets, 
 # simply set x to a named list of data frames.

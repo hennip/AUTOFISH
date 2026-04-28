@@ -26,7 +26,9 @@ ruhnuLong<-23.26012233
 min_year<-2023
 max_year<-2024
 
-source("01-data/read-in-acoustic-data.R") 
+#source("01-data/read-in-acoustic-data.R") 
+source("01-data/func-read-in-acoustic-data.R") 
+read_in_acoustic_data(pathA)
 source("01-data/modify-acoustic-data.R") 
 
 #source("01-data/read-in-trawl-data.R") 

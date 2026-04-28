@@ -104,6 +104,20 @@ S_obs
 # Hobsprop: Proportion of herring in each catch
 ###############################################
 # group by rec, haul & species, calculate total catch
+dfB_herring<-catch_all %>% mutate(year=SurveyYear)|> 
+  filter(year>=min_year & year<=max_year)|>
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
+  mutate(catch=round(catch,0)) |> 
+  mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
+  mutate(length=as.numeric(CatchLengthClass)) |> 
+  full_join(df_rec) |> 
+  mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
+  select(year,rec_ruhnu, everything())|> 
+  #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
+  select(-CatchDataType, -CatchSpeciesValidity)
+dfB_herring
+
 herring<-dfB_catch  |> 
   group_by(year,rec_ruhnu,HaulNumber, species) |> 
   summarise(tot_catch=sum(catch))|> 
@@ -180,8 +194,21 @@ numbers_at_length_herring<-numbers_at_length|>
   mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
   mutate(length_group=ifelse(length>=180, 8, length_group)) 
 
-numbers_at_length_other<-numbers_at_length|>
+numbers_at_length_sprat<-numbers_at_length|>
   filter(species==2) |> 
+  mutate(length_group=ifelse(length<90, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=180, 8, length_group)) 
+
+
+numbers_at_length_other<-numbers_at_length|>
+  #filter(species==2) |>  # If two species
+  filter(species==3) |>  # If three species
   mutate(length_group=ifelse(length<60, 1, NA)) |> 
   mutate(length_group=ifelse(length>=60  & length<80, 2, length_group)) |> 
   mutate(length_group=ifelse(length>=80 & length<100, 3, length_group)) |> 
@@ -189,7 +216,9 @@ numbers_at_length_other<-numbers_at_length|>
   mutate(length_group=ifelse(length>=120 & length<140, 5, length_group)) |> 
   mutate(length_group=ifelse(length>=140, 6, length_group))
 
-numbers_per_length_group<-full_join(numbers_at_length_herring, numbers_at_length_other)|> 
+numbers_per_length_group<-full_join(numbers_at_length_herring, 
+                                    numbers_at_length_sprat) |> 
+  full_join(numbers_at_length_other)|> 
   group_by(species, year, rec_ruhnu, length_group) |> 
   summarise(number_at_length=sum(n)) |> 
   pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
@@ -200,7 +229,7 @@ print(n=100, x=numbers_per_length_group)
 #===============================
 # Median lengths in length groups
 #===============================
-medianL_herring<-medianL_other<-c()
+medianL_herring<-medianL_sprat<-medianL_other<-c()
 
 # ========== Herring  =======================
 # herring <90: filter small individuals and calculate their median length
@@ -221,6 +250,29 @@ medianL_herring[8]<-
       summarise(medianL=median(length))
   )[[1]]
 medianL_herring
+
+# ========== Sprat  =======================
+summary(filter(dfB_catch, species==2) |> select(length) )
+
+# sprat <90: filter small individuals and calculate their median length
+medianL_sprat<-as.data.frame(dfB_catch|>
+                                 filter(length<90, species==2) |> select(-species) |> 
+                                 summarise(medianL=median(length)))[[1]]
+for(i in 1:6){
+  medianL_sprat[i+1]<-length_limits_sprat[i]+
+    (length_limits_sprat[i+1]-length_limits_sprat[i])/2
+}
+
+
+# >180
+medianL_sprat[8]<-
+  as.data.frame(
+    dfB_catch|>
+      filter(length>180, species==2) |> select(-species) |> 
+      summarise(medianL=median(length))
+  )[[1]]
+medianL_sprat
+
 
 # ========== Other species  =======================
 
@@ -254,8 +306,9 @@ medianL_other[6]<-
   )[[1]]
 medianL_other
 
-meanL<-array(NA, dim=c(8,2))
+meanL<-array(NA, dim=c(8,Nspecies))
 meanL[,1]<-medianL_herring
+meanL[,2]<-medianL_sprat
 meanL[1:6,2]<-medianL_other
 
 # ==============================================
@@ -315,3 +368,5 @@ for(r in 1:4){
 }
 L_obs
 nL_obs
+
+

@@ -2,7 +2,7 @@
 # Catch data
 ###############
 
-dfB_catch<-catch_all %>% mutate(year=SurveyYear)|> 
+dfB_catch<-catch_all |> mutate(year=SurveyYear)|> 
   filter(year>=min_year & year<=max_year)
 #View(dfB_catch)
 
@@ -13,7 +13,9 @@ dfB_catch<-dfB_catch  |>
   mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
   mutate(length=as.numeric(CatchLengthClass)) |> 
   full_join(df_rec) |> 
-  mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
+  #mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
+  mutate(species=ifelse(CatchSpeciesCode==126417,1,
+                        ifelse(CatchSpeciesCode==126425,2,3))) |> # 1: Herring, 2:sprat, 3:other
   select(year,rec_ruhnu, everything())|> 
   #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
   select(-CatchDataType, -CatchSpeciesValidity)
@@ -52,6 +54,52 @@ for(y in 1:Nyears){
       }}}
 }
 C_obs
+
+# Sobs: Number of individuals per species in the catch
+# Sobs[s,h,r,y]
+###############################################
+# Species:
+# 1: herring
+# 2: sprat
+# 3: all other
+# group by rec, haul & species, calculate total catch
+Nspecies<-3
+
+df_species<-dfB_catch  |> 
+  group_by(year,rec_ruhnu,HaulNumber, species) |> 
+  summarise(catch=sum(catch))|> 
+  select(year,rec_ruhnu, HaulNumber, species, catch) 
+df_species
+
+S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,4,Nyears))
+for(s in 1:Nspecies){
+  for(y in 1:Nyears){
+    for(r in 1:4){
+      apu<-1
+      for(i in 1:length(df_species$rec_ruhnu)){
+        if(df_species$species[i]==s &
+           df_species$year[i]==(y+min_years-1) & 
+           df_species$rec_ruhnu[i]==r){
+          S_obs[s,apu,r,y]<-df_species$catch[i]
+          apu<-apu+1
+        }}}}}
+S_obs
+
+# Replace NA's with 0 in cases where haul took place but
+# did not contain the particular species
+for(y in 1:Nyears){
+  for(r in 1:4){
+    for(h in 1:max_number_of_hauls){
+      for(s in 1:Nspecies){
+        if(is.na(C_obs[h,r,y])==F&
+          is.na(S_obs[s,h,r,y])==T){
+          S_obs[s,h,r,y]<-0
+        }
+      }
+    }
+  }
+}
+S_obs
 
 # Hobsprop: Proportion of herring in each catch
 ###############################################

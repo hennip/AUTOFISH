@@ -37,10 +37,13 @@ suppressPackageStartupMessages({
   library(mapplots)
   
 })
+# Suppress messages (usually those are just annoying)
+options(rlib_message_verbosity = "quiet")
 
 if(computer_name=="hp_laptop"){
   
-  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
+  #pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
+  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_25/"
   
   pathA_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
   pathB_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"

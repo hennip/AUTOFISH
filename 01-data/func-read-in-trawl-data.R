@@ -3,7 +3,9 @@
 # biotic data to separate data frames 
 # ----------------
 
-input_dir <- pathB # Path defined in packages-and-paths.R
+read_in_trawl_data<-function(input_dir){
+
+#input_dir <- pathB # Path defined in packages-and-paths.R
 
 # ===== FUNCTIONS =====
 
@@ -171,3 +173,6 @@ parsed <- lapply(files, process_biotic_file) %>% compact()
 hauls_all <- parsed %>% map("Haul")    %>% compact() %>% list_rbind()
 catch_all <- parsed %>% map("Catch")   %>% compact() %>% list_rbind()
 bio_all   <- parsed %>% map("Biology") %>% compact() %>% list_rbind()
+
+return(list(hauls_all,catch_all,bio_all))
+}

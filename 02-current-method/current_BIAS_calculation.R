@@ -4,25 +4,25 @@ source("00-basics/packages-and-paths.R")
 
 # BIAS survey data for 2024
 # NOTE!!! Define path_BIAS in 00-basics/packages-and-paths.R !!!
-dfA24<-read.csv(str_c(path_BIAS,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
-  as_tibble() |> mutate(year=2024)
+dfA25<-read.csv(str_c(path_BIAS,"Acoustic_67BC714202510_2025-12-30T11.59.27.877.csv"), skip=11) |> 
+  as_tibble() |> mutate(year=2025)
 
 source("01-data/read-in-trawl-data.R") 
 
 # Rectangle specific areas as NM^2
 rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
 
-dfA24
+dfA25
 catch_all
 hauls_all
 bio_all
 rec_areas
 
 # Define the year to be investigated
-choose_year<-2024
+choose_year<-2025
 
 # Modify the datasets: Filter year and transform chr variables to numeric where needed
-df_acou<-dfA24 |> filter(year==choose_year)
+df_acou<-dfA25 |> filter(year==choose_year)
 
 df_hauls_rec<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
@@ -144,7 +144,6 @@ df_p_species_per_haul<-df_catch_per_species  |>
 df_tot_catch_per_rec<-df_catch_per_species|> 
   group_by(rec) |> 
   summarise(tot_catch_per_rec=sum(CatchSpeciesCategoryNumber))
-
 
 # ==============================================================================
 # Black magic begins here
@@ -478,5 +477,5 @@ df_sigma_rectangle |>
 # simply set x to a named list of data frames.
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
-write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2024_new.xlsx")
+write_xlsx(res,"../AUTOFISH/out/EST_BIAS_2024_new.xlsx")
 

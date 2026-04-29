@@ -3,8 +3,7 @@
 # Only files starting with "Acoustic"
 # ----------------
 
-# ===== CONFIG =====
-input_dir <- pathA  # <-- set this folder
+read_in_acoustic_data<-function(input_dir){
 
 # ===== HELPERS =====
 
@@ -165,3 +164,7 @@ acoustic_data_all <- files %>%
 
 # Quick peek
 acoustic_data_all %>% glimpse()
+
+return(acoustic_data_all)
+
+}

@@ -2,27 +2,38 @@ source("00-basics/packages-and-paths.R")
 
 #source("data/read-in-acoustic-data.R") 
 
-# BIAS survey data for 2024
-# NOTE!!! Define path_BIAS in 00-basics/packages-and-paths.R !!!
-dfA24<-read.csv(str_c(path_BIAS,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
-  as_tibble() |> mutate(year=2024)
+# # BIAS survey data for 2024
+# # NOTE!!! Define path_BIAS in 00-basics/packages-and-paths.R !!!
+# dfA24<-read.csv(str_c(path_BIAS,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
+#   as_tibble() |> mutate(year=2024)
+source("01-data/func-read-in-acoustic-data.R")
+dfA<-read_in_acoustic_data(pathA)
 
-source("01-data/read-in-trawl-data.R") 
+source("01-data/func-read-in-trawl-data.R") 
+trawl<-read_in_trawl_data(pathB)
+hauls_all<-trawl[[1]]
+catch_all<-trawl[[2]]
+bio_all<-trawl[[3]]
 
 # Rectangle specific areas as NM^2
 rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
 
-dfA24
+dfA
 catch_all
 hauls_all
 bio_all
 rec_areas
 
 # Define the year to be investigated
-choose_year<-2024
+choose_year<-2025
 
 # Modify the datasets: Filter year and transform chr variables to numeric where needed
-df_acou<-dfA24 |> filter(year==choose_year)
+df_acou<-dfA |> filter(SurveyYear==choose_year) |> 
+  mutate(DataValue=as.numeric(DataValue),
+    LogLatitude =as.numeric(LogLatitude ),
+         LogLongitude =as.numeric(LogLongitude ),
+         year=SurveyYear)
+         
 
 df_hauls_rec<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
@@ -159,7 +170,10 @@ df_p_species_per_rectangle<-df_catch_per_species  |>
   left_join(df_tot_catch_per_haul) |>
   mutate(p_species=CatchSpeciesCategoryNumber/tot_catch_per_haul*100) |>
   group_by(rec, species) |>
-  summarise(p_species_per_rec=mean(p_species)) # NOTE! THIS GIVES EQUAL WEIGHTS FOR HAULS OF DIFFERENT SIZE!!!
+  summarise(sum_species_per_rec=sum(p_species)) |> 
+  full_join(df_n_hauls_per_rec) |> 
+  mutate(p_species_per_rec=sum_species_per_rec/n_hauls_per_rec) # EQUAL WEIGHTS FOR HAULS
+  #summarise(p_species_per_rec=mean(p_species)) # Direct mean cannot be taken since often all species are not present in every haul
 print(x=df_p_species_per_rectangle, n=100)
 
 # Just to check these sum to 100

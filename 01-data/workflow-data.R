@@ -26,10 +26,17 @@ ruhnuLong<-23.26012233
 min_year<-2023
 max_year<-2024
 
-source("01-data/read-in-acoustic-data.R") 
+#source("01-data/read-in-acoustic-data.R") 
+source("01-data/func-read-in-acoustic-data.R") 
+acoustic_data_all<-read_in_acoustic_data(pathA_Bayes)
 source("01-data/modify-acoustic-data.R") 
 
-source("01-data/read-in-trawl-data.R") 
+#source("01-data/read-in-trawl-data.R") 
+source("01-data/func-read-in-trawl-data.R") 
+trawl<-read_in_trawl_data(pathB_Bayes)
+hauls_all<-trawl[[1]]
+catch_all<-trawl[[2]]
+bio_all<-trawl[[3]]
 
 source("01-data/trawl-hauls.R")
 
@@ -38,7 +45,9 @@ source("01-data/trawl-hauls.R")
 # of the last group
 # NOTE THAT THE UPPER AND LOWER LIMITS NEED TO BE DEFINED
 # IN trawl-catches.R AS WELL!!!
+
 length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
+length_limits_sprat<-c(60,80,100,120,140) # 6 groups for sprat
 length_limits_other<-c(60,80,100,120,140) # 6 groups for other species
 source("01-data/trawl-catches.R")
 

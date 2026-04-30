@@ -157,11 +157,13 @@ sample_size<-dfB_catch  |>
 sample_size
 
 # Sample size per species and rec in a form that feeds to the model
-nL_obs<-array(NA, dim=c(4,2,Nyears))
+nL_obs<-array(NA, dim=c(4,Nspecies,Nyears))
 for(y in 1:Nyears){
   nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==1) |>  
                                 pivot_wider(values_from = tot_sample, names_from = species))[,3]
   nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==2) |>  
+                                pivot_wider(values_from = tot_sample, names_from = species))[,3]
+  nL_obs[,3,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==3) |>  
                                 pivot_wider(values_from = tot_sample, names_from = species))[,3]
 }
 nL_obs
@@ -182,6 +184,10 @@ summarise(n=sum(CatchNumberAtLength))
 numbers_at_length
 #View(numbers_at_length)
 
+#length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
+#length_limits_sprat<-c(70,90,110,130) # 5 groups for sprat
+#length_limits_other<-c(60,80,100,120,140,160, 180) # 8 groups for other species
+
 # Number of herring/other species in the sample per rectangle and length group
 numbers_at_length_herring<-numbers_at_length|>
   filter(species==1) |> 
@@ -196,14 +202,11 @@ numbers_at_length_herring<-numbers_at_length|>
 
 numbers_at_length_sprat<-numbers_at_length|>
   filter(species==2) |> 
-  mutate(length_group=ifelse(length<90, 1, NA)) |> 
-  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(length>=180, 8, length_group)) 
+  mutate(length_group=ifelse(length<70, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=70  & length<90, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=90 & length<110, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=110 & length<130, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=130, 5, length_group)) 
 
 
 numbers_at_length_other<-numbers_at_length|>
@@ -214,7 +217,9 @@ numbers_at_length_other<-numbers_at_length|>
   mutate(length_group=ifelse(length>=80 & length<100, 3, length_group)) |> 
   mutate(length_group=ifelse(length>=100 & length<120, 4, length_group)) |> 
   mutate(length_group=ifelse(length>=120 & length<140, 5, length_group)) |> 
-  mutate(length_group=ifelse(length>=140, 6, length_group))
+  mutate(length_group=ifelse(length>=140 & length<160, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=160 & length<180, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=180, 8, length_group))
 
 numbers_per_length_group<-full_join(numbers_at_length_herring, 
                                     numbers_at_length_sprat) |> 
@@ -229,110 +234,152 @@ print(n=100, x=numbers_per_length_group)
 #===============================
 # Median lengths in length groups
 #===============================
-medianL_herring<-medianL_sprat<-medianL_other<-c()
+# check out histograms on length
+# summary(filter(dfB_catch, species==2) |> select(length) )
+# df_h<-filter(dfB_catch, species==1) |> select(length)
+# df_s<-filter(dfB_catch, species==2) |> select(length)
+# df_o<-filter(dfB_catch, species==3) |> select(length)
+#ggplot(df_o, aes(x=length))+
+#  geom_histogram()
+
 
 # ========== Herring  =======================
-# herring <90: filter small individuals and calculate their median length
+medianL_herring<-c()
+N_lh<-length(length_limits_herring)+1 # Number of length groups
+
+# Smallest group: filter small individuals and calculate their median length
 medianL_herring<-as.data.frame(dfB_catch|>
-              filter(length<90, species==1) |> select(-species) |> 
+              filter(length<length_limits_herring[1], species==1) |> 
+                select(-species) |> 
               summarise(medianL=median(length)))[[1]]
-for(i in 1:6){
+for(i in 1:(N_lh-2)){ # groups 2-7
   medianL_herring[i+1]<-length_limits_herring[i]+
     (length_limits_herring[i+1]-length_limits_herring[i])/2
 }
 
 
-# >180
-medianL_herring[8]<-
+# Largest group
+medianL_herring[N_lh]<-
   as.data.frame(
     dfB_catch|>
-      filter(length>180, species==1) |> select(-species) |> 
+      filter(length>length_limits_herring[N_lh-1], species==1) |> 
+      select(-species) |> 
       summarise(medianL=median(length))
   )[[1]]
 medianL_herring
 
 # ========== Sprat  =======================
-summary(filter(dfB_catch, species==2) |> select(length) )
 
-# sprat <90: filter small individuals and calculate their median length
+# Just to check out: median lengths of different species other than herring
+dfB_catch|>
+  filter(#length>140, 
+    species==2) |> 
+  group_by(length) |> 
+  summarise(n=n()) 
+
+
+N_ls<-length(length_limits_sprat)+1 # Number of length groups
+medianL_sprat<-c()
+
+# Smallest group: filter small individuals and calculate their median length
 medianL_sprat<-as.data.frame(dfB_catch|>
-                                 filter(length<90, species==2) |> select(-species) |> 
+                  filter(length<length_limits_sprat[1], species==2) |> 
+                                 select(-species) |> 
                                  summarise(medianL=median(length)))[[1]]
-for(i in 1:6){
+for(i in 1:(N_ls-2)){ 
   medianL_sprat[i+1]<-length_limits_sprat[i]+
     (length_limits_sprat[i+1]-length_limits_sprat[i])/2
 }
 
 
-# >180
-medianL_sprat[8]<-
+# Largest group
+medianL_sprat[N_ls]<-
   as.data.frame(
     dfB_catch|>
-      filter(length>180, species==2) |> select(-species) |> 
+      filter(length>length_limits_sprat[N_ls-1], species==2) |> 
+      select(-species) |> 
       summarise(medianL=median(length))
   )[[1]]
 medianL_sprat
 
 
-# ========== Other species  =======================
 
-# Just to chekc out: median lengths of different species other than herring
+# ========== Other species  =======================
+# Just to check out: median lengths of different species other than herring
 dfB_catch|>
   filter(#length>140, 
-    species==2) |> 
+    species==3) |> 
   group_by(CatchSpeciesCode) |> 
   summarise(x=median(length), n=n()) |> 
   arrange(x)
 
-# Other species than herring <60mm: filter small individuals 
-# and calculate their median length
+N_lo<-length(length_limits_other)+1 # Number of length groups
+medianL_other<-c()
+
+# Smallest group: filter small individuals and calculate their median length
 medianL_other<-as.data.frame(dfB_catch|>
-                               filter(length<60, species==2) |> select(-species) |> 
+                  filter(length<length_limits_other[1], species==3) |> 
+                               select(-species) |> 
                                summarise(medianL=median(length)))[[1]]
-# median lengths in groups 2-5
-for(i in 1:4){
+for(i in 1:(N_lo-2)){ 
   medianL_other[i+1]<-length_limits_other[i]+
     (length_limits_other[i+1]-length_limits_other[i])/2
 }
 
-# Last group, individuals >140mm
-# DO NOT ACCOUNT FOR LAMBREY IN CALCULATING THE median LENGTH OF THE LAST GROUP!!!
-medianL_other[6]<-
+
+# Largest group
+medianL_other[N_lo]<-
   as.data.frame(
     dfB_catch|>
-      # 101172 is river lambrey
-      filter(length>140, species==2, CatchSpeciesCode!= 101172) |> 
+      filter(length>length_limits_other[N_lo-1], species==3) |> 
+      select(-species) |> 
       summarise(medianL=median(length))
   )[[1]]
 medianL_other
+length_limits_other
 
+# Vector for mid lengths is called meanL, although the points are medians
 meanL<-array(NA, dim=c(8,Nspecies))
 meanL[,1]<-medianL_herring
-meanL[,2]<-medianL_sprat
-meanL[1:6,2]<-medianL_other
+meanL[1:N_ls,2]<-medianL_sprat
+meanL[1:N_lo,3]<-medianL_other
+meanL
+
 
 # ==============================================
 
 # Sample size per species and rec in a form that feeds to the model
 # Lobs[1:8,r,s,y]
-max_group_num<-numbers_per_length_group |>group_by(species) |> 
+
+numbers_per_length_group |>group_by(species) |> 
   summarise(max=max(length_group))
 
+# If there's no individuals in a case, replace 0
+# Need to check though that the NA's are still ok
 max_group_num<-max(numbers_per_length_group$length_group)
-L_obs<-array(NA, dim=c(max_group_num,4,2,Nyears))
+L_obs<-array(NA, dim=c(max_group_num,4,Nspecies,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
-    for(g in 1:8){ # Herring
-      L_obs[g,r,1,y]<-as.data.frame(
-      numbers_per_length_group |> 
-        filter(species==1 & year==(y+min_years-1) & length_group==g) |>
-        ungroup() |> select(-year, -species, -length_group))[,r]
+      for(g in 1:N_lh){ # Herring
+      tmp<-numbers_per_length_group |> 
+        filter(species==1 & year==(y+min_years-1) & length_group==g)
+      L_obs[g,r,1,y]<-ifelse(is.null(tmp)==F,
+                             as.data.frame(tmp|>
+        ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
-    for(g in 1:6){ # Other species
-      L_obs[g,r,2,y]<-as.data.frame(
-        numbers_per_length_group |> 
-          filter(species==2 & year==(y+min_years-1) & length_group==g) |>
-          ungroup() |> select(-year, -species, -length_group))[,r]
+    for(g in 1:N_ls){ # Sprat
+      tmp<-numbers_per_length_group |> 
+        filter(species==2 & year==(y+min_years-1) & length_group==g)
+      L_obs[g,r,2,y]<-ifelse(is.null(tmp)==F,
+                             as.data.frame(tmp|>
+        ungroup() |> select(-year, -species, -length_group))[,r],0)
+    }
+    for(g in 1:N_lo){ # Other species
+      tmp<-numbers_per_length_group |> 
+        filter(species==3 & year==(y+min_years-1) & length_group==g)
+      L_obs[g,r,3,y]<-ifelse(is.null(tmp)==F,
+                             as.data.frame(tmp|>
+        ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
   }
 }
@@ -348,25 +395,29 @@ nL_obs
 # AND
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
 for(r in 1:4){
-  for(s in 1:2){
+  for(s in 1:Nspecies){
     for(y in 1:Nyears){
       if(is.na(nL_obs[r,s,y])==T){
         nL_obs[r,s,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
-          for(l in 1:6){ # Both herring and other
-            if(is.na(L_obs[l,r,s,y])==T){
-              L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+          for(l in 1:N_lh){ # Herring
+            if(is.na(L_obs[l,r,1,y])==T){
+              L_obs[l,r,1,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
-            for(l in 7:8){ # only herring
-              if(s==1 & is.na(L_obs[l,r,s,y])==T){
-                L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-              }
-            }  
+          }
+          for(l in 1:N_ls){ # Sprat
+            if(is.na(L_obs[l,r,2,y])==T){
+              L_obs[l,r,2,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            }
+          }
+          for(l in 1:N_lo){ # Other
+            if(is.na(L_obs[l,r,3,y])==T){
+              L_obs[l,r,3,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            }
           }
         }
+      }
     }
   }
-}
 L_obs
 nL_obs
-
 

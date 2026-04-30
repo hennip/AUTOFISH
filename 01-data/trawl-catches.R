@@ -167,7 +167,7 @@ S_obs
 # nLobs
 #==========================
 # catch sample size per ruhnu rectangle and species (1=herring, 2=other)
-sample_size<-dfB_catch  |>
+sample_size<-dfB_catch_sample  |>
   group_by(year,rec_ruhnu,species) |> 
   summarise(tot_sample=sum(CatchNumberAtLength))#|> 
 sample_size
@@ -187,14 +187,14 @@ nL_obs
 # Lobs 
 #==========================
 # min and max length per species
-print(x=dfB_catch |>group_by(CatchSpeciesCode) |>  
+print(x=dfB_catch_sample |>group_by(CatchSpeciesCode) |>  
   summarise(median= median(length),min=min(length), max=max(length)), n=100)
 
   # Define length groups per species and calculate
 # number of individuals in each group
 # NOTE! Number of groups differs for different species
 
-numbers_at_length<-dfB_catch  |> 
+numbers_at_length<-dfB_catch_sample  |> 
   group_by(year,rec_ruhnu, species, length)|>  
 summarise(n=sum(CatchNumberAtLength)) 
 numbers_at_length

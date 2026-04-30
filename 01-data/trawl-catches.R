@@ -3,40 +3,59 @@
 ###############
 
 dfB_catch<-catch_all |> mutate(year=SurveyYear)|> 
-  filter(year>=min_year & year<=max_year)
-#View(dfB_catch)
-
-dfB_catch<-dfB_catch  |>
-  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
-  mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
-  mutate(catch=round(catch,0)) |> 
+  filter(year>=min_year & year<=max_year) |> 
   mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
   mutate(length=as.numeric(CatchLengthClass)) |> 
-  full_join(df_rec) |> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> # Note that this contains doubles!
+  mutate(catch=round(catch,0)) |> 
   #mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
   mutate(species=ifelse(CatchSpeciesCode==126417,1,
-                        ifelse(CatchSpeciesCode==126425,2,3))) |> # 1: Herring, 2:sprat, 3:other
+                        ifelse(CatchSpeciesCode==126425,2,3))) |>  # 1: Herring, 2:sprat, 3:other
+  full_join(df_rec) |> 
   select(year,rec_ruhnu, everything())|> 
-  #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
   select(-CatchDataType, -CatchSpeciesValidity)
-dfB_catch
-#View(dfB_catch)
+
+
+# The catch data is a combination of two datasets:
+# 1: Total catch, separated to species
+# 2: Catch sample data with measured lengths
+# Because these two are combined, CatchNumberAtLength contains duplicates of
+# species specific catches.
+  
+# Thus for the sake of clarity, split the data in two versions:
+# dfB_catch_all, containing data only about species specific total catches
+# dfB_catch_sample, containing data on the length samples
+
+dfB_catch_all<-dfB_catch |> 
+  select(year, rec_ruhnu, HaulNumber, CatchSpeciesCode, species, catch) |> 
+  distinct()
+#dfB_catch_all
+
+# Sum together species other than herring or sprat
+dfB_catch_all_3species<-dfB_catch_all |> 
+  group_by(year, rec_ruhnu, HaulNumber, species) |> 
+  summarise(catch3=sum(catch))
+
+  
+dfB_catch_sample<-dfB_catch |> 
+  select(year, rec_ruhnu, HaulNumber, CatchSpeciesCode, species, length, CatchNumberAtLength) 
+#dfB_catch_sample
 
 
 # Cobs: total catch per trawl haul
 #########################################
 # group by rec & haul, calculate total catch
-TotCatch<-dfB_catch |>
+TotCatch<-dfB_catch_all_3species |>
   group_by(year,rec_ruhnu,HaulNumber) |> 
-  summarise(tot_catch=sum(catch))|> 
-  select(year,rec_ruhnu, HaulNumber, tot_catch)
-#View(TotCatch)
+  summarise(tot_catch=sum(catch3, na.rm=T))#|> 
+  #select(year,rec_ruhnu, HaulNumber, tot_catch)
 TotCatch
 
 # Calculate maximum number of hauls per rectangle in the data
 tmp<-TotCatch |> group_by(year, rec_ruhnu,HaulNumber) |> summarise(n=n()) |> 
   select(-HaulNumber) |> summarise(n=n()) |> select(n)
-max_number_of_hauls<-max(tmp$n)
+max(tmp$n)
 
 
 # Cobs[h,r,y]
@@ -55,6 +74,8 @@ for(y in 1:Nyears){
 }
 C_obs
 
+S_obs[,,1,1]
+
 # Sobs: Number of individuals per species in the catch
 # Sobs[s,h,r,y]
 ###############################################
@@ -65,24 +86,17 @@ C_obs
 # group by rec, haul & species, calculate total catch
 Nspecies<-3
 
-df_species<-dfB_catch  |> 
-  group_by(year,rec_ruhnu,HaulNumber, species) |> 
-  summarise(catch=sum(catch))|> 
-  select(year,rec_ruhnu, HaulNumber, species, catch) 
-df_species
-
 S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,4,Nyears))
-for(s in 1:Nspecies){
-  for(y in 1:Nyears){
-    for(r in 1:4){
-      apu<-1
-      for(i in 1:length(df_species$rec_ruhnu)){
-        if(df_species$species[i]==s &
-           df_species$year[i]==(y+min_years-1) & 
-           df_species$rec_ruhnu[i]==r){
-          S_obs[s,apu,r,y]<-df_species$catch[i]
-          apu<-apu+1
-        }}}}}
+
+for(y in 1:Nyears){
+  for(r in 1:4){
+    dat<-dfB_catch_all_3species |> 
+      filter(year==(y+min_years-1) &rec_ruhnu ==r)
+    df<-t(as.data.frame(dat |> pivot_wider(names_from = species, values_from = catch3) |> 
+                  #filter(year==2023, rec_ruhnu==1) |> 
+                    ungroup() |>  select(-year, -rec_ruhnu, -HaulNumber)))
+S_obs[,1:dim(df)[2],r,y]<-df
+}}
 S_obs
 
 # Replace NA's with 0 in cases where haul took place but
@@ -101,49 +115,51 @@ for(y in 1:Nyears){
 }
 S_obs
 
-# Hobsprop: Proportion of herring in each catch
-###############################################
-# group by rec, haul & species, calculate total catch
-dfB_herring<-catch_all %>% mutate(year=SurveyYear)|> 
-  filter(year>=min_year & year<=max_year)|>
-  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
-  mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
-  mutate(catch=round(catch,0)) |> 
-  mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
-  mutate(length=as.numeric(CatchLengthClass)) |> 
-  full_join(df_rec) |> 
-  mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
-  select(year,rec_ruhnu, everything())|> 
-  #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
-  select(-CatchDataType, -CatchSpeciesValidity)
-dfB_herring
+# If Hobsprop will be used later, please notice that the data contains duplicates
+# Probably doesn't matter because of the proportions, but should anyways be cleaned up
+# # Hobsprop: Proportion of herring in each catch
+# ###############################################
+# # group by rec, haul & species, calculate total catch
+# dfB_herring<-catch_all %>% mutate(year=SurveyYear)|> 
+#   filter(year>=min_year & year<=max_year)|>
+#   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+#   mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
+#   mutate(catch=round(catch,0)) |> 
+#   mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
+#   mutate(length=as.numeric(CatchLengthClass)) |> 
+#   full_join(df_rec) |> 
+#   mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
+#   select(year,rec_ruhnu, everything())|> 
+#   #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
+#   select(-CatchDataType, -CatchSpeciesValidity)
+# dfB_herring
+# 
+# herring<-dfB_catch  |> 
+#   group_by(year,rec_ruhnu,HaulNumber, species) |> 
+#   summarise(tot_catch=sum(catch))|> 
+#   select(year,rec_ruhnu, HaulNumber, species, tot_catch) |> 
+#   filter(species==1) |>  # herring only
+#   mutate(herring_catch=tot_catch) |> 
+#   select(-tot_catch)
+# herring
+# 
+# dfH<-full_join(herring, TotCatch) |> 
+#   mutate(hprop=herring_catch/tot_catch)
 
-herring<-dfB_catch  |> 
-  group_by(year,rec_ruhnu,HaulNumber, species) |> 
-  summarise(tot_catch=sum(catch))|> 
-  select(year,rec_ruhnu, HaulNumber, species, tot_catch) |> 
-  filter(species==1) |>  # herring only
-  mutate(herring_catch=tot_catch) |> 
-  select(-tot_catch)
-herring
-
-dfH<-full_join(herring, TotCatch) |> 
-  mutate(hprop=herring_catch/tot_catch)
-
-
-#HobsProp[h,r,y]
-# Build table for herring proportions in which rows are hauls and columns are rectangles
-Hprops<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
-for(y in 1:Nyears){
-  for(r in 1:4){
-    apu<-1
-    for(i in 1:length(dfH$rec_ruhnu)){
-      if(dfH$year[i]==(y+min_years-1) & dfH$rec_ruhnu[i]==r){
-        Hprops[apu,r,y]<-dfH$hprop[i]
-        apu<-apu+1
-      }}}}
-Hprops
-
+# 
+# #HobsProp[h,r,y]
+# # Build table for herring proportions in which rows are hauls and columns are rectangles
+# Hprops<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
+# for(y in 1:Nyears){
+#   for(r in 1:4){
+#     apu<-1
+#     for(i in 1:length(dfH$rec_ruhnu)){
+#       if(dfH$year[i]==(y+min_years-1) & dfH$rec_ruhnu[i]==r){
+#         Hprops[apu,r,y]<-dfH$hprop[i]
+#         apu<-apu+1
+#       }}}}
+# Hprops
+# 
 
 # nLobs[r,s,y]: Total sample size per rectangle and species
 # Lobs[1:8,r,s,y]: Number of fish of species s in all haul samples at rectangle r from length groups 1:8
@@ -151,7 +167,7 @@ Hprops
 # nLobs
 #==========================
 # catch sample size per ruhnu rectangle and species (1=herring, 2=other)
-sample_size<-dfB_catch  |>
+sample_size<-dfB_catch_sample  |>
   group_by(year,rec_ruhnu,species) |> 
   summarise(tot_sample=sum(CatchNumberAtLength))#|> 
 sample_size
@@ -171,14 +187,14 @@ nL_obs
 # Lobs 
 #==========================
 # min and max length per species
-print(x=dfB_catch |>group_by(CatchSpeciesCode) |>  
+print(x=dfB_catch_sample |>group_by(CatchSpeciesCode) |>  
   summarise(median= median(length),min=min(length), max=max(length)), n=100)
 
   # Define length groups per species and calculate
 # number of individuals in each group
 # NOTE! Number of groups differs for different species
 
-numbers_at_length<-dfB_catch  |> 
+numbers_at_length<-dfB_catch_sample  |> 
   group_by(year,rec_ruhnu, species, length)|>  
 summarise(n=sum(CatchNumberAtLength)) 
 numbers_at_length

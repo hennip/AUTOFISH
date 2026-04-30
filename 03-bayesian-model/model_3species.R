@@ -25,7 +25,7 @@ model{
 
   # Abundances
   ############
-  for(s in 1:2){
+  for(s in 1:Nspecies){
     for(y in 1:Nyears){
       Ntot[s,y]<-exp(Ntmp[s,y])
       Ntmp[s,y]~dnorm(13,0.0000001)
@@ -58,24 +58,18 @@ model{
 
       for(s in 1:Nspecies){
         zS[s,r,y]~dlnorm(MS[s,r,y],tauS[s,r,y])
-        
-        MS[1:Nspecies,r,y]<-log(muS[1:Nspecies,r,y])-0.5*(1/tauS[1:Nspecies,r,y])
-        tauS[1:Nspecies,y]<-1/log((1/alphaS[r,1:Nspecies,y])+1)
-        alphaS[r,1:Nspecies,y]<-muS[s,r,y]*(etaS[s]+1)
-
-        for(s in 1:Nspecies){
-          muS[s,r,y]<-N[r,s,y]/sum(N[r,1:Nspecies,y])
-        }
+        muS[s,r,y]<-N[r,s,y]/sum(N[r,1:Nspecies,y])
       }
-    }
+      MS[1:Nspecies,r,y]<-log(muS[1:Nspecies,r,y])-0.5*(1/tauS[1:Nspecies,r,y])
+      tauS[1:Nspecies,y]<-1/log((1/alphaS[r,1:Nspecies,y])+1)
+      alphaS[r,1:Nspecies,y]<-muS[s,r,y]*(etaS[s]+1)
+      
       #   aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
       #   bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
       # }
       # muH[r,y]<-N[r,1,y]/(N[r,1,y]+N[r,2,y])
-
-    
       
-      for(s in 1:2){
+      for(s in 1:Nspecies){
         # N: Number of fish of species s on rectangle r
         N[r,s,y]<-Ntot[s,y]*pR[r,s,y]
 
@@ -90,7 +84,7 @@ model{
           # n: number of fish of species s on echo area e of rectangle r
           n[e,r,s,y]<-N[r,s,y]*pE[e,r,s,y]
         }
-
+      
         # Length data
         #################
         # Observed number of fish of species s in each length class in rectangle r
@@ -131,7 +125,7 @@ model{
     for(a in 1:Nages){
       PopAge[a,y]<-sum(nH_at_age[a,1:Nrec,y])/Ntot[1,y]
     }
-    for(l in 1:8){
+    for(l in 1:Nlengths[1]){
       alphaG[1:Nages,l,y]<-Gstar[1:Nages,l,y]*etaG
       Gstar[1:Nages,l,y]~ddirich(aG)
       MG[1:Nages,l,y]<-log(Gstar[1:Nages,l,y])-0.5*(1/tauG[1:Nages,l,y])
@@ -144,9 +138,10 @@ model{
     }
     Lstar[1:Nlengths[1],1,y]~ddirich(aL1)
     Lstar[1:Nlengths[2],2,y]~ddirich(aL2)
+    Lstar[1:Nlengths[3],3,y]~ddirich(aL3)
   }
 
-  for(s in 1:2){
+  for(s in 1:Nspecies){
     # meanL: midpoint of each length class
     sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,TSa/10)*pow(meanL[1:Nlengths[s],s],2)
   }
@@ -187,7 +182,7 @@ model{
 
 }"
 
-cat(GRAHS_model2,file="GRAHS2.txt")
+cat(GRAHS_model3,file="GRAHS3.txt")
 
 #############################
 
@@ -202,7 +197,8 @@ data<-list(
   Nyears=2,
   Nrec=4,
   Nages=10,
-  Nlengths=c(8,6),
+  Nspecies=3,
+  Nlengths=c(N_lh,N_ls,N_lo),
   pi=3.14159265358979323846,
   A=A_NM2, # Areas of rectangles, NM^2
   Atot=sum(A_NM2),
@@ -218,15 +214,16 @@ data<-list(
   nascY=nascY, # Year index
   
   Cobs=C_obs, # Total catch per species
-  HobsProp=Hprops, # Proportion of herring in the catch
+  Sobs=S_obs, # Number of individuals per species in each haul
   nLobs=nL_obs, # Sample size per length group
   Lobs=L_obs, # Number of individuals per length group in each sample
   Gobs=G_obs, # Number of individuals per age group in each sample
   nGobs=nG_obs, # sample size per age group
   aG=rep(1,10),
-  aL1=rep(1,8),
-  aL2=rep(1,6),
-  meanL=meanL/10 # mean lengths in cm's
+  aL1=rep(1,N_lh),
+  aL2=rep(1,N_ls),
+  aL3=rep(1,N_lo),
+  meanL=meanL/10 # mean lengths in cm's!!!
 )
 
 parnames=c(
@@ -239,11 +236,11 @@ parnames=c(
 )
 
 # 
-# run0<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
-#          burnin =1000, modules = "mix",
-#          sample =1000, adapt = 1000,
-#          keep.jags.files=F,
-#          progress.bar=TRUE, jags.refresh=100)
+run0<-run.jags(GRAHS_model3, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+         burnin =1000, modules = "mix",
+         sample =1000, adapt = 1000,
+         keep.jags.files=F,
+         progress.bar=TRUE, jags.refresh=100)
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, 

@@ -49,20 +49,31 @@ model{
       for(h in 1:Nhaul[r,y]){ # Several hauls per ruhne rectangle
       # Voi olla että tätä täytyy approksimoida dirichlet-jakaumalla,
       # kuten silakkaosuuksien versiossa...
-        Sobs[s,h,r,y]~dmulti(qS[1:Nspecies,r,y],Cobs[h,r,y])
-        
-        # approximate dirichlet (set of gamma distributions) with lognormal
-        qS[1:Nspecies,r,y]<-zS[1:Nspecies,r,y]/sum(zL[1:Nspecies,r,y])
+        #Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,r,y],Cobs[h,r,y])
+        Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,h,r,y],Cobs[h,r,y])
+        # Sobs[1:Nspecies,h,r,y]~ddirich(alphaS[1:Nspecies,r,y])
+        #Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
 
+        # qS~ddirich() but  
+        # approximate dirichlet (set of gamma distributions) with lognormal distns
+        qS[1:Nspecies,h,r,y]<-zS[1:Nspecies,h,r,y]/sum(zS[1:Nspecies,h,r,y])
+
+        for(s in 1:Nspecies){
+          zS[s,h,r,y]~dlnorm(MS[s,r,y],tauS[s,r,y])
+        }
       }
-
       for(s in 1:Nspecies){
-        zS[s,r,y]~dlnorm(MS[s,r,y],tauS[s,r,y])
         muS[s,r,y]<-N[r,s,y]/sum(N[r,1:Nspecies,y])
       }
       MS[1:Nspecies,r,y]<-log(muS[1:Nspecies,r,y])-0.5*(1/tauS[1:Nspecies,r,y])
-      tauS[1:Nspecies,y]<-1/log((1/alphaS[r,1:Nspecies,y])+1)
-      alphaS[r,1:Nspecies,y]<-muS[s,r,y]*(etaS[s]+1)
+      tauS[1:Nspecies,r,y]<-1/log((1/alphaS[1:Nspecies,r,y])+1)
+      
+      # Kumpi? Riippuu kai siitä, onko dirichlet-multi vai 
+      # approksimoidaanko sitä dirichlet:lla
+      # Paitsi että approksimaatiossa mukaan tulee myös h (haul)
+      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[1:Nspecies]+1)
+      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[1:Nspecies]+1)
+      
       
       #   aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
       #   bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
@@ -90,7 +101,7 @@ model{
         # Observed number of fish of species s in each length class in rectangle r
         Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
 
-        # approximate dirichlet (set of gamma distributions) with lognormal
+        # approximate dirichlet (set of gamma distributions) with lognormal distns
         #qL[1:8,r,s,y]~ddirich(alphaL[1:8,s,y]) # length distributions
         qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/
                                   sum(zL[1:Nlengths[s],r,s,y])
@@ -109,9 +120,10 @@ model{
         Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
         # qG: age distribution of length class l
 
-        # approximate dirichlet (set of gamma distributions) with lognormal
-        qG[1:Nages,l,r,y]<-zG[1:Nages,l,r,y]/sum(zG[1:Nages,l,r,y]) #~ddirich(alphaG[1:Nages,l,y])
-
+        #qG~ddirich(alphaG[1:Nages,l,y]) but
+        # approximate dirichlet (set of gamma distributions) with lognormal distns
+        qG[1:Nages,l,r,y]<-zG[1:Nages,l,r,y]/sum(zG[1:Nages,l,r,y]) 
+        
         for(a in 1:Nages){
           zG[a,l,r,y]~dlnorm(MG[a,l,y],tauG[a,l,y])
           pH_at_age[a,l,r,y]<-qL[l,r,1,y]*qG[a,l,r,y] # Proportion of herring at age on length
@@ -131,7 +143,7 @@ model{
       MG[1:Nages,l,y]<-log(Gstar[1:Nages,l,y])-0.5*(1/tauG[1:Nages,l,y])
       tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
     }
-    for(s in 1:2){
+    for(s in 1:Nspecies){
       alphaL[1:Nlengths[s],s,y]<-Lstar[1:Nlengths[s],s,y]*(etaL[s]+1)
       ML[1:Nlengths[s],s,y]<-log(Lstar[1:Nlengths[s],s,y])-0.5*(1/tauL[1:Nlengths[s],s,y])
       tauL[1:Nlengths[s],s,y]<-1/log((1/alphaL[1:Nlengths[s],s,y])+1)
@@ -153,7 +165,7 @@ model{
   etaH~dlnorm(0.8,0.1)
   etaG~dlnorm(0.8,0.1)
 
-  for(s in 1:2){
+  for(s in 1:Nspecies){
     etaS[s]~dlnorm(0.8,0.1)
     etaR[s]~dlnorm(0.8,0.1)
     #etaE_tmp[s]~dnorm(0,0.5) 

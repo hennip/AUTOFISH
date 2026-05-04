@@ -52,7 +52,6 @@ model{
         #Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,r,y],Cobs[h,r,y])
         Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,h,r,y],Cobs[h,r,y])
         # Sobs[1:Nspecies,h,r,y]~ddirich(alphaS[1:Nspecies,r,y])
-        #Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
 
         # qS~ddirich() but  
         # approximate dirichlet (set of gamma distributions) with lognormal distns
@@ -163,7 +162,7 @@ model{
   #etaH~dbeta(2,2)
   #etaH_tmp~dnorm(0,0.5) 
   #etaH<-exp(etaH_tmp)/(1+exp(etaH_tmp))# logit-normal similar as beta(1,1)
-  etaH~dlnorm(0.8,0.1)
+  #etaH~dlnorm(0.8,0.1)
   etaG~dlnorm(0.8,0.1)
 
   for(s in 1:Nspecies){
@@ -241,11 +240,11 @@ data<-list(
 )
 
 parnames=c(
-  "muH",
+  #"muH",
   "PopAge",
   "Lstar",
   "cv_nasc", "cv_nascX", "etaX",
-  "etaR", "etaE", "etaL","etaG","etaH", "etaS",
+  "etaR", "etaE", "etaL","etaG","etaS",#"etaH", 
   "Ntot","N"
 )
 
@@ -257,43 +256,44 @@ run0<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, method = '
          progress.bar=TRUE, jags.refresh=100)
 
 t1<-Sys.time();print(t1)
-run1<-run.jags(GRAHS_model3, monitor=parnames,data=data,n.chains = 2, 
+run1<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, 
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
                sample =10000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
 run<-run1
-save(run, file="../out/GRAHS3.RData")
+save(run, file="../out/GRAHS4.RData")
 t2<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-plot(run2, var="eta")
+plot(run, var="eta")
 chains<-as.mcmc.list(run)
-#traceplot(chains[,"etaE[1]"])
+traceplot(chains[,"etaE[1]"])
 summary(run, var="Ntot")
+plot(run, var="Ntot")
 
 
 
-run2 <- extend.jags(run1, combine=F, sample=10000, thin=1000, keep.jags.files=F)
+run2 <- extend.jags(run1, combine=F, sample=15000, thin=1000, keep.jags.files=F)
 t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")
 run<-run2
-save(run, file="../out/GRAHS3.RData")
+save(run, file="../out/GRAHS4.RData")
 
 run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=F)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")
 run<-run3
-save(run, file="../out/GRAHS3.RData")
+save(run, file="../out/GRAHS4.RData")
 
 run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=F)
 t5<-Sys.time();print(t5)
 print("run4 done"); print(difftime(t5,t4))
 print("--------------------------------------------------")
 run<-run4
-save(run, file="../out/GRAHS3.RData")
+save(run, file="../out/GRAHS4.RData")
 

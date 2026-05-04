@@ -10,8 +10,11 @@ dfB_catch<-catch_all |> mutate(year=SurveyYear)|>
   mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> # Note that this contains doubles!
   mutate(catch=round(catch,0)) |> 
   #mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
+  # mutate(species=ifelse(CatchSpeciesCode==126417,1,
+  #                       ifelse(CatchSpeciesCode==126425,2,3))) |>  # 1: Herring, 2:sprat, 3:other
   mutate(species=ifelse(CatchSpeciesCode==126417,1,
-                        ifelse(CatchSpeciesCode==126425,2,3))) |>  # 1: Herring, 2:sprat, 3:other
+                         ifelse(CatchSpeciesCode==126425,2,
+                                ifelse(CatchSpeciesCode==126505,3,4)))) |>  # 1: Herring, 2:sprat, 3:stickleback, 4:other
   full_join(df_rec) |> 
   select(year,rec_ruhnu, everything())|> 
   select(-CatchDataType, -CatchSpeciesValidity)
@@ -33,20 +36,23 @@ dfB_catch_all<-dfB_catch |>
 #dfB_catch_all
 
 # Sum together species other than herring or sprat
-dfB_catch_all_3species<-dfB_catch_all |> 
+dfB_catch_all_species<-dfB_catch_all |> 
   group_by(year, rec_ruhnu, HaulNumber, species) |> 
   summarise(catch3=sum(catch))
-
   
 dfB_catch_sample<-dfB_catch |> 
   select(year, rec_ruhnu, HaulNumber, CatchSpeciesCode, species, length, CatchNumberAtLength) 
 #dfB_catch_sample
 
+dfB_catch_all |> 
+       group_by(year, species) |> 
+       summarise(catchTOT=sum(catch))
+
 
 # Cobs: total catch per trawl haul
 #########################################
 # group by rec & haul, calculate total catch
-TotCatch<-dfB_catch_all_3species |>
+TotCatch<-dfB_catch_all_species |>
   group_by(year,rec_ruhnu,HaulNumber) |> 
   summarise(tot_catch=sum(catch3, na.rm=T))#|> 
   #select(year,rec_ruhnu, HaulNumber, tot_catch)
@@ -55,7 +61,7 @@ TotCatch
 # Calculate maximum number of hauls per rectangle in the data
 tmp<-TotCatch |> group_by(year, rec_ruhnu,HaulNumber) |> summarise(n=n()) |> 
   select(-HaulNumber) |> summarise(n=n()) |> select(n)
-max(tmp$n)
+max_number_of_hauls<-max(tmp$n)
 
 
 # Cobs[h,r,y]
@@ -74,7 +80,6 @@ for(y in 1:Nyears){
 }
 C_obs
 
-S_obs[,,1,1]
 
 # Sobs: Number of individuals per species in the catch
 # Sobs[s,h,r,y]
@@ -82,15 +87,16 @@ S_obs[,,1,1]
 # Species:
 # 1: herring
 # 2: sprat
-# 3: all other
+# 3: stickleback
+# 3: ther
 # group by rec, haul & species, calculate total catch
-Nspecies<-3
+Nspecies<-4
 
 S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,4,Nyears))
 
 for(y in 1:Nyears){
   for(r in 1:4){
-    dat<-dfB_catch_all_3species |> 
+    dat<-dfB_catch_all_species |> 
       filter(year==(y+min_years-1) &rec_ruhnu ==r)
     df<-t(as.data.frame(dat |> pivot_wider(names_from = species, values_from = catch3) |> 
                   #filter(year==2023, rec_ruhnu==1) |> 
@@ -179,6 +185,8 @@ for(y in 1:Nyears){
                                 pivot_wider(values_from = tot_sample, names_from = species))[,3]
   nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==2) |>  
                                 pivot_wider(values_from = tot_sample, names_from = species))[,3]
+  nL_obs[,4,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==4) |>  
+                                pivot_wider(values_from = tot_sample, names_from = species))[,3]
   nL_obs[,3,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==3) |>  
                                 pivot_wider(values_from = tot_sample, names_from = species))[,3]
 }
@@ -224,10 +232,17 @@ numbers_at_length_sprat<-numbers_at_length|>
   mutate(length_group=ifelse(length>=110 & length<130, 4, length_group)) |> 
   mutate(length_group=ifelse(length>=130, 5, length_group)) 
 
+numbers_at_length_stickl<-numbers_at_length|>
+  filter(species==3) |> 
+  mutate(length_group=ifelse(length<50, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=50  & length<55, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=55 & length<60, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=60, 4, length_group)) 
+
 
 numbers_at_length_other<-numbers_at_length|>
   #filter(species==2) |>  # If two species
-  filter(species==3) |>  # If three species
+  filter(species==4) |>  # If three species
   mutate(length_group=ifelse(length<60, 1, NA)) |> 
   mutate(length_group=ifelse(length>=60  & length<80, 2, length_group)) |> 
   mutate(length_group=ifelse(length>=80 & length<100, 3, length_group)) |> 
@@ -239,6 +254,7 @@ numbers_at_length_other<-numbers_at_length|>
 
 numbers_per_length_group<-full_join(numbers_at_length_herring, 
                                     numbers_at_length_sprat) |> 
+  full_join(numbers_at_length_stickl)|> 
   full_join(numbers_at_length_other)|> 
   group_by(species, year, rec_ruhnu, length_group) |> 
   summarise(number_at_length=sum(n)) |> 
@@ -286,7 +302,7 @@ medianL_herring
 
 # ========== Sprat  =======================
 
-# Just to check out: median lengths of different species other than herring
+# Just to check out: median lengths of sprat
 dfB_catch|>
   filter(#length>140, 
     species==2) |> 
@@ -294,7 +310,7 @@ dfB_catch|>
   summarise(n=n()) 
 
 
-N_ls<-length(length_limits_sprat)+1 # Number of length groups
+N_lsprat<-length(length_limits_sprat)+1 # Number of length groups
 medianL_sprat<-c()
 
 # Smallest group: filter small individuals and calculate their median length
@@ -302,29 +318,62 @@ medianL_sprat<-as.data.frame(dfB_catch|>
                   filter(length<length_limits_sprat[1], species==2) |> 
                                  select(-species) |> 
                                  summarise(medianL=median(length)))[[1]]
-for(i in 1:(N_ls-2)){ 
+for(i in 1:(N_lsprat-2)){ 
   medianL_sprat[i+1]<-length_limits_sprat[i]+
     (length_limits_sprat[i+1]-length_limits_sprat[i])/2
 }
 
 
 # Largest group
-medianL_sprat[N_ls]<-
+medianL_sprat[N_lsprat]<-
   as.data.frame(
     dfB_catch|>
-      filter(length>length_limits_sprat[N_ls-1], species==2) |> 
+      filter(length>length_limits_sprat[N_lsprat-1], species==2) |> 
       select(-species) |> 
       summarise(medianL=median(length))
   )[[1]]
 medianL_sprat
 
+# ========== Stickleback  =======================
+
+# Just to check out: median lengths of stickleback
+dfB_catch|>
+  filter(
+    species==3) |> 
+  group_by(length) |> 
+  summarise(n=n()) 
+
+
+N_lstickl<-length(length_limits_stickl)+1 # Number of length groups
+medianL_stickl<-c()
+
+# Smallest group: filter small individuals and calculate their median length
+medianL_stickl<-as.data.frame(dfB_catch|>
+                               filter(length<length_limits_stickl[1], species==3) |> 
+                               select(-species) |> 
+                               summarise(medianL=median(length)))[[1]]
+for(i in 1:(N_ls-2)){ 
+  medianL_stickl[i+1]<-length_limits_stickl[i]+
+    (length_limits_stickl[i+1]-length_limits_stickl[i])/2
+}
+
+
+# Largest group
+medianL_stickl[N_lstickl]<-
+  as.data.frame(
+    dfB_catch|>
+      filter(length>length_limits_stickl[N_lstickl-1], species==3) |> 
+      select(-species) |> 
+      summarise(medianL=median(length))
+  )[[1]]
+medianL_stickl
 
 
 # ========== Other species  =======================
 # Just to check out: median lengths of different species other than herring
 dfB_catch|>
-  filter(#length>140, 
-    species==3) |> 
+  filter( 
+    species==4) |> 
   group_by(CatchSpeciesCode) |> 
   summarise(x=median(length), n=n()) |> 
   arrange(x)
@@ -334,7 +383,7 @@ medianL_other<-c()
 
 # Smallest group: filter small individuals and calculate their median length
 medianL_other<-as.data.frame(dfB_catch|>
-                  filter(length<length_limits_other[1], species==3) |> 
+                  filter(length<length_limits_other[1], species==4) |> 
                                select(-species) |> 
                                summarise(medianL=median(length)))[[1]]
 for(i in 1:(N_lo-2)){ 
@@ -347,7 +396,7 @@ for(i in 1:(N_lo-2)){
 medianL_other[N_lo]<-
   as.data.frame(
     dfB_catch|>
-      filter(length>length_limits_other[N_lo-1], species==3) |> 
+      filter(length>length_limits_other[N_lo-1], species==4) |> 
       select(-species) |> 
       summarise(medianL=median(length))
   )[[1]]
@@ -357,8 +406,9 @@ length_limits_other
 # Vector for mid lengths is called meanL, although the points are medians
 meanL<-array(NA, dim=c(8,Nspecies))
 meanL[,1]<-medianL_herring
-meanL[1:N_ls,2]<-medianL_sprat
-meanL[1:N_lo,3]<-medianL_other
+meanL[1:N_lsprat,2]<-medianL_sprat
+meanL[1:N_lstickl,3]<-medianL_stickl
+meanL[1:N_lo,4]<-medianL_other
 meanL
 
 
@@ -383,17 +433,24 @@ for(y in 1:Nyears){
                              as.data.frame(tmp|>
         ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
-    for(g in 1:N_ls){ # Sprat
+    for(g in 1:N_lsprat){ # Sprat
       tmp<-numbers_per_length_group |> 
         filter(species==2 & year==(y+min_years-1) & length_group==g)
       L_obs[g,r,2,y]<-ifelse(is.null(tmp)==F,
                              as.data.frame(tmp|>
         ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
-    for(g in 1:N_lo){ # Other species
+    for(g in 1:N_lstickl){ # Stickleback
       tmp<-numbers_per_length_group |> 
         filter(species==3 & year==(y+min_years-1) & length_group==g)
       L_obs[g,r,3,y]<-ifelse(is.null(tmp)==F,
+                             as.data.frame(tmp|>
+                                             ungroup() |> select(-year, -species, -length_group))[,r],0)
+    }
+    for(g in 1:N_lo){ # Other species
+      tmp<-numbers_per_length_group |> 
+        filter(species==4 & year==(y+min_years-1) & length_group==g)
+      L_obs[g,r,4,y]<-ifelse(is.null(tmp)==F,
                              as.data.frame(tmp|>
         ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
@@ -420,14 +477,19 @@ for(r in 1:4){
               L_obs[l,r,1,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
           }
-          for(l in 1:N_ls){ # Sprat
+          for(l in 1:N_lsprat){ # Sprat
             if(is.na(L_obs[l,r,2,y])==T){
               L_obs[l,r,2,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
           }
-          for(l in 1:N_lo){ # Other
+          for(l in 1:N_lstickl){ # Stickleback
             if(is.na(L_obs[l,r,3,y])==T){
               L_obs[l,r,3,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            }
+          }
+          for(l in 1:N_lo){ # Other
+            if(is.na(L_obs[l,r,4,y])==T){
+              L_obs[l,r,4,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
           }
         }

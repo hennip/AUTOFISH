@@ -88,8 +88,15 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] # etaE palautettu kässärin muotoon, sama yli vuosien
-
+        #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
+        #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[1:Necho[r,y],r,s,y] 
+        #etaEstar[e,r,s,y]<-etaE[s]*n[e,r,s,y]
+      
+        # VAI?
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[r,s,y] 
+        etaEstar[r,s,y]<-etaE[s]*N[r,s,y]
+        
+        
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
           n[e,r,s,y]<-N[r,s,y]*pE[e,r,s,y]
@@ -272,7 +279,10 @@ plot(run, var="eta")
 chains<-as.mcmc.list(run)
 traceplot(chains[,"etaE[1]"])
 summary(run, var="Ntot")
+summary(run, var="N")
 plot(run, var="Ntot")
+plot(run, var="cv_nasc")
+
 
 
 
@@ -283,7 +293,7 @@ print("--------------------------------------------------")
 run<-run2
 save(run, file="../out/GRAHS4.RData")
 
-run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=F)
+run3 <- extend.jags(run2, combine=T, sample=15000, thin=1000, keep.jags.files=F)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")

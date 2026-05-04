@@ -243,7 +243,7 @@ parnames=c(
   "PopAge",
   "Lstar",
   "cv_nasc", "cv_nascX", "etaX",
-  "etaR", "etaE", "etaL","etaG","etaH",
+  "etaR", "etaE", "etaL","etaG","etaH", "etaS",
   "Ntot","N"
 )
 
@@ -255,20 +255,20 @@ run0<-run.jags(GRAHS_model3, monitor=parnames,data=data,n.chains = 2, method = '
          progress.bar=TRUE, jags.refresh=100)
 
 t1<-Sys.time();print(t1)
-run1<-run.jags(GRAHS_model2, monitor=parnames,data=data,n.chains = 2, 
+run1<-run.jags(GRAHS_model3, monitor=parnames,data=data,n.chains = 2, 
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
                sample =10000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
 run<-run1
-save(run, file="../out/GRAHS2.RData")
+save(run, file="../out/GRAHS3.RData")
 t2<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-plot(run, var="eta")
-#chains<-as.mcmc.list(run)
+plot(run2, var="eta")
+chains<-as.mcmc.list(run)
 #traceplot(chains[,"etaE[1]"])
 summary(run, var="Ntot")
 
@@ -279,19 +279,19 @@ t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")
 run<-run2
-save(run, file="../out/GRAHS2.RData")
+save(run, file="../out/GRAHS3.RData")
 
 run3 <- extend.jags(run2, combine=T, sample=10000, thin=1000, keep.jags.files=F)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")
 run<-run3
-save(run, file="../out/GRAHS2.RData")
+save(run, file="../out/GRAHS3.RData")
 
 run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=F)
 t5<-Sys.time();print(t5)
 print("run4 done"); print(difftime(t5,t4))
 print("--------------------------------------------------")
 run<-run4
-save(run, file="../out/GRAHS1.RData")
+save(run, file="../out/GRAHS3.RData")
 

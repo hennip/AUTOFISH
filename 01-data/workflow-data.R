@@ -48,6 +48,7 @@ source("01-data/trawl-hauls.R")
 
 length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
 length_limits_sprat<-c(70,90,110,130) # 5 groups for sprat
+length_limits_stickl<-c(50,55,60) # 4 groups for stickleback
 length_limits_other<-c(60,80,100,120,140,160,180) # 8 groups for other species
 source("01-data/trawl-catches.R")
 

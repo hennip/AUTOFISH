@@ -88,14 +88,13 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
         #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[1:Necho[r,y],r,s,y] 
         #etaEstar[e,r,s,y]<-etaE[s]*n[e,r,s,y]
       
         # VAI?
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[r,s,y] 
-        etaEstar[r,s,y]<-etaE[s]*N[r,s,y]
-        
+        #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[r,s,y] 
+        #etaEstar[r,s,y]<-etaE[s]*N[r,s,y] # sämplää huonommin
         
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -175,10 +174,7 @@ model{
   for(s in 1:Nspecies){
     etaS[s]~dlnorm(0.8,0.1)
     etaR[s]~dlnorm(0.8,0.1)
-    #etaE_tmp[s]~dnorm(0,0.5) 
-    #etaE[s]<-exp(etaE_tmp)/(1+exp(etaE_tmp))# logit-normal similar as beta(1,1)
-    #etaE[s]~dlnorm(0.8,0.1)
-    etaE[s]<-exp(etaEZ[s])
+    etaE[s]<-exp(etaEZ[s])*1000000
     etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
     etaL[s]~dlnorm(0.8,0.1)
   }
@@ -200,8 +196,9 @@ model{
 
 
 }"
+modelname<-"GRAHS4_2"
 
-cat(GRAHS_model4,file="GRAHS4.txt")
+cat(GRAHS_model4,file=paste0(modelname,".txt"))
 
 #############################
 
@@ -266,44 +263,46 @@ t1<-Sys.time();print(t1)
 run1<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, 
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
-               sample =10000, adapt = 50000,
+               sample =50000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
 run<-run1
-save(run, file="../out/GRAHS4.RData")
+save(run, file=paste0(path_output,modelname,".RData"))
 t2<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
 plot(run, var="eta")
-chains<-as.mcmc.list(run)
-traceplot(chains[,"etaE[1]"])
 summary(run, var="Ntot")
 summary(run, var="N")
 plot(run, var="Ntot")
 plot(run, var="cv_nasc")
-
-
-
+chains<-as.mcmc.list(run)
+chains<-window(chains, start=2000000)
+traceplot(chains[,"etaE[1]"])
+traceplot(chains[,"etaE[2]"])
+traceplot(chains[,"etaE[3]"])
+traceplot(chains[,"etaE[4]"])
+summary(chains[,"etaE[1]"])
 
 run2 <- extend.jags(run1, combine=F, sample=15000, thin=1000, keep.jags.files=F)
 t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")
 run<-run2
-save(run, file="../out/GRAHS4.RData")
+save(run, file=paste0(path_output,modelname,".RData"))
 
 run3 <- extend.jags(run2, combine=T, sample=15000, thin=1000, keep.jags.files=F)
 t4<-Sys.time();print(t4)
 print("run3 done"); print(difftime(t4,t3))
 print("--------------------------------------------------")
 run<-run3
-save(run, file="../out/GRAHS4.RData")
+save(run, file=paste0(path_output,modelname,".RData"))
 
 run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=F)
 t5<-Sys.time();print(t5)
 print("run4 done"); print(difftime(t5,t4))
 print("--------------------------------------------------")
 run<-run4
-save(run, file="../out/GRAHS4.RData")
+save(run, file=paste0(path_output,modelname,".RData"))
 

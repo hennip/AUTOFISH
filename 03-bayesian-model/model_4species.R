@@ -55,11 +55,8 @@ model{
       # Species composition in trawl catch
       ######################################
       for(h in 1:Nhaul[r,y]){ # Several hauls per ruhne rectangle
-      # Voi olla että tätä täytyy approksimoida dirichlet-jakaumalla,
-      # kuten silakkaosuuksien versiossa...
-        #Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,r,y],Cobs[h,r,y])
         Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,h,r,y],Cobs[h,r,y])
-        # Sobs[1:Nspecies,h,r,y]~ddirich(alphaS[1:Nspecies,r,y])
+        # Sobs[1:Nspecies,h,r,y]~ddirich(alphaS[1:Nspecies,r,y]) # if dirich approximation for dir-multi needed 
 
         # qS~ddirich() but  
         # approximate dirichlet (set of gamma distributions) with lognormal distns
@@ -81,12 +78,6 @@ model{
       alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[1:Nspecies]+1)
       #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[1:Nspecies]+1)
       
-      
-      #   aH[h,r,y]<-muH[r,y]*Cobs[h,r,y]*etaH
-      #   bH[h,r,y]<-(1-muH[r,y])*Cobs[h,r,y]*etaH
-      # }
-      # muH[r,y]<-N[r,1,y]/(N[r,1,y]+N[r,2,y])
-      
       for(s in 1:Nspecies){
         # N: Number of fish of species s on rectangle r
         N[r,s,y]<-Ntot[s,y]*pR[r,s,y]
@@ -97,13 +88,7 @@ model{
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
         alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
-        #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[1:Necho[r,y],r,s,y] 
-        #etaEstar[e,r,s,y]<-etaE[s]*n[e,r,s,y]
-      
-        # VAI?
-        #alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaEstar[r,s,y] 
-        #etaEstar[r,s,y]<-etaE[s]*N[r,s,y] # sämplää huonommin
-        
+
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
           n[e,r,s,y]<-N[r,s,y]*pE[e,r,s,y]
@@ -173,17 +158,12 @@ model{
   }
   TSa<- -71.2
   
-  #etaH~dbeta(2,2)
-  #etaH_tmp~dnorm(0,0.5) 
-  #etaH<-exp(etaH_tmp)/(1+exp(etaH_tmp))# logit-normal similar as beta(1,1)
-  #etaH~dlnorm(0.8,0.1)
   etaG~dlnorm(0.8,0.1)
 
   for(s in 1:Nspecies){
     etaS[s]~dlnorm(0.8,0.1)
     etaR[s]~dlnorm(0.8,0.1)
     etaE[s]<-exp(etaEZ[s])
-    #etaEZ[s]~dlnorm(0.8,0.1)
     etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
     etaL[s]~dlnorm(0.8,0.1)
   }
@@ -216,7 +196,6 @@ cat(GRAHS_model4,file=paste0(modelname,".txt"))
 #          536.3622401,# SW
 #          1558.658342# SE
 # )
-
 
 data<-list(
   Nyears=2,
@@ -254,6 +233,7 @@ data<-list(
 
 parnames=c(
   #"muH",
+  "muS",
   "PopAge",
   "Lstar",
   "cv_nasc", "cv_nascX", "etaX",
@@ -295,7 +275,7 @@ traceplot(chains[,"etaE[3]"])
 traceplot(chains[,"etaE[4]"])
 summary(chains[,"etaE[1]"])
 
-run2 <- extend.jags(run1, combine=F, sample=15000, thin=1000, keep.jags.files=F)
+run2 <- extend.jags(run1, combine=T, sample=50000, thin=100, keep.jags.files=F)
 t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")

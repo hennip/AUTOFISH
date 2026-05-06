@@ -2,6 +2,7 @@
 # Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
 # => binomijakauman approksimointi beta-jakaumalla
 #
+rm(list = ls())
 
 source("01-data/workflow-data.R")
 
@@ -13,10 +14,17 @@ model{
   ##############################################################
   for(i in 1:Nobs){# total number of observations over years
     NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2) at depth 6-100m
-    # expected NASC at point i, year nascY[i]
-    mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
-                           sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]])/
+    # expected NASC at point i, year nascY[i] 
+    # is a combination of sigmaR and n over 4 species divided by the area covered 
+  mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
+                           sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]]+
+                           sigmaR[R[i],3,nascY[i]]*n[LOG[i],R[i],3,nascY[i]]+
+                           sigmaR[R[i],4,nascY[i]]*n[LOG[i],R[i],4,nascY[i]])/
                            (pA[i]*A[R[i]])
+                           
+                           #sum(sigmaR[R[i],1:4,nascY[i]]*n[LOG[i],R[i],1:4,nascY[i]])/
+                           #(pA[i]*A[R[i]])
+                           
     M_nasc[i,nascY[i]]<-log(mu_nasc[i,nascY[i]])-0.5*(1/tau_nasc)
     propA[LOG[i],R[i],nascY[i]]<-pA[i] # proportion of area i of rectangle R[i]
   }
@@ -174,7 +182,8 @@ model{
   for(s in 1:Nspecies){
     etaS[s]~dlnorm(0.8,0.1)
     etaR[s]~dlnorm(0.8,0.1)
-    etaE[s]<-exp(etaEZ[s])*1000000
+    etaE[s]<-exp(etaEZ[s])
+    #etaEZ[s]~dlnorm(0.8,0.1)
     etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
     etaL[s]~dlnorm(0.8,0.1)
   }
@@ -196,7 +205,7 @@ model{
 
 
 }"
-modelname<-"GRAHS4_2"
+modelname<-"GRAHS4"
 
 cat(GRAHS_model4,file=paste0(modelname,".txt"))
 
@@ -273,6 +282,7 @@ print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
 plot(run, var="eta")
+summary(run, var="eta")
 summary(run, var="Ntot")
 summary(run, var="N")
 plot(run, var="Ntot")

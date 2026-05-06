@@ -352,7 +352,7 @@ medianL_stickl<-as.data.frame(dfB_catch|>
                                filter(length<length_limits_stickl[1], species==3) |> 
                                select(-species) |> 
                                summarise(medianL=median(length)))[[1]]
-for(i in 1:(N_ls-2)){ 
+for(i in 1:(N_lstickl-2)){ 
   medianL_stickl[i+1]<-length_limits_stickl[i]+
     (length_limits_stickl[i+1]-length_limits_stickl[i])/2
 }

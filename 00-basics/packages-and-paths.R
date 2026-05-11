@@ -17,7 +17,8 @@
 # 4. YOU CAN NOW RUN packages-and-paths.R (THIS FILE) AND THE REST OF FILES 
 # SHOULD FOLLOW YOUR CORRECT SETTINGS
 
-source("../AUTOFISH/computer_name.R")
+
+source("../computer_name.R")
 
 suppressPackageStartupMessages({
   library(readxl)

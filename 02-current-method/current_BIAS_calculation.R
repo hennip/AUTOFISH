@@ -504,4 +504,5 @@ df_sigma_rectangle |>
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,"../out/EST_GRAHS_2024_new.xlsx")
+write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
 

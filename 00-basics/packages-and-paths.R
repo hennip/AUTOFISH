@@ -52,5 +52,12 @@ if(computer_name=="hp_laptop"){
 }
 if(computer_name=="hp_kala1"){pathA<-pathB<-"../../dat/AUTOFISH/orig/"}
 if(computer_name=="es_laptop"){pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"}
+  path_output<-"../../01-Projects/AUTOFISH/out/"
+}
+if(computer_name=="hp_kala1"){
+  pathA_Bayes<-pathB_Bayes<-"../../dat/AUTOFISH/orig/"
+  path_output<-"../out/"
+}
+if(computer_name=="es_laptop"){pathA<-pathB<-"../../ICES Acoustic database/GRAHS/"}
 
 

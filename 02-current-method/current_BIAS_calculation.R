@@ -7,7 +7,13 @@ source("00-basics/packages-and-paths.R")
 # dfA24<-read.csv(str_c(path_BIAS,"Acoustic_ESTBIAS2024_2025-01-03T08.14.20.660.csv"), skip=11) |> 
 #   as_tibble() |> mutate(year=2024)
 source("01-data/func-read-in-acoustic-data.R")
-dfA<-read_in_acoustic_data(pathA)
+
+dfA_EE<-read_in_acoustic_data(paste0(pathA,"EE/"))|> mutate(country="EE", CountryCoef=10000)
+dfA_FI<-read_in_acoustic_data(paste0(pathA,"FI/"))|> mutate(country="FI", CountryCoef=20000)
+
+dfA<-full_join(dfA_EE, dfA_FI)|> select(country, everything())|> 
+mutate(lognew=LogDistance+CountryCoef)
+view(dfA_EE)
 
 source("01-data/func-read-in-trawl-data.R") 
 trawl<-read_in_trawl_data(pathB)
@@ -18,22 +24,26 @@ bio_all<-trawl[[3]]
 # Rectangle specific areas as NM^2
 rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
 
+
 dfA
+
 catch_all
 hauls_all
 bio_all
 rec_areas
 
 # Define the year to be investigated
-choose_year<-2025
+choose_year<-2024
 
 # Modify the datasets: Filter year and transform chr variables to numeric where needed
+
 df_acou<-dfA |> filter(SurveyYear==choose_year) |> 
   mutate(DataValue=as.numeric(DataValue),
     LogLatitude =as.numeric(LogLatitude ),
          LogLongitude =as.numeric(LogLongitude ),
          year=SurveyYear)
          
+
 
 df_hauls_rec<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
@@ -155,7 +165,6 @@ df_p_species_per_haul<-df_catch_per_species  |>
 df_tot_catch_per_rec<-df_catch_per_species|> 
   group_by(rec) |> 
   summarise(tot_catch_per_rec=sum(CatchSpeciesCategoryNumber))
-
 
 # ==============================================================================
 # Black magic begins here
@@ -369,9 +378,10 @@ pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |>
   left_join(df_rec_ICES_SD) |> 
   arrange(age, species, ICES_SD,rec) |> 
   pivot_wider(names_from = age, values_from = n_at_age) |> 
-  mutate(NTOT=rowSums(across(c(`0`:`12`)), na.rm = T)) |> 
+  mutate(NTOT=rowSums(across(c(`0`:`11`)), na.rm = T)) |> 
   rename(N0=`0`,N1=`1`,N2=`2`,N3=`3`,N4=`4`,N5=`5`,N6=`6`,N7=`7`,N8=`8`,
-         N9=`9`,N10=`10`,N11=`11`,N12=`12`)|> 
+         N9=`9`,N10=`10`,N11=`11`#,N12=`12`
+         )|> 
   select(species,ICES_SD,rec,NTOT,everything()) |> 
   ungroup()
 print(x=pivot_n_at_age, n=100)
@@ -434,9 +444,10 @@ pivot_bm_at_age<-df_bm_at_age |>
   left_join(df_rec_ICES_SD)|> 
   arrange(age,species,ICES_SD) |> 
   pivot_wider(names_from = age, values_from = bm_at_age) |> 
-  mutate(WTOT=rowSums(across(c(`0`:`12`)), na.rm = T)) |>
+  mutate(WTOT=rowSums(across(c(`0`:`11`)), na.rm = T)) |>
   rename(W0=`0`,W1=`1`,W2=`2`,W3=`3`,W4=`4`,W5=`5`,W6=`6`,W7=`7`,W8=`8`,
-         W9=`9`,W10=`10`,W11=`11`,W12=`12`)|> 
+         W9=`9`,W10=`10`,W11=`11`#,W12=`12`
+         )|> 
   select(species,ICES_SD, rec, WTOT, everything()) |> 
   ungroup()
 print(x=pivot_bm_at_age, n=100)
@@ -492,5 +503,6 @@ df_sigma_rectangle |>
 # simply set x to a named list of data frames.
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
+write_xlsx(res,"../out/EST_GRAHS_2024_new.xlsx")
 write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
 

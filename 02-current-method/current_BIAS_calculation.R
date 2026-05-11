@@ -11,8 +11,11 @@ source("01-data/func-read-in-acoustic-data.R")
 dfA_EE<-read_in_acoustic_data(paste0(pathA,"EE/"))|> mutate(country="EE", CountryCoef=10000)
 dfA_FI<-read_in_acoustic_data(paste0(pathA,"FI/"))|> mutate(country="FI", CountryCoef=20000)
 
-dfA<-full_join(dfA_EE, dfA_FI)|> select(country, everything())|> 
-mutate(lognew=LogDistance+CountryCoef)
+dfA<-full_join(dfA_EE, dfA_FI)|> 
+  select(country, everything()) |> 
+  mutate(LogDistance=as.numeric(LogDistance)) |> 
+  mutate(lognew=LogDistance+CountryCoef)
+
 view(dfA_EE)
 
 source("01-data/func-read-in-trawl-data.R") 

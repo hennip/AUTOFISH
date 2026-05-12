@@ -49,7 +49,8 @@ bio_all<-full_join(bio_EE, bio_FI)|>
 #View(bio_all)
 
 # Rectangle specific areas as NM^2
-rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
+rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |> 
+  rename(ICES_SD=SD, rec=ICES_rectangle, A_NM2=Area_NM2)
 
 
 dfA
@@ -71,16 +72,13 @@ df_acou<-dfA |> filter(SurveyYear==choose_year) |>
          LogLongitude =as.numeric(LogLongitude ),
          year=SurveyYear)
          
-
 df_hauls_rec<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
   mutate(rec=HaulStatisticalRectangle) |> select(-HaulStatisticalRectangle) |> 
   select(SurveyYear,country,HaulNumber,rec)
 
-
 df_n_hauls_per_rec<-df_hauls_rec |> group_by(rec) |> 
   summarise(n_hauls_per_rec=n())
-
 
 df_catch<-catch_all|> filter(SurveyYear==choose_year) |> 
   mutate(CatchSpeciesCategoryNumber=as.numeric(CatchSpeciesCategoryNumber),
@@ -100,9 +98,6 @@ df_bio<-bio_all|> filter(SurveyYear==choose_year) |>
          species=CatchSpeciesCode,
          age=BiologyIndividualAge)
 
-rec_areas<-rec_areas 
-
-
 # ==============================================================================
 # BASIC DATA WRANGLING
 # ==============================================================================
@@ -121,15 +116,13 @@ df_edsu<-df_acou |>
   group_by(year, rec, LogDistance) |> 
   summarise(edsu=sum(DataValue)) # elementary distance sampling unit
 
-tmp<-df_edsu |> filter(choose_year==2024, rec=="51G9")
-View(tmp)
-
 # Take mean NASC per ICES rectangle
 df_nasc<-df_edsu |> 
   group_by(year, rec) |> 
   summarise(mean_nasc=mean(edsu)) |> 
   left_join(rec_areas)
 df_nasc
+#View(df_nasc)
 
 # Catch sample sizes per length per haul
 df_sample_size_per_length<-df_catch_w_rec |> 

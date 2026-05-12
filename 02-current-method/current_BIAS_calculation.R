@@ -12,17 +12,41 @@ dfA_EE<-read_in_acoustic_data(paste0(pathA,"EE/"))|> mutate(country="EE", Countr
 dfA_FI<-read_in_acoustic_data(paste0(pathA,"FI/"))|> mutate(country="FI", CountryCoef=20000)
 
 dfA<-full_join(dfA_EE, dfA_FI)|> 
-  select(country, everything()) |> 
   mutate(LogDistance=as.numeric(LogDistance)) |> 
-  mutate(lognew=LogDistance+CountryCoef)
-
-view(dfA_EE)
+  mutate(lognew=LogDistance+CountryCoef) |> 
+  select(country, lognew, everything())
+dfA
+#view(dfA)
 
 source("01-data/func-read-in-trawl-data.R") 
-trawl<-read_in_trawl_data(pathB)
-hauls_all<-trawl[[1]]
-catch_all<-trawl[[2]]
-bio_all<-trawl[[3]]
+
+#trawl<-read_in_trawl_data(pathB)
+dfB_EE<-read_in_trawl_data(paste0(pathB,"EE/"))
+hauls_EE<-dfB_EE[[1]] |> mutate(country="EE", CountryCoef=10000)
+catch_EE<-dfB_EE[[2]]|> mutate(country="EE", CountryCoef=10000)
+bio_EE<-dfB_EE[[3]]|> mutate(country="EE", CountryCoef=10000)
+
+dfB_FI<-read_in_trawl_data(paste0(pathB,"FI/"))
+hauls_FI<-dfB_FI[[1]]|> mutate(country="FI", CountryCoef=20000)
+catch_FI<-dfB_FI[[2]]|> mutate(country="FI", CountryCoef=20000)
+bio_FI<-dfB_FI[[3]]|> mutate(country="FI", CountryCoef=20000)
+
+hauls_all<-full_join(hauls_EE, hauls_FI)|> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(HaulNumber=HaulNumber+CountryCoef) |> 
+  select(country, HaulNumber, everything())
+
+catch_all<-full_join(catch_EE, catch_FI)|> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(HaulNumber=HaulNumber+CountryCoef) |> 
+  select(country, HaulNumber, everything())
+
+bio_all<-full_join(bio_EE, bio_FI)|> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(HaulNumber=HaulNumber+CountryCoef) |> 
+  select(country, everything())
+
+#View(bio_all)
 
 # Rectangle specific areas as NM^2
 rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
@@ -34,6 +58,7 @@ catch_all
 hauls_all
 bio_all
 rec_areas
+
 
 # Define the year to be investigated
 choose_year<-2024
@@ -47,14 +72,15 @@ df_acou<-dfA |> filter(SurveyYear==choose_year) |>
          year=SurveyYear)
          
 
-
 df_hauls_rec<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
   mutate(rec=HaulStatisticalRectangle) |> select(-HaulStatisticalRectangle) |> 
-  select(SurveyYear,HaulNumber,rec)
+  select(SurveyYear,country,HaulNumber,rec)
+
 
 df_n_hauls_per_rec<-df_hauls_rec |> group_by(rec) |> 
   summarise(n_hauls_per_rec=n())
+
 
 df_catch<-catch_all|> filter(SurveyYear==choose_year) |> 
   mutate(CatchSpeciesCategoryNumber=as.numeric(CatchSpeciesCategoryNumber),
@@ -94,6 +120,9 @@ df_edsu<-df_acou |>
   select(rec, everything()) |> 
   group_by(year, rec, LogDistance) |> 
   summarise(edsu=sum(DataValue)) # elementary distance sampling unit
+
+tmp<-df_edsu |> filter(choose_year==2024, rec=="51G9")
+View(tmp)
 
 # Take mean NASC per ICES rectangle
 df_nasc<-df_edsu |> 
@@ -506,6 +535,7 @@ df_sigma_rectangle |>
 # simply set x to a named list of data frames.
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
-write_xlsx(res,"../out/EST_GRAHS_2024_new.xlsx")
-write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
+write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, ".xlsx"))
+#           "../out/EST_GRAHS_2024_new.xlsx")
+#write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
 

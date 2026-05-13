@@ -68,8 +68,8 @@ choose_year<-2024
 
 df_acou<-dfA |> filter(SurveyYear==choose_year) |> 
   mutate(DataValue=as.numeric(DataValue),
-    LogLatitude =as.numeric(LogLatitude ),
-         LogLongitude =as.numeric(LogLongitude ),
+    LogLatitude=as.numeric(LogLatitude),
+         LogLongitude=as.numeric(LogLongitude),
          year=SurveyYear)
          
 df_hauls_rec<-hauls_all|> 
@@ -94,6 +94,7 @@ df_catch_w_rec<-df_catch |>
   select(rec,species,everything()) 
 
 df_bio<-bio_all|> filter(SurveyYear==choose_year) |> 
+  left_join(df_hauls_rec) |> 
   mutate(BiologyLengthClass =as.numeric(BiologyLengthClass ),
          species=CatchSpeciesCode,
          age=BiologyIndividualAge)
@@ -418,18 +419,34 @@ pivot_n_per_length<-df_n_per_length |>
   arrange(CatchLengthClass,species, ICES_SD,rec) |> 
   pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
   select(-year) |> select(species, ICES_SD,rec, everything())
-pivot_n_per_length
+#View(pivot_n_per_length)
 
 
 # Weight/Biomass
 # ================================
 
-# Mean weight at length per species per haul
-df_mean_w_at_length_per_haul<-df_catch |> 
+# Mean weight at length per species per haul if given at the catch table
+df_mean_w_at_length_per_haul_catch<-df_catch |> 
   #IS CatchWeightAtLength in kg's? 
   mutate(mean_w_at_length_per_haul=CatchWeightAtLength*1000/CatchNumberAtLength) |> # OK
   full_join(df_hauls_rec) |> 
-  select(rec,HaulNumber,species, CatchLengthClass, mean_w_at_length_per_haul) 
+  select(rec,HaulNumber,species, CatchLengthClass, mean_w_at_length_per_haul) |> 
+  filter(is.na(mean_w_at_length_per_haul)==F)
+
+# Mean weight at length per species per haul if individual weights given 
+# at the biology table
+df_mean_w_at_length_per_haul_biol<-df_bio |> 
+  filter(is.na(BiologyIndividualWeight)==F) |> 
+  select(rec, HaulNumber, species, BiologyLengthClass, BiologyIndividualWeight) |> 
+ distinct() |> 
+    mutate(mean_w_at_length_per_haul=as.numeric(BiologyIndividualWeight)) |> 
+  rename(CatchLengthClass=BiologyLengthClass) |> 
+  select(-BiologyIndividualWeight)
+  #group_by(HaulNumber, BiologyLengthClass) |> 
+   
+# Combine
+df_mean_w_at_length_per_haul<-full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
+View(df_mean_w_at_length_per_haul)
 
 # Mean weight per rec (equal weights on hauls) per length per species
 df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 

@@ -46,9 +46,8 @@ if(computer_name=="hp_laptop"){
   
   pathA_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
   pathB_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
-  
-  path_output<-"../../01-Projects/AUTOFISH/out/"
-  
+
+  path_output<-"../../01-Projects/AUTOFISH/out/"  
 }
 if(computer_name=="es_laptop"){
   pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"

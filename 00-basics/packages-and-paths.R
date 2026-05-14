@@ -42,22 +42,31 @@ options(rlib_message_verbosity = "quiet")
 
 if(computer_name=="hp_laptop"){
   
-
-  #pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
-  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_25/"
+  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS/"
   
   pathA_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
   pathB_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
 
+  path_output<-"../../01-Projects/AUTOFISH/out/"  
 }
+<<<<<<< HEAD
 if(computer_name=="hp_kala1"){pathA<-pathB<-"../../dat/AUTOFISH/orig/"}
 if(computer_name=="es_laptop"){pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"
   path_output<-"../../01-Projects/AUTOFISH/out/"
+=======
+if(computer_name=="es_laptop"){
+  pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"
+  #pathA<-pathB<-"../../ICES Acoustic database/GRAHS/"
+>>>>>>> 5b629451ffadac5ef12b495c4523f55c37b8d467
 }
+
 if(computer_name=="hp_kala1"){
   pathA_Bayes<-pathB_Bayes<-"../../dat/AUTOFISH/orig/"
   path_output<-"../out/"
 }
+<<<<<<< HEAD
 if(computer_name=="es_laptop"){pathA<-pathB<-"../../ICES Acoustic database/BIAS/"}
+=======
+>>>>>>> 5b629451ffadac5ef12b495c4523f55c37b8d467
 
 

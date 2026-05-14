@@ -29,17 +29,41 @@ dfA <- dfA_EE |>
     lognew = LogDistance + CountryCoef
   )
 
-
 view(dfA)
 
 source("01-data/func-read-in-trawl-data.R") 
-trawl<-read_in_trawl_data(pathB)
-hauls_all<-trawl[[1]]
-catch_all<-trawl[[2]]
-bio_all<-trawl[[3]]
+
+#trawl<-read_in_trawl_data(pathB)
+dfB_EE<-read_in_trawl_data(paste0(pathB,"EE/"))
+hauls_EE<-dfB_EE[[1]] |> mutate(country="EE", CountryCoef=10000)
+catch_EE<-dfB_EE[[2]]|> mutate(country="EE", CountryCoef=10000)
+bio_EE<-dfB_EE[[3]]|> mutate(country="EE", CountryCoef=10000)
+
+dfB_FI<-read_in_trawl_data(paste0(pathB,"FI/"))
+hauls_FI<-dfB_FI[[1]]|> mutate(country="FI", CountryCoef=20000)
+catch_FI<-dfB_FI[[2]]|> mutate(country="FI", CountryCoef=20000)
+bio_FI<-dfB_FI[[3]]|> mutate(country="FI", CountryCoef=20000)
+
+hauls_all<-full_join(hauls_EE, hauls_FI)|> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(HaulNumber=HaulNumber+CountryCoef) |> 
+  select(country, HaulNumber, everything())
+
+catch_all<-full_join(catch_EE, catch_FI)|> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(HaulNumber=HaulNumber+CountryCoef) |> 
+  select(country, HaulNumber, everything())
+
+bio_all<-full_join(bio_EE, bio_FI)|> 
+  mutate(HaulNumber=as.numeric(HaulNumber)) |> 
+  mutate(HaulNumber=HaulNumber+CountryCoef) |> 
+  select(country, everything())
+
+#View(bio_all)
 
 # Rectangle specific areas as NM^2
-rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) 
+rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |> 
+  rename(ICES_SD=SD, rec=ICES_rectangle, A_NM2=Area_NM2)
 
 
 dfA
@@ -49,6 +73,7 @@ hauls_all
 bio_all
 rec_areas
 
+
 # Define the year to be investigated
 choose_year<-2024
 
@@ -56,16 +81,14 @@ choose_year<-2024
 
 df_acou<-dfA |> filter(SurveyYear==choose_year) |> 
   mutate(DataValue=as.numeric(DataValue),
-    LogLatitude =as.numeric(LogLatitude ),
-         LogLongitude =as.numeric(LogLongitude ),
+    LogLatitude=as.numeric(LogLatitude),
+         LogLongitude=as.numeric(LogLongitude),
          year=SurveyYear)
          
-
-
 df_hauls_rec<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
   mutate(rec=HaulStatisticalRectangle) |> select(-HaulStatisticalRectangle) |> 
-  select(SurveyYear,HaulNumber,rec)
+  select(SurveyYear,country,HaulNumber,rec)
 
 df_n_hauls_per_rec<-df_hauls_rec |> group_by(rec) |> 
   summarise(n_hauls_per_rec=n())
@@ -84,12 +107,10 @@ df_catch_w_rec<-df_catch |>
   select(rec,species,everything()) 
 
 df_bio<-bio_all|> filter(SurveyYear==choose_year) |> 
+  left_join(df_hauls_rec) |> 
   mutate(BiologyLengthClass =as.numeric(BiologyLengthClass ),
          species=CatchSpeciesCode,
          age=BiologyIndividualAge)
-
-rec_areas<-rec_areas 
-
 
 # ==============================================================================
 # BASIC DATA WRANGLING
@@ -115,6 +136,7 @@ df_nasc<-df_edsu |>
   summarise(mean_nasc=mean(edsu)) |> 
   left_join(rec_areas)
 df_nasc
+#View(df_nasc)
 
 # Catch sample sizes per length per haul
 df_sample_size_per_length<-df_catch_w_rec |> 
@@ -410,18 +432,34 @@ pivot_n_per_length<-df_n_per_length |>
   arrange(CatchLengthClass,species, ICES_SD,rec) |> 
   pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
   select(-year) |> select(species, ICES_SD,rec, everything())
-pivot_n_per_length
+#View(pivot_n_per_length)
 
 
 # Weight/Biomass
 # ================================
 
-# Mean weight at length per species per haul
-df_mean_w_at_length_per_haul<-df_catch |> 
+# Mean weight at length per species per haul if given at the catch table
+df_mean_w_at_length_per_haul_catch<-df_catch |> 
   #IS CatchWeightAtLength in kg's? 
   mutate(mean_w_at_length_per_haul=CatchWeightAtLength*1000/CatchNumberAtLength) |> # OK
   full_join(df_hauls_rec) |> 
-  select(rec,HaulNumber,species, CatchLengthClass, mean_w_at_length_per_haul) 
+  select(rec,HaulNumber,species, CatchLengthClass, mean_w_at_length_per_haul) |> 
+  filter(is.na(mean_w_at_length_per_haul)==F)
+
+# Mean weight at length per species per haul if individual weights given 
+# at the biology table
+df_mean_w_at_length_per_haul_biol<-df_bio |> 
+  filter(is.na(BiologyIndividualWeight)==F) |> 
+  select(rec, HaulNumber, species, BiologyLengthClass, BiologyIndividualWeight) |> 
+ distinct() |> 
+    mutate(mean_w_at_length_per_haul=as.numeric(BiologyIndividualWeight)) |> 
+  rename(CatchLengthClass=BiologyLengthClass) |> 
+  select(-BiologyIndividualWeight)
+  #group_by(HaulNumber, BiologyLengthClass) |> 
+   
+# Combine
+df_mean_w_at_length_per_haul<-full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
+View(df_mean_w_at_length_per_haul)
 
 # Mean weight per rec (equal weights on hauls) per length per species
 df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 
@@ -520,6 +558,7 @@ df_sigma_rectangle |>
 # simply set x to a named list of data frames.
 res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
-write_xlsx(res,"../out/EST_GRAHS_2024_new.xlsx")
-write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
+write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, ".xlsx"))
+#           "../out/EST_GRAHS_2024_new.xlsx")
+#write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
 

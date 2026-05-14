@@ -51,7 +51,7 @@ if(computer_name=="hp_laptop"){
 }
 if(computer_name=="es_laptop"){
   pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"
-  #pathA<-pathB<-"../../ICES Acoustic database/GRAHS/"
+  path_output<-"../../R projects/out/"  
 }
 
 if(computer_name=="hp_kala1"){

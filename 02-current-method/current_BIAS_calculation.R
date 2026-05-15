@@ -1,3 +1,5 @@
+rm(list = ls())
+
 source("00-basics/packages-and-paths.R")
 
 #source("data/read-in-acoustic-data.R") 
@@ -54,6 +56,15 @@ hauls_PL<-dfB_PL[[1]]|> mutate(country="PL", CountryCoef=40000)
 catch_PL<-dfB_PL[[2]]|> mutate(country="PL", CountryCoef=40000)
 bio_PL<-dfB_PL[[3]]|> mutate(country="PL", CountryCoef=40000)
 
+# if mean weight exists in CatchWeightAtLength column, remove individual weights
+# from the biology table
+if(dim(catch_PL |> filter(is.na(CatchWeightAtLength)==T))[1]==0){
+  bio_PL<-bio_PL |> mutate(BiologyIndividualWeight=NA) |> 
+    select(BiologyIndividualWeight,#BiologyIndividualWeight2, 
+           everything())
+}
+#View(bio_PL)
+
 dfB_SE<-read_in_trawl_data(paste0(pathB,"SE/"))
 hauls_SE<-dfB_SE[[1]]|> mutate(country="SE", CountryCoef=50000)
 catch_SE<-dfB_SE[[2]]|> mutate(country="SE", CountryCoef=50000)
@@ -63,6 +74,13 @@ dfB_LV<-read_in_trawl_data(paste0(pathB,"LV/"))
 hauls_LV<-dfB_LV[[1]]|> mutate(country="LV", CountryCoef=60000)
 catch_LV<-dfB_LV[[2]]|> mutate(country="LV", CountryCoef=60000)
 bio_LV<-dfB_LV[[3]]|> mutate(country="LV", CountryCoef=60000)
+
+if(dim(catch_LV |> filter(is.na(CatchWeightAtLength)==T))[1]==0){
+  bio_LV<-bio_LV |> mutate(BiologyIndividualWeight=NA) |> 
+    select(BiologyIndividualWeight,#BiologyIndividualWeight2, 
+           everything())
+}
+
 
 #dfB_LT<-read_in_trawl_data(paste0(pathB,"LT/"))
 #hauls_LT<-dfB_LT[[1]]|> mutate(country="LT", CountryCoef=70000)
@@ -87,9 +105,15 @@ catch_all<-full_join(catch_EE, catch_FI)|>
   #full_join(hauls_LT) |>
   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
   mutate(HaulNumber=HaulNumber+CountryCoef) |> 
-  select(country, HaulNumber, everything())
+  select(country, HaulNumber, everything()) |> 
+  mutate(CatchWeightAtLength=as.numeric(CatchWeightAtLength)) |> 
+  mutate(CatchWeightAtLength=ifelse(CatchWeightUnit=="gr", CatchWeightAtLength/1000, CatchWeightAtLength))
 
-bio_all<-full_join(bio_EE, bio_FI)|> 
+catch_all |> group_by(country) |>
+  mutate(cat=as.numeric(CatchSpeciesCategory)) |> 
+  summarise(min=min(cat),max=max(cat))
+              
+ bio_all<-full_join(bio_EE, bio_FI)|> 
   full_join(bio_DE) |>
   full_join(bio_PL) |>
   full_join(bio_SE) |>
@@ -105,14 +129,11 @@ bio_all<-full_join(bio_EE, bio_FI)|>
 rec_areas<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |> 
   rename(ICES_SD=SD, rec=ICES_rectangle, A_NM2=Area_NM2)
 
-
-dfA
-
-catch_all
-hauls_all
-bio_all
-rec_areas
-
+# dfA
+# catch_all
+# hauls_all
+# bio_all
+# rec_areas
 
 # Define the year to be investigated
 choose_year<-2025
@@ -203,7 +224,7 @@ tmp<-df_p_per_length |>
 df_n_hauls_per_case<- df_p_per_length|>
   group_by(rec,species) |>
   summarise(n_hauls_per_case=n_distinct(HaulNumber))
-print(x=df_n_hauls_per_case, n=100)
+#print(x=df_n_hauls_per_case, n=100)
 
 # Rectangle specific proportion of individuals of certain length is the
 # mean over length class specific percentages
@@ -214,18 +235,24 @@ df_p_per_length_per_rec<-df_p_per_length |>
   mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n_hauls_per_case)
 #write_xlsx(df_p_per_length_per_rec, "../df_p_per_length_per_rec.xlsx")
 
-# check that all sum to 100
-tmp<-df_p_per_length_per_rec|>
-  summarise(sum_p=sum(mean_p_per_length_per_rec))
-print(x=tmp, n=100)
-
+# check that all sum to 100. Rounding removes tiny irrelevant differences that sometimes occur
+df_p_per_length_per_rec|>
+  summarise(sum_p=round(sum(mean_p_per_length_per_rec),5)) |> 
+  filter(sum_p!=100)
 
 # Haul specific 
 # ==============
 # Total catch per haul per species
+# NOTE! Because in some occasions the catch is divided into several 
+# length categories, we need to sum over those to get the species
+# specific catch
 df_catch_per_species<-df_catch_w_rec |> 
   select(HaulNumber,rec, species, CatchSpeciesCategoryNumber) |> 
-  distinct() 
+  distinct() |>
+  group_by(HaulNumber, rec, species) |> 
+  summarise(n_per_species=sum(CatchSpeciesCategoryNumber))
+
+df_catch_per_species |> filter(HaulNumber>50000, species==126417)
 
 # Total catch per haul, all species
 df_tot_catch_per_haul<-df_catch_per_species|> 
@@ -233,9 +260,9 @@ df_tot_catch_per_haul<-df_catch_per_species|>
   summarise(tot_catch_per_haul=sum(CatchSpeciesCategoryNumber))
 
 # Proportion of each species per haul
-df_p_species_per_haul<-df_catch_per_species  |> 
-  left_join(df_tot_catch_per_haul) |> 
-  mutate(p_species_per_haul=CatchSpeciesCategoryNumber/tot_catch_per_haul) 
+df_p_species_per_haul<-df_catch_per_species  |>
+  left_join(df_tot_catch_per_haul) |>
+  mutate(p_species_per_haul=n_per_species/tot_catch_per_haul)
 #print(x=df_p_species_per_haul, n=100)
 
 # Rectangle specific 
@@ -243,7 +270,7 @@ df_p_species_per_haul<-df_catch_per_species  |>
 # Total catch per rectangle, all species
 df_tot_catch_per_rec<-df_catch_per_species|> 
   group_by(rec) |> 
-  summarise(tot_catch_per_rec=sum(CatchSpeciesCategoryNumber))
+  summarise(tot_catch_per_rec=sum(n_per_species))
 
 # ==============================================================================
 # Black magic begins here
@@ -256,7 +283,7 @@ df_tot_catch_per_rec<-df_catch_per_species|>
 # calculated as mean of haul specific percentages 
 df_p_species_per_rectangle<-df_catch_per_species  |>
   left_join(df_tot_catch_per_haul) |>
-  mutate(p_species=CatchSpeciesCategoryNumber/tot_catch_per_haul*100) |>
+  mutate(p_species=n_per_species/tot_catch_per_haul*100) |>
   group_by(rec, species) |>
   summarise(sum_species_per_rec=sum(p_species)) |> 
   full_join(df_n_hauls_per_rec) |> 
@@ -264,8 +291,10 @@ df_p_species_per_rectangle<-df_catch_per_species  |>
   #summarise(p_species_per_rec=mean(p_species)) # Direct mean cannot be taken since often all species are not present in every haul
 print(x=df_p_species_per_rectangle, n=100)
 
-# Just to check these sum to 100
-df_p_species_per_rectangle |> summarise(sum=sum(p_species_per_rec))
+# check that all sum to 100. Rounding removes tiny irrelevant differences that sometimes occur
+df_p_species_per_rectangle |> 
+  summarise(sum=round(sum(p_species_per_rec),5)) |> 
+  filter(sum!=100)
 
 # pp is haul specific
 # pp is the product of the proportion of a species
@@ -275,9 +304,9 @@ df_pp<-df_p_per_length |> full_join(df_p_species_per_haul) |>
   select(pp, everything())
 df_pp
 
-# Check that pp's sums up to 100
-print(df_pp |> group_by(HaulNumber) |> summarise(sumx=sum(pp)),
-      n=50)
+# Check that pp's sum to 100. Rounding removes tiny irrelevant differences that sometimes occur
+df_pp |> group_by(HaulNumber) |> summarise(sumx=round(sum(pp),5)) |> 
+  filter(sumx!=100)
 
 # ================================
 # SIGMA CALCULATIONS
@@ -328,12 +357,14 @@ pivot_p_per_species
 # Calculate number of individuals per species per NM2, 
 # total number of individuals and 
 # the number of individuals per species per rectangle  
-df_species<-full_join(df_nasc_per_rectangle, df_p_species_per_rectangle) |> 
+# Note! many-to-many warning is ok when joining since proportion of 
+# each species must be linked with the same rectangle data 
+df_species<-full_join(df_nasc_per_rectangle, df_p_species_per_rectangle, relationship="many-to-many") |> 
   mutate(N_per_NM2=mean_nasc/sigma_rectangle/1000000,
          Ntot=N_per_NM2*A_NM2) |> 
   select(year, rec, N_per_NM2, Ntot, everything()) |> 
   mutate(n_per_species_per_rectangle=p_species_per_rec/100*Ntot)
-print(df_species, n=100)
+df_species
 #View(df_species)
 
 # Pivot: Number of individuals per species per rectangle
@@ -357,7 +388,7 @@ df_mean_pp_per_rec<-df_pp |>
   #summarise(mean_pp=mean(pp)) # THIS PROBABLY IS INCORRECT
   summarise(sum_pp=sum(pp)) |> 
   left_join(df_n_hauls_per_case) |> 
-  mutate(mean_pp=sum_pp/n_hauls_per_case) # THIS SHOULD BE MORE CORRECT
+  mutate(mean_pp=sum_pp/n_hauls_per_case) # THIS SHOULD BE CORRECT
 df_mean_pp_per_rec  
 
 # then calculate p per length per species per rectangle
@@ -370,9 +401,8 @@ df_pp2<-df_mean_pp_per_rec |>
 df_pp2
 
 # Check that the pp2's sum to 1
-print(x=df_pp2|>summarise(sum(pp2)), 
-      n=100)
-
+df_pp2|>summarise(sum=round(sum(pp2),5)) |> filter(sum!=1)
+      
 # Divide the number per species per rectangle into lengths 
 df_n_per_rec<-df_species |>
   select(rec,species,n_per_species_per_rectangle)
@@ -380,17 +410,27 @@ df_n_per_rec<-df_species |>
 df_pp2_per_length<-df_pp2|> ungroup() |> 
   select(rec,species,pp2,CatchLengthClass)
 
-df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec) |> 
+df_pp2_per_length |> filter(rec=="39G2", CatchLengthClass==105)
+
+# SUBDIVISIONS NEED TO BE INCLUDED EARLIER!!!!
+df_n_per_rec |> filter(rec=="39G2", species==126417)
+# Join proportions per length group with number of species per rec
+# many-to-many is ok since each length group is linked with the 
+# total number of that species
+df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec, 
+                           relationship="many-to-many") |> 
   mutate(n_per_length=round(pp2*n_per_species_per_rectangle,3)) |> 
   select(-n_per_species_per_rectangle, -pp2) |> 
   select(year, everything()) 
 
+df_n_per_length |> filter(rec=="39G2", CatchLengthClass==105)
 
 # ================================
 # Age at length
 # ================================
 
-# The SD and rectangle link
+# Link rectangles to correct ICES SD 
+# Define SD 28.1
 df_rec_ICES_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |> 
   mutate(ICES_SD=ifelse(rec=="43H2"|
                           rec=="43H3"|
@@ -403,11 +443,13 @@ df_rec_ICES_SD<-df_species |> ungroup() |> select(rec, ICES_SD) |> distinct() |>
                           rec=="45H4", 28.1, ICES_SD)) 
 df_rec_ICES_SD
 
+# Join ICES SD info to the biol table.
+# Many-to-many is ok as the join just links the SD info 
 df_bio_SD<-df_bio |>
   select(HaulNumber,species,age,BiologyLengthClass) |> 
   left_join(df_hauls_rec) |> 
   select(species,rec,HaulNumber, everything()) |> 
-left_join(df_rec_ICES_SD)
+left_join(df_rec_ICES_SD, relationship = "many-to-many")
 
 n_per_age_length<-df_bio_SD |> 
   group_by(species, age,BiologyLengthClass, ICES_SD) |> 
@@ -442,19 +484,28 @@ age_length_key<-df_p_age_at_length |>
   ungroup() |> 
   select(species,ICES_SD, BiologyLengthClass, age, p_age_at_length)
 
+#age_length_key |> distinct()
+
+# Join SD's, many-to-many is ok
 df_n_per_length_ICES_SD<-df_n_per_length |> 
-  left_join(df_rec_ICES_SD)|> 
+  left_join(df_rec_ICES_SD, relationship="many-to-many")|> 
   select(species,ICES_SD,rec,CatchLengthClass, n_per_length)
 
+df_n_per_length_ICES_SD |> filter(rec=="39G2", ICES_SD==24, CatchLengthClass==105)
+
+# Join age length key with numbers at length. 
+# Many-to-many is ok
 df_n_at_age<-df_n_per_length_ICES_SD |>
   mutate(BiologyLengthClass=CatchLengthClass) |> 
   left_join(age_length_key, relationship="many-to-many") |> 
   mutate(n_age_at_length=p_age_at_length*n_per_length)
 print(x=df_n_at_age, n=100)
 
+df_n_at_age |> filter(rec=="39G2", ICES_SD==24, age==0, CatchLengthClass==105)
+
 pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
-  left_join(df_rec_ICES_SD) |> 
+  left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
   arrange(age, species, ICES_SD,rec) |> 
   pivot_wider(names_from = age, values_from = n_at_age) |> 
   mutate(NTOT=rowSums(across(c(`0`:`11`)), na.rm = T)) |> 
@@ -466,14 +517,21 @@ pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |>
 print(x=pivot_n_at_age, n=100)
 
 # Other species per rec and length
-pivot_n_per_length<-df_n_per_length |>
-  left_join(df_rec_ICES_SD) |> 
+df_n_per_length2<-df_n_per_length |>
+  left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
   group_by(rec, species) |> 
-  arrange(CatchLengthClass,species, ICES_SD,rec) |> 
-  pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
+  arrange(CatchLengthClass,species, ICES_SD,rec)  
+
+#df_n_per_length2
+#View(df_n_per_length2 |> filter(n_per_length>1000))
+# SOME CRAZY LARGE NUMBERS IN 38G1
+  
+pivot_n_per_length<-df_n_per_length2 |>   pivot_wider(names_from=CatchLengthClass, values_from = n_per_length) |> 
   select(-year) |> select(species, ICES_SD,rec, everything())
 #View(pivot_n_per_length)
-
+# NOTE!!! Several values for the same length group! 
+# Is this because the same name is assigned to different recs
+# or what is going on?
 
 # Weight/Biomass
 # ================================
@@ -499,7 +557,7 @@ df_mean_w_at_length_per_haul_biol<-df_bio |>
    
 # Combine
 df_mean_w_at_length_per_haul<-full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
-View(df_mean_w_at_length_per_haul)
+#View(df_mean_w_at_length_per_haul)
 
 # Mean weight per rec (equal weights on hauls) per length per species
 df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 
@@ -522,7 +580,7 @@ df_bm_at_length<-df_n_per_length |>
 print(x=df_bm_at_length, n=1000)
 
 df_bm_per_length_ICES_SD<-df_bm_at_length |> 
-  left_join(df_rec_ICES_SD)|> 
+  left_join(df_rec_ICES_SD, relationship="many-to-many")|> 
   select(species,ICES_SD,rec,CatchLengthClass, bm_per_length)
 
 # Biomass per age for herring and sprat
@@ -548,9 +606,27 @@ pivot_bm_at_age<-df_bm_at_age |>
 print(x=pivot_bm_at_age, n=100)
 
 # Mean weight at age
-df_mean_weight_at_age<-df_bm_at_age|> full_join(df_n_at_age) |> 
-  group_by(species, rec, age) |> 
-  summarise(mean_weight_at_age=round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
+# join bm at age
+# NOTE! FOR SOME REASON THERE ARE DUPLICATE ROWS!!! SOMETHING WRONG WITH THE SCRIPT?
+df_mean_weight_at_age<-df_bm_at_age|>#distinct()
+  full_join(df_n_at_age) #|> 
+  summarise(mean_weight_at_age=
+              round(sum(bm_age_at_length, na.rm=T)/
+                      sum(n_age_at_length, na.rm=T),2))
+
+View(df_bm_at_age)
+df_bm_at_age |> filter(is.na(age)==T)
+View(df_n_at_age)  
+df_n_at_age |> filter(is.na(age)==T)
+
+df_mean_weight_at_age<-df_bm_at_age|>
+  select(species, ICES_SD, rec, CatchLengthClass, bm_per_length, age) |> 
+   full_join(df_n_at_age |> 
+               select(species, ICES_SD, rec, CatchLengthClass, age, n_age_at_length)) |> 
+#  full_join(df_n_at_age) |> 
+  summarise(mean_weight_at_age=
+              round(sum(bm_age_at_length, na.rm=T)/
+                      sum(n_age_at_length, na.rm=T),2))
 
 pivot_mean_weight_at_age <-df_mean_weight_at_age |> 
   pivot_wider(names_from = age, values_from = mean_weight_at_age) |> 

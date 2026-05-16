@@ -12,12 +12,17 @@ choose_year<-2025
 # Join rectangle and ICES_SD to data tables
 ##################################
 
-df_acou<-dfA |> filter(SurveyYear==choose_year) |> 
+# Acoustic data
+# =================
+df_acoustic<-dfA |> filter(SurveyYear==choose_year) |> 
   mutate(DataValue=as.numeric(DataValue),
     LogLatitude=as.numeric(LogLatitude), 
     LogLongitude=as.numeric(LogLongitude),
     year=SurveyYear)
          
+# Trawl data
+# =================
+# Hauls
 df_hauls<-hauls_all|> 
   filter(SurveyYear==choose_year)|> 
   mutate(rec=HaulStatisticalRectangle) |> select(-HaulStatisticalRectangle) |> 
@@ -27,6 +32,7 @@ df_hauls<-hauls_all|>
 df_n_hauls_per_rec<-df_hauls_rec |> group_by(rec) |> 
   summarise(n_hauls_per_rec=n())
 
+# Catch, including both total catch and catch samples (length groups)
 df_catch<-catch_all|> filter(SurveyYear==choose_year) |> 
   mutate(CatchSpeciesCategoryNumber=as.numeric(CatchSpeciesCategoryNumber),
          CatchNumberAtLength=as.numeric(CatchNumberAtLength),
@@ -38,6 +44,7 @@ df_catch<-catch_all|> filter(SurveyYear==choose_year) |>
   select(rec,species,everything()) |> 
   left_join(df_rec_info, relationship="many-to-many") # link SD and area info to the rec
 
+# Biology, including individual data for herring and sprat
 df_biol<-biol_all|> filter(SurveyYear==choose_year) |> 
   left_join(df_hauls) |> # link rectangle with haul number
   mutate(BiologyLengthClass =as.numeric(BiologyLengthClass ),
@@ -58,60 +65,81 @@ df_biol<-biol_all|> filter(SurveyYear==choose_year) |>
 # Define ICES rectangles for each data point 
 # and sum over NASC from different depth layers
 # Function ices.rect2 is in the mapplots package
-df_edsu<-df_acou |> 
+df_edsu<-df_acoustic |> 
   mutate(rec=ices.rect2(LogLongitude, LogLatitude)) |> 
-  select(rec, everything()) |> 
-  group_by(year, rec, LogDistance) |> 
+  left_join(df_rec_info, relationship="many-to-many") |># link SD and area info to the rec
+  select(rec, ICES_SD,everything()) |> 
+  group_by(year, rec, ICES_SD, LogDistance) |> 
   summarise(edsu=sum(DataValue)) # elementary distance sampling unit
 
 # Take mean NASC per ICES rectangle
 df_nasc<-df_edsu |> 
-  group_by(year, rec) |> 
+  group_by(year, rec, ICES_SD) |> 
   summarise(mean_nasc=mean(edsu)) |> 
-  left_join(rec_areas)
+  left_join(df_rec_info)
 df_nasc
 #View(df_nasc)
 
 # Catch sample sizes per length per haul
-df_sample_size_per_length<-df_catch_w_rec |> 
+df_sample_size_per_length<-df_catch |> 
   group_by(species, HaulNumber) |> 
   summarise(sample_size_per_length=sum(CatchNumberAtLength))
 
 # Join sample sizes per length with the catch table 
 # and calculate the percentage of individuals in a specific length class
-df_p_per_length<-df_catch_w_rec |> 
+df_p_per_length<-df_catch |> 
   left_join(df_sample_size_per_length) |> 
   mutate(p_per_length=CatchNumberAtLength/sample_size_per_length*100) |> 
-  select(rec, HaulNumber, species,CatchLengthClass, p_per_length, everything()) 
+  select(rec, ICES_SD, HaulNumber, species,CatchLengthClass, p_per_length, everything()) 
 df_p_per_length
-#View(df_p_per_length)
-#write_xlsx(df_p_per_length, "../p_per_length.xlsx")
 
-# THIS JUST INTERESTING TO SEE?
-tmp<-df_p_per_length |> 
-  group_by(rec,HaulNumber, species) |> 
-  summarise(sum=sum(p_per_length))
-#View(tmp)
+# Check that p_per_lengths sum to 100 (should return empty df)
+df_p_per_length |> 
+  group_by(rec, ICES_SD,HaulNumber, species) |> 
+  summarise(sum=sum(p_per_length)) |> filter(is.na(sum)==T)
 
 # Number of hauls per rectangle and per species
 df_n_hauls_per_case<- df_p_per_length|>
-  group_by(rec,species) |>
+  group_by(rec,ICES_SD,species) |>
   summarise(n_hauls_per_case=n_distinct(HaulNumber))
 #print(x=df_n_hauls_per_case, n=100)
 
 # Rectangle specific proportion of individuals of certain length is the
 # mean over length class specific percentages
 df_p_per_length_per_rec<-df_p_per_length |>
-  group_by(rec, species, CatchLengthClass) |>
+  group_by(rec, ICES_SD, species, CatchLengthClass) |>
   summarise(sum_p_per_length_per_rec=sum(p_per_length)) |>
   left_join(df_n_hauls_per_case) |>
   mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n_hauls_per_case)
-#write_xlsx(df_p_per_length_per_rec, "../df_p_per_length_per_rec.xlsx")
 
 # check that all sum to 100. Rounding removes tiny irrelevant differences that sometimes occur
-df_p_per_length_per_rec|>
+tmp<-df_p_per_length_per_rec|>
   summarise(sum_p=round(sum(mean_p_per_length_per_rec),5)) |> 
   filter(sum_p!=100)
+
+print(x=tmp, n=150)
+ 
+tmp |> select(rec, ICES_SD) |> distinct()
+
+tmp<-df_p_per_length_per_rec |> filter(rec=="39G2", species==126417, ICES_SD==23) 
+tmp |> summarise(sum(mean_p_per_length_per_rec))
+View(tmp)
+# 39G2
+
+df_n_hauls_per_case |> filter(rec=="39G2", species==126417, ICES_SD==23)
+
+tmp<-df_catch|> filter(rec=="39G2", species==126417)
+View(tmp)
+
+# ONGELMA ON TÄMÄ: ruudulla on tehty vain yksi trooliveto, mutta ruutu kuitenkin 
+# kuuluu periaatteessa kahteen SD:hen. 
+# Tällöin sum(mean_p_per_length)=50 eikä 100.
+#Kuinka toimitaan?
+# Itse veto on tapahtunut vain toisen sd:n alueella, jolloin sijannin perusteella
+# voisi teoriassa määritellä oikean SD:n. Mutta käytännössä taitaa olla aika vaikea rasti?
+# Haul voidaan osoittaa ruudulle ja ruutu SD:lle, mutta 
+# käytännössä tämä ei tuota yksiselitteistä sijaintia. Jossain edellä jokin tuplaantuu
+# kun ruudut ja SD:t yhdistetään. Paskamainen juttu.
 
 # Haul specific 
 # ==============

@@ -1,10 +1,19 @@
+################################################################################
+# R script for calculation of BIAS results from multiple countries at one go 
+# for the sake of scrutinization and comparability
 #
+# This script is made during 2026 in Interreg project AUTOFISH
+#
+# If one wants to run results from a smaller subset of countries, please comment
+# out other countries lines in read-data-in-BIAS-all-countries.R
+################################################################################
 
 # Read in data from all countries
 source("02-current-method/read-in-data-BIAS-all-countries.R")
 
 # Define the year to be investigated
 choose_year<-2025
+
 ###########################
 # Workflow for taking into account rectangles that split between 2 ICES sub divisions:
 # - Acoustics: use mean_nasc for both

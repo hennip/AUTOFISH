@@ -17,13 +17,11 @@ choose_year<-2025
 ###########################
 # Workflow for taking into account rectangles that split between 2 ICES sub divisions:
 # - Acoustics: use mean_nasc for both
-# - Trawl: duplicate total catch, length sample and age data to cover both (full_join might do it?)
-# - Sigma: Use sub div specific area that is given in the df_rec_info
+# - Trawl: duplicate total catch, length sample and age data to cover both SD's
+# - Area: Use sub div specific area that is given in the df_rec_info
 SD_rec<-df_rec_info |> select(-A_NM2)
-#View(SD_rec |> arrange(rec))
 # List of splitted rectangles:
 SD_rec |> group_by(rec) |> summarise(n=n()) |> filter(n>1)
-split_recs<-SD_rec |> group_by(rec) |> summarise(n=n()) |> filter(n>1) |> select(rec)
 # # A tibble: 7 × 2
 # rec       n
 # <chr> <int>
@@ -61,8 +59,7 @@ df_hauls<-hauls_all|>
 # Number of hauls per rectangle
 df_n_hauls_per_rec<-df_hauls |> group_by(rec) |> 
   summarise(n_hauls_per_rec=n()) 
-print(x=df_n_hauls_per_rec, n=120)
-df_n_hauls_per_rec |> group_by(rec) |> summarise(n=n()) |> filter(n>1)
+#print(x=df_n_hauls_per_rec, n=120)
 
 # Catch, including both total catch and catch samples (length groups)
 df_catch<-catch_all|> filter(SurveyYear==choose_year) |> 
@@ -104,7 +101,6 @@ df_edsu<-df_acoustic |>
 df_nasc<-df_edsu |> 
   group_by(year, rec) |> 
   summarise(mean_nasc=mean(edsu)) 
-df_nasc
 
 # Catch sample sizes per length per haul
 df_sample_size_per_length<-df_catch |> 
@@ -117,7 +113,6 @@ df_p_per_length<-df_catch |>
   left_join(df_sample_size_per_length) |> 
   mutate(p_per_length=CatchNumberAtLength/sample_size_per_length*100) |> 
   select(rec, HaulNumber, species,CatchLengthClass, p_per_length, everything()) 
-df_p_per_length
 
 # Check that p_per_lengths sum to 100 (should return empty df)
 df_p_per_length |> 
@@ -126,9 +121,6 @@ df_p_per_length |>
   summarise(sum=sum(p_per_length)) |> filter(is.na(sum)==T)
 
 # Number of hauls per rectangle and per species
-df_p_per_length|>
-  group_by(rec,ICES_SD,species) |> filter(rec %in% as.matrix(split_recs))
-
 df_n_hauls_per_case<- df_p_per_length|>
   group_by(rec,species) |>
   summarise(n_hauls_per_case=n_distinct(HaulNumber))
@@ -142,11 +134,10 @@ df_p_per_length_per_rec<-df_p_per_length |>
   mutate(mean_p_per_length_per_rec=sum_p_per_length_per_rec/n_hauls_per_case)
 
 # check that all sum to 100. Rounding removes tiny irrelevant differences that sometimes occur
-tmp<-df_p_per_length_per_rec|>
+df_p_per_length_per_rec|>
   summarise(sum_p=round(sum(mean_p_per_length_per_rec),5)) |> 
   filter(sum_p!=100)
-print(x=tmp, n=150)
- 
+
 # Haul specific 
 # ==============
 # Total catch per haul per species
@@ -178,11 +169,13 @@ df_tot_catch_per_rec<-df_catch_per_species|>
   summarise(tot_catch_per_rec=sum(n_per_species))
 
 # ==============================================================================
-# Black magic begins here
+# Black magic begins here 
+# (assign equal weights for different hauls regardless of the size of the catch)
 # ==============================================================================
 
 # Percentage of each species per rectangle
 # ==============================================================================
+
 # Logically this should be calculated by pooling together all hauls in 
 # a rectangle, but in the current method the rectangle specific percentage is 
 # calculated as mean of haul specific percentages 
@@ -193,7 +186,7 @@ df_p_species_per_rec<-df_p_species_per_haul |>
   full_join(df_n_hauls_per_rec) |> 
   mutate(p_species_per_rec=sum_species_per_rec/n_hauls_per_rec) # EQUAL WEIGHTS FOR HAULS
 #summarise(p_species_per_rec=mean(p_species)) # Direct mean cannot be taken since often all species are not present in every haul
-print(x=df_p_species_per_rec, n=100)
+#print(x=df_p_species_per_rec, n=100)
 
 # check that all sum to 100. Rounding removes tiny irrelevant differences that sometimes occur
 df_p_species_per_rec |> 
@@ -222,7 +215,6 @@ df_sigma<-df_pp_haul |>
   #  mutate(d=ifelse(species==xxxx, 9.1, d) # Example on how to change d for a specific species xxxx
   mutate(sigma=d*(CatchLengthClass/10+0.2)^2) |>  # sigma=d*(L_cm+offset_cm)^2
   select(sigma, everything())
-#View(df_sigma)  
 
 # For each row, calculate product of sigma and pp_haul
 # Then group by haul and rec and calculate haul specific sigma
@@ -231,14 +223,12 @@ df_sigma_haul<-df_sigma |>
   group_by(HaulNumber, rec) |> 
   summarise(sigma_haul=sum(sigma_x_pp)/sum(pp_haul)) |> 
   select(sigma_haul, everything())
-#View(df_sigma_haul)
 
 # Rectangle specific sigma is calculated in this method
 # as a mean of haul specific sigmas of that rectangle 
 df_sigma_rec <- df_sigma_haul |> 
   group_by(rec) |> 
   summarise(sigma_rec=mean(sigma_haul)) 
-df_sigma_rec
 
 # ================================
 # COMBINE SIGMA WITH NASC
@@ -269,8 +259,6 @@ df_species_rec_SD<-full_join(df_nasc_per_rec, df_p_species_per_rec, relationship
          Ntot=N_per_NM2*A_NM2) |> 
   select(year, rec, ICES_SD, N_per_NM2, Ntot, everything()) |> 
   mutate(n_per_species_per_rec=p_species_per_rec/100*Ntot)
-df_species_rec_SD
-#View(df_species)
 
 # Pivot: Number of individuals per species per rectangle
 df_species_rec_SD |>   
@@ -290,11 +278,10 @@ df_mean_pp_per_rec<-df_pp_haul |> # df_pp_haul: haul specific pp's
          CatchLengthClass, CatchNumberAtLength,pp_haul) |> 
   group_by(SurveyYear,rec,species, 
            CatchLengthClass) |> 
-  #summarise(mean_pp=mean(pp_haul)) # THIS PROBABLY IS INCORRECT
+  #summarise(mean_pp=mean(pp_haul)) # THIS WOULD ASSUME EACH HAUL IS WEIGHTED WITH IT'S SHARE IN TOTAL CATCH 
   summarise(sum_pp=sum(pp_haul)) |> 
   left_join(df_n_hauls_per_case) |> 
-  mutate(mean_pp=sum_pp/n_hauls_per_case) # THIS SHOULD BE CORRECT
-df_mean_pp_per_rec  
+  mutate(mean_pp=sum_pp/n_hauls_per_case) # THIS ASSUMES EQUAL WEIGHTS FOR HAULS
 
 # then calculate p per length per species per rectangle
 df_sum_pp_per_species<-df_mean_pp_per_rec |> 
@@ -303,7 +290,6 @@ df_sum_pp_per_species<-df_mean_pp_per_rec |>
 df_pp2<-df_mean_pp_per_rec |> 
   left_join(df_sum_pp_per_species) |> 
   mutate(pp2=mean_pp/sum_pp_per_species) 
-df_pp2
 
 # Check that the pp2's sum to 1
 df_pp2|>summarise(sum=round(sum(pp2),5)) |> filter(sum!=1)
@@ -323,8 +309,6 @@ df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec_SD,
   mutate(n_per_length=round(pp2*n_per_species_per_rec,3)) |> 
   select(-n_per_species_per_rec, -pp2) |> 
   select(year, everything()) 
-
-df_n_per_length |> filter(rec=="39G2", CatchLengthClass==105)
 
 # ================================
 # Age at length
@@ -357,8 +341,7 @@ n_per_age_length<-df_bio_SD |>
   summarise(n=n())|> 
   select(ICES_SD, species,  everything()) |> 
   arrange(ICES_SD)
-#View(n_per_age_length)
-  
+
 # Sum the number of individuals per length class 
 df_sum_per_length_class<-n_per_age_length |> ungroup() |> 
   group_by(species,ICES_SD,BiologyLengthClass) |> 
@@ -373,7 +356,6 @@ pivot_p_age_at_length<-df_p_age_at_length|>
   select(-n, -sum_per_length_class) |> 
   arrange(species,ICES_SD,BiologyLengthClass,age) |> 
   pivot_wider(names_from = age, values_from = p_age_at_length) #|> 
-pivot_p_age_at_length
 
 # Abundance at age for herring and sprat
 # ================================
@@ -396,8 +378,6 @@ df_n_at_age<-df_n_per_length_ICES_SD |>
   mutate(n_age_at_length=p_age_at_length*n_per_length)
 print(x=df_n_at_age, n=100)
 
-df_n_at_age |> filter(rec=="39G2", ICES_SD==24, age==0, CatchLengthClass==105)
-
 pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
   left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
@@ -409,7 +389,6 @@ pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |>
   #       )|> 
   select(species,ICES_SD,rec,NTOT,everything()) |> 
   ungroup()
-print(x=pivot_n_at_age, n=100)
 
 # Other species per rec and length
 df_n_per_length2<-df_n_per_length |>
@@ -432,7 +411,6 @@ pivot_n_per_length<-df_n_per_length2 |>   pivot_wider(names_from=CatchLengthClas
 # Mean weight at length per species per haul if given at the catch table
 df_mean_w_at_length_per_haul_catch<-df_catch |> 
   mutate(mean_w_at_length_per_haul=CatchWeightAtLength*1000/CatchNumberAtLength) |> # OK
-  #full_join(df_hauls) |> 
   select(rec,HaulNumber,species, CatchLengthClass, mean_w_at_length_per_haul) |> 
   filter(is.na(mean_w_at_length_per_haul)==F) # removes cases where missing
 
@@ -447,7 +425,8 @@ df_mean_w_at_length_per_haul_biol<-df_biol |>
   select(-BiologyIndividualWeight)
    
 # Combine
-df_mean_w_at_length_per_haul<-full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
+df_mean_w_at_length_per_haul<-
+  full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
 #View(df_mean_w_at_length_per_haul)
 
 # Mean weight per rec (equal weights on hauls) per length per species
@@ -468,7 +447,6 @@ pivot_mean_weight_per_length<-df_mean_w_at_length_per_rec |>
 df_bm_at_length<-df_n_per_length |> 
   left_join(df_mean_w_at_length_per_rec, relationship="many-to-many") |> 
   mutate(bm_per_length=mean_w_at_length*n_per_length)
-print(x=df_bm_at_length, n=1000)
 
 df_bm_per_length_ICES_SD<-df_bm_at_length |> 
   left_join(df_rec_ICES_SD, relationship="many-to-many")|> 
@@ -533,21 +511,19 @@ WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)
 WO<-pivot_mean_weight_per_length|> filter(species!=126417 & species!=126425)
 
 #ST sheet
-df_sigma_rectangle |> 
+ST<-df_sigma_rec |> 
   left_join(df_rec_info)|> 
-  mutate(SIGMA=round(sigma_rectangle*10000,digits=3),
+  mutate(SIGMA=round(sigma_rec*10000,digits=3),
          YEAR=choose_year) |> 
-  select(-sigma_rectangle) |> 
+  select(-sigma_rec) |> 
   left_join(df_nasc|> select(-year)) |> 
   rename(RECT=rec, SD=ICES_SD, SA=mean_nasc) |> 
   select(SD, RECT, A_NM2, SA, SIGMA)
-  
+ST  
 
 # To create an xlsx with (multiple) named sheets, 
 # simply set x to a named list of data frames.
-res<-list(AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
+res<-list(ST=ST,AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, ".xlsx"))
-#           "../out/EST_GRAHS_2024_new.xlsx")
-#write_xlsx(res,"../../01-Projects/AUTOFISH/out/EST_BIAS_2025_new.xlsx")
 

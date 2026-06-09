@@ -510,6 +510,30 @@ WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)
 WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)
 WO<-pivot_mean_weight_per_length|> filter(species!=126417 & species!=126425)
 
+df_p_species_per_rec<-df_p_species_per_rec |> 
+  mutate(p_species_per_rec=round(p_species_per_rec, 2)) 
+  
+p_herring_per_rec<-df_p_species_per_rec |> 
+  filter(species==126417) |> 
+  select(rec, p_species_per_rec) |> 
+  rename(p_herring=p_species_per_rec)
+
+p_sprat_per_rec<-df_p_species_per_rec |> 
+  filter(species==126425) |> 
+  select(rec, p_species_per_rec) |> 
+  rename(p_sprat=p_species_per_rec)
+
+p_stickl_per_rec<-df_p_species_per_rec |> 
+  filter(species==126505) |> 
+  select(rec, p_species_per_rec) |> 
+  rename(p_stickleback=p_species_per_rec)
+
+p_cod_per_rec<-df_p_species_per_rec |> 
+  filter(species==126436) |> 
+  select(rec, p_species_per_rec) |> 
+  rename(p_cod=p_species_per_rec)
+
+
 #ST sheet
 ST<-df_sigma_rec |> 
   left_join(df_rec_info)|> 
@@ -517,9 +541,14 @@ ST<-df_sigma_rec |>
          YEAR=choose_year) |> 
   select(-sigma_rec) |> 
   left_join(df_nasc|> select(-year)) |> 
-  rename(RECT=rec, SD=ICES_SD, SA=mean_nasc) |> 
-  select(SD, RECT, A_NM2, SA, SIGMA)
+  left_join(p_herring_per_rec) |>  
+  left_join(p_sprat_per_rec) |> #select(-species) |> 
+  left_join(p_stickl_per_rec) |># select(-species) |> 
+  left_join(p_cod_per_rec) |> #select(-species) |> 
+  rename(RECT=rec, SD=ICES_SD, SA=mean_nasc) |>  
+select(SD, RECT, A_NM2, SA, SIGMA, p_herring, p_sprat, p_stickleback, p_cod)
 ST  
+View(ST)
 
 # To create an xlsx with (multiple) named sheets, 
 # simply set x to a named list of data frames.
@@ -527,3 +556,4 @@ res<-list(ST=ST,AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, ".xlsx"))
 
+# herring precentage and sprat percentage per rectangle on ST sheet

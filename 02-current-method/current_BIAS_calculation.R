@@ -556,4 +556,5 @@ res<-list(ST=ST,AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
 write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, ".xlsx"))
 
-# herring precentage and sprat percentage per rectangle on ST sheet
+source("plots-for-current-methodoogy.R")
+

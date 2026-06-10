@@ -40,7 +40,7 @@ SD_rec |> group_by(rec) |> summarise(n=n()) |> filter(n>1)
 # Join rectangle and ICES_SD to data tables
 ##################################
 
-# Acoustic data
+# Acoustic data (filters out only data needed for our calculation)
 # =================
 df_acoustic<-dfA |> filter(SurveyYear==choose_year) |> 
   mutate(DataValue=as.numeric(DataValue),
@@ -48,7 +48,7 @@ df_acoustic<-dfA |> filter(SurveyYear==choose_year) |>
     LogLongitude=as.numeric(LogLongitude),
     year=SurveyYear)
          
-# Trawl data
+# Trawl data (filters out only data needed for our calculation)
 # =================
 # Hauls
 df_hauls<-hauls_all|> 
@@ -315,7 +315,7 @@ df_n_per_length<-left_join(df_pp2_per_length,df_n_per_rec_SD,
 # ================================
 
 # Link rectangles to correct ICES SD 
-# Define SD 28.1
+# Define SD 28.1 (without this, GoR data would use OS age-length-key)
 df_rec_ICES_SD<-df_species_rec_SD |> ungroup() |> select(rec, ICES_SD) |> distinct() |> 
   mutate(ICES_SD=ifelse(rec=="43H2"|
                           rec=="43H3"|
@@ -475,7 +475,7 @@ pivot_bm_at_age<-df_bm_at_age |>
 print(x=pivot_bm_at_age, n=100)
 
 # Mean weight at age
-# join bm at age
+# join bm (biomass) at age
 df_mean_weight_at_age<-df_bm_at_age|> full_join(df_n_at_age) |> 
   group_by(species, rec, age) |> 
   summarise(mean_weight_at_age=round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
@@ -497,6 +497,7 @@ pivot_mean_weight_at_age <-df_mean_weight_at_age |>
 # ==========================
 # RESULT FILE
 # ==========================
+# Abundances per species per age
 AH<-pivot_n_at_age|> filter(species==126417) |> select( -`NA`)
 AS<-pivot_n_at_age|> filter(species==126425)|> select( -`NA`)
 AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
@@ -506,10 +507,12 @@ AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
 #pivot_bm_at_age|> filter(species==126425)
 #pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
+# Mean weights per species per age
 WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)
 WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)
 WO<-pivot_mean_weight_per_length|> filter(species!=126417 & species!=126425)
 
+# Takes % of species per rectangle for ST table (we added also GTA)
 df_p_species_per_rec<-df_p_species_per_rec |> 
   mutate(p_species_per_rec=round(p_species_per_rec, 2)) 
   

@@ -4,7 +4,11 @@ library(ggplot2)
 library(viridis)
 library(rlang)
 
+# Load in base shapefile
+
 rectangles <- st_read("02-current-method/shapefile/WGBIFS_ices_subdivision_rectangles_multipolygon_EMODnet_R.shp")
+
+# Create a function for plotting that is later easier to use to plot different variables
 
 plot_ices_rectangles <- function(rectangles_sf,
                                  data_df,
@@ -116,6 +120,8 @@ plot_ices_rectangles <- function(rectangles_sf,
   
   return(p)
 }
+
+#This is the actual plotting part
 
 #use for nasc
 p_nasc <- plot_ices_rectangles(

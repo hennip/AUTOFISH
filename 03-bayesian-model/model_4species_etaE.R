@@ -46,7 +46,7 @@ model{
       # tn osua tietylle ruudulle
       pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
     }
-    alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] # Palautettu kässärin muotoon, jossa ruudun osuuden odotusarvo sama yli vuosien
+    alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] 
   #  alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*Ntot[s,y]*etaR
   #  etaR~dunif(0.001,1)
   }  
@@ -90,7 +90,6 @@ model{
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
         alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE
-        etaE~dunif(0.001,1)
 
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -171,10 +170,14 @@ model{
   # Species composition among trawl catches
   for(y in 1:Nyears){
     etaS[y]~dlnorm(0.8,0.1)
-    #etaS[y]~dlnorm(log(mu_etaS)-0.5*log(pow(cv_etaS,2)+1), 1/log(pow(cv_etaS,2)+1))
+   #etaS[y]~dlnorm(log(mu_etaS)-0.5*log(pow(cv_etaS,2)+1), 1/log(pow(cv_etaS,2)+1))
   }
-  mu_etaS~dlnorm(log(10)-0.5*log(pow(2,2)+1),1/log(pow(2,2)+1))
-  cv_etaS~dunif(0.01,2)
+#  mu_etaS~dlnorm(log(10)-0.5*log(pow(2,2)+1),1/log(pow(2,2)+1))
+#  cv_etaS~dunif(0.01,2)
+
+  # Tämä alkuun ilman indeksejä. Katsotaan miten toimii ja lisätään tarvittavat,
+  # ehkä ainakin s, mahdollisesti myös y
+  etaE~dunif(0.001,1)
 
   for(s in 1:Nspecies){
     # Length composition per species among hauls
@@ -182,6 +185,7 @@ model{
     
     # Spatial distribution between rectangles
     etaR[s]~dlnorm(0.8,0.1)
+
 
     # Spatial distribution within rectangle
   #   for(r in 1:4){
@@ -196,8 +200,8 @@ model{
   #   
    }
 
-  etaE<-exp(etaEZ)
-  etaEZ~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
+  #etaE<-exp(etaEZ)
+  #etaEZ~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
 # spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
@@ -221,12 +225,12 @@ modelname<-deparse(substitute(GRAHS4_10))
 cat(GRAHS_model,file=paste0(modelname,".txt"))
 
 
-inits<-list(list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))),
-list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))))
-
-inits<-list(list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))),
-            list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))))
-
+# inits<-list(list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))),
+# list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))))
+# 
+# inits<-list(list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))),
+#             list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))))
+# 
 
 data<-list(
   Nyears=2,
@@ -274,7 +278,7 @@ parnames=c(
 )
 
 # 
-run0<-run.jags(modelname, monitor=parnames,inits = inits,
+run0<-run.jags(modelname, monitor=parnames,#inits = inits,
         data=data,n.chains = 2, method = 'parallel', thin=1,
          burnin =1000, modules = "mix",
          sample =1000, adapt = 1000,

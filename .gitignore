@@ -6,6 +6,6 @@
 
 *.Rproj
 *.txt
-
+*.odc 
 runjags*
 .positai

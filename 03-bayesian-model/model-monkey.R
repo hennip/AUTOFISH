@@ -8,11 +8,14 @@ source("01-data/workflow-data.R")
 MonkeyModel<-"
 model{
 
-  # Observation model for nautical area scattering coefficients
-  ##############################################################
-  for(i in 1:Nobs){
+  # Observation model for NASCs
+  ########################################
+  for(i in 1:Nobs){ # i: index for nascs
     NASC[i]~dlnorm(M_nasc[i], tau_nasc) 
     
+    # Expected NASC is calculated as combination of species specific sigmas,
+    # species specific abundances and proportion of the area covered. 
+    # Now PA is always 1/16
     mu_nasc[i]<- (sigma[1]*n[LOG[i],1]+
                   sigma[2]*n[LOG[i],2]+
                   sigma[3]*n[LOG[i],3])/pA[i]
@@ -21,148 +24,74 @@ model{
     propA[LOG[i]]<-pA[i] # proportion of area i of total area
   }
   tau_nasc<-1/log(cv_nasc*cv_nasc+1)
-  cv_nasc<-0.001#~dlnorm(0.03,3.26) # noise/ measurement error 
+  cv_nasc<-0.001 # noise/ measurement error, assume now known but small 
   
-  # Abundances
-  ############
-  for(s in 1:Nspecies){
-      Ntot[s]<-exp(Ntmp[s])
-      Ntmp[s]~dnorm(13,0.0000001)
+  # Total Abundance per species
+  ########################################
+  for(s in 1:Nspecies){ # s: index for species
+      Ntot[s]~dunif(10,10000) # uniform prior for this example
   }
 
   # Species composition in trawl catch
-  ######################################
-  for(h in 1:Nhaul){
+  ########################################
+  for(h in 1:Nhaul){ # h: index for haul number
+    # Sobs: observed number per species in the trawl catch per species
+    # Cobs: total trawl catch
+    # qS: relative proportion of each species (eg. c(0.3,0.3,0.4)) in haul h
     Sobs[1:Nspecies,h]~dmulti(qS[1:Nspecies,h],Cobs[h])
       
-    # qS~ddirich() but  
-    # approximate dirichlet (set of gamma distributions) with lognormal distns
-    qS[1:Nspecies,h]<-zS[1:Nspecies,h]/sum(zS[1:Nspecies,h])
-
-    for(s in 1:Nspecies){
-        zS[s,h]~dlnorm(MS[s],tauS[s])
-      }
+    # qS~ddirich() but for computational reasons we approximate dirichlet distribution 
+    # with a set of lognormal distns (technical, monkey can ignore this)
+    qS[1:Nspecies,h]~ddirich(muS[1:Nspecies])
+    # qS[1:Nspecies,h]<-zS[1:Nspecies,h]/sum(zS[1:Nspecies,h])
+    # for(s in 1:Nspecies){
+    #     zS[s,h]~dlnorm(MS[s],tauS[s])
+    #   }
   }
   
-  for(s in 1:Nspecies){
-    # muS[s]: expected proportion of species s
-    muS[s]<-N[r,s]/sum(N[r,1:Nspecies])
+ # Species composition in total population
+ ###########################################
+ for(s in 1:Nspecies){ # s: index for species
+    # muS[s]: expected proportion of species s is its relative share in the total population
+    muS[s]<-n[s]/Ntot[s]
   }
-  MS[1:Nspecies]<-log(muS[1:Nspecies])-0.5*(1/tauS[1:Nspecies])
-  tauS[1:Nspecies]<-1/log((1/alphaS[1:Nspecies])+1)
+  # # Parameters MS and tauS link the species composition between observed hauls and the total population
+  # MS[1:Nspecies]<-log(muS[1:Nspecies])-0.5*(1/tauS[1:Nspecies])
+  # tauS[1:Nspecies]<-1/log((1/alphaS[1:Nspecies])+1)
+  # #alphaS[1:Nspecies]<-muS[1:Nspecies]*etaS
       
-  alphaS[1:Nspecies]<-muS[1:Nspecies]*(etaS[1:Nspecies]+1)
-      
-  for(s in 1:Nspecies){
+  # Spatial model: Dirichlet process (like binomial (eg coin toss) but with 16 potential outcomes) 
+  ###########################################
+  for(s in 1:Nspecies){ # s: index for species
     
     # pE: probability that a fish of species s is at echo area i
     # E(pE[i]): proportion of echo area i compared to total area
     # etaE: overdispersion parameter
     pE[1:Necho,s]~ddirich(alphaE[1:Necho,s])
-    alphaE[1:Necho,s]<-propA[1:Necho]*etaE[s] 
+    alphaE[1:Necho,s]<-propA[1:Necho]*Ntot[s]*etaE
         
     for(e in 1:Necho){
-      # n: number of fish of species s on echo area e of rectangle r
+      # n: true number of fish of species s on subarea e. Last subarea is the part that was not visited
       n[e,s]<-Ntot[s]*pE[e,s]
     }
   }
   
-  
-    # Length data
-   ############################################################################
-    # For now, assume only known mean length for each species
-    # # Observed number of fish of species s in each length class in rectangle r
-    # Lobs[1:Nlengths[s],s]~dmulti(qL[1:Nlengths[s],s],nLobs[r,s])
-    # 
-    # # approximate dirichlet (set of gamma distributions) with lognormal distns
-    # qL[1:Nlengths[s],s]<-zL[1:Nlengths[s],s]/
-    #                           sum(zL[1:Nlengths[s],s])
-    # 
-    # for(l in 1:Nlengths[s]){
-    #   zL[l,s]~dlnorm(ML[l,s],tauL[l,s])
-    #   sigmaTmp[l,s]<-qL[l,s]*sigmaL[l,s]
-    # }
-    # sigma[s]<-sum(sigmaTmp[1:Nlengths[s],s])
-    ############################################################################
-
+  # Sigma: Assume now only one length per species (meanL)
+  ########################################################
   for(s in 1:Nspecies){
-    #sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,TSa/10)*pow(meanL[1:Nlengths[s],s],2)
-    sigma[s]<-4*pi*pow(10,TSa/10)*pow(meanL[s],2)
-  }
-  TSa<- -71.2
-      
-    # Forget age estimates for now
-    ############################################################################
-    #   for(l in 1:Nlengths[1]){ # Age data on herring only
-    #     # Age data
-    #     #################
-    #     # Gobs: observed number of herring of each age class in length class l
-    #     Gobs[1:Nages,l]~dmulti(qG[1:Nages,l],nGobs[l])
-    #     # qG: age distribution of length class l
-    # 
-    #     #qG~ddirich(alphaG[1:Nages,l]) but
-    #     # approximate dirichlet (set of gamma distributions) with lognormal distns
-    #     qG[1:Nages,l]<-zG[1:Nages,l]/sum(zG[1:Nages,l]) 
-    #     
-    #     for(a in 1:Nages){
-    #       zG[a,l]~dlnorm(MG[a,l],tauG[a,l])
-    #       pH_at_age[a,l]<-qL[l,1]*qG[a,l] # Proportion of herring at age on length
-    #     }
-    #   }
-    #   for(a in 1:Nages){
-    #     nH_at_age[a]<-sum(pH_at_age[a,1:Nlengths[1]])*N[r,1] # Number of herring at age
-    #   }
-    # }
-    # 
-    # for(a in 1:Nages){
-    #   PopAge[a]<-sum(nH_at_age[a,1:Nrec])/Ntot[1]
-    # }
-    # for(l in 1:Nlengths[1]){
-    #   alphaG[1:Nages,l]<-Gstar[1:Nages,l]*etaG
-    #   Gstar[1:Nages,l]~ddirich(aG)
-    #   MG[1:Nages,l]<-log(Gstar[1:Nages,l])-0.5*(1/tauG[1:Nages,l])
-    #   tauG[1:Nages,l]<-1/log((1/alphaG[1:Nages,l])+1)
-    # }
-    ############################################################################
-    
-    
-    
-    for(s in 1:Nspecies){
-      alphaL[1:Nlengths[s],s]<-Lstar[1:Nlengths[s],s]*(etaL[s]+1)
-      ML[1:Nlengths[s],s]<-log(Lstar[1:Nlengths[s],s])-0.5*(1/tauL[1:Nlengths[s],s])
-      tauL[1:Nlengths[s],s]<-1/log((1/alphaL[1:Nlengths[s],s])+1)
-    }
-    Lstar[1:Nlengths[1],1]~ddirich(aL1)
-    Lstar[1:Nlengths[2],2]~ddirich(aL2)
-    Lstar[1:Nlengths[3],3]~ddirich(aL3)
+    sigma[s]<-4*pi*pow(10,-71.2/10)*pow(meanL[s],2)
   }
 
-  
-#  etaG~dlnorm(0.8,0.1)
-
-  for(s in 1:Nspecies){
-    etaS[s]~dlnorm(0.8,0.1)
-    etaR[s]~dlnorm(0.8,0.1)
-    etaE[s]<-exp(etaEZ[s])
-    etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
-    etaL[s]~dlnorm(0.8,0.1)
-  }
-
-
-
+  # Overdispersion parameters
+#  etaS~dlnorm(0.8,0.1)
+  etaE~dunif(0.001,1)
 
 
 }"
 
-cat(GRAHS_model3,file="GRAHS3.txt")
+cat(MonkeyModel,file="MonkeyModel.txt")
 
 #############################
-
-# A_NM2<-c(819.8155089,# NW
-#          1014.006703,# NE
-#          536.3622401,# SW
-#          1558.658342# SE
-# )
 
 
 data<-list(

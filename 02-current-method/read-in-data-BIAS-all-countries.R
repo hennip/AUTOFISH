@@ -107,12 +107,17 @@ catch_all<-full_join(catch_EE, catch_FI)|>
   mutate(HaulNumber=HaulNumber+CountryCoef) |> 
   select(country, HaulNumber, everything()) |> 
   mutate(CatchWeightAtLength=as.numeric(CatchWeightAtLength)) |> 
-  mutate(CatchWeightAtLength=ifelse(CatchWeightUnit=="gr", CatchWeightAtLength/1000, CatchWeightAtLength))
+  mutate(CatchWeightAtLength=ifelse(CatchWeightUnit=="gr", CatchWeightAtLength/1000, CatchWeightAtLength)) |> 
+  mutate(CatchLengthClass=as.numeric(CatchLengthClass)) |> 
+  mutate(CatchLengthClass_mm=ifelse(CatchLengthCode=="cm", CatchLengthClass*10, CatchLengthClass)) |> 
+  mutate(offset=ifelse(CatchLengthCode=="cm", 0.45, 
+                       ifelse(CatchLengthCode=="halfcm", 0.2, 0))) 
 
 # Note! In some cases there are several length categories for the same species
 catch_all |> group_by(country) |>
   mutate(cat=as.numeric(CatchSpeciesCategory)) |> 
   summarise(min=min(cat),max=max(cat))
+
 
 biol_all<-full_join(bio_EE, bio_FI)|> 
   full_join(bio_DE) |>
@@ -122,7 +127,11 @@ biol_all<-full_join(bio_EE, bio_FI)|>
   #full_join(hauls_LT) |>
   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
   mutate(HaulNumber=HaulNumber+CountryCoef) |> 
-  select(country, everything())
+  select(country, everything()) |> 
+  mutate(BiologyLengthClass=as.numeric(BiologyLengthClass)) |> 
+  mutate(BiologyLengthClass_mm=ifelse(BiologyLengthCode=="cm", BiologyLengthClass*10, BiologyLengthClass)) 
+  
+
 
 #View(bio_all)
 

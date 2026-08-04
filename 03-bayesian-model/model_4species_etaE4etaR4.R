@@ -5,29 +5,25 @@ rm(list = ls())
 source("01-data/workflow-data.R")
 
 
-GRAHS_model<-GRAHS4_12<-"
+GRAHS_model<-GRAHS4_etaE4etaR4<-"
 model{
 
   # Observation model for nautical area scattering coefficients
   ##############################################################
   for(i in 1:Nobs){# total number of observations over years
-    NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2) at depth 6-100m
-    # expected NASC at point i, year nascY[i] 
-    # is a combination of sigmaR and n over 4 species divided by the area covered 
-  mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
-                           sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]]+
-                           sigmaR[R[i],3,nascY[i]]*n[LOG[i],R[i],3,nascY[i]]+
-                           sigmaR[R[i],4,nascY[i]]*n[LOG[i],R[i],4,nascY[i]])/
-                           (pA[i]*A[R[i]])
-                           
-                           #sum(sigmaR[R[i],1:4,nascY[i]]*n[LOG[i],R[i],1:4,nascY[i]])/
-                           #(pA[i]*A[R[i]])
+  
+    NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2)
+    
+    # Expected NASC at piece of cruise track i, year nascY[i] is a combination 
+    # of sigmaR and n over 4 species divided by the area covered 
+    mu_nasc[i,nascY[i]]<- sum(sigmaR[R[i],1:4,nascY[i]]*n[LOG[i],R[i],1:4,nascY[i]])/
+                        (pA[i]*A[R[i]])
                            
     M_nasc[i,nascY[i]]<-log(mu_nasc[i,nascY[i]])-0.5*(1/tau_nasc)
     propA[LOG[i],R[i],nascY[i]]<-pA[i] # proportion of area i of rectangle R[i]
   }
   tau_nasc<-1/log(cv_nasc*cv_nasc+1)
-  cv_nasc~dlnorm(0.03,3.26) # kohina/mittausvirhe, voidaan pit?? samana vuosien yli
+  cv_nasc~dlnorm(0.03,3.26) # measurement error, same over years
 
   # Abundances
   ############
@@ -44,7 +40,7 @@ model{
       # tn osua tietylle ruudulle
      # pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
       pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s,y])
-      alphaR[1:Nrec,s,y]<-(A[1:Nrec]/Atot)*Ntot[s,y]*etaR # Tämä muoto ei näytä ainakaan parantavan konvergointia, ks GRAHS_etaR1.rdata. 
+      alphaR[1:Nrec,s,y]<-(A[1:Nrec]/Atot)*Ntot[s,y]*etaR[s] # Tämä muoto ei näytä ainakaan parantavan konvergointia, ks GRAHS_etaR1.rdata. 
     }
     #alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] 
   #  etaR~dunif(0.001,1)
@@ -88,7 +84,7 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE#[s,y]
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE[s]
 
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -169,11 +165,7 @@ model{
   # Species composition among trawl catches
   for(y in 1:Nyears){
     etaS[y]~dlnorm(0.8,0.1)
-   #etaS[y]~dlnorm(log(mu_etaS)-0.5*log(pow(cv_etaS,2)+1), 1/log(pow(cv_etaS,2)+1))
   }
-#  mu_etaS~dlnorm(log(10)-0.5*log(pow(2,2)+1),1/log(pow(2,2)+1))
-#  cv_etaS~dunif(0.01,2)
-
 
   # Tämä alkuun ilman indeksejä. Katsotaan miten toimii ja lisätään tarvittavat,
   # ehkä ainakin s, mahdollisesti myös y
@@ -182,36 +174,18 @@ model{
   # Johtuisiko siitä, että 1NM pätkiä on niin paljon että laji- tai vuosikohtaisilla etaE:illä
   # ei synny lisäarvoa, vaan sekottaa? Ajetaan tätä pitempi ajo ja katsotaan miten konvergenssi kehittyy
   # Tsekkaa myös devianssi -> JAGSUI?
-  etaE~dunif(0.001,1)
-  etaR~dunif(0.001,1)
   
   for(s in 1:Nspecies){
-  # for(y in 1:Nyears){
-  #   etaE[s,y]~dunif(0.001,1)
-  # }
-  
     # Length composition per species among hauls
     etaL[s]~dlnorm(0.8,0.1)
-    
-    # Spatial distribution between rectangles
-    #etaR[s]~dlnorm(0.8,0.1)
-
-
-    # Spatial distribution within rectangle
-  #   for(r in 1:4){
-  # for(y in 1:Nyears){
-  #     etaE[s,r,y]<-exp(etaEZ[s,r,y])
-  #     etaEZ[s,r,y]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
-  #     #etaEZ[s,r,y]~dnorm(mu_EZ,1/pow(sd_EZ,2))
-  # }
-  #   }
-  # mu_EZ[s]~dnorm(13,0.001)
-  # sd_EZ[s]~dlnorm(log(1000)-0.5*log(1*1+1),log(1*1+1))# tau=1/log(cv^2+1)
-  #   
-   }
-
-  #etaE<-exp(etaEZ)
-  #etaEZ~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
+  
+    # Spatial overdispersion within rectangles
+    etaE[s]~dunif(0.001,1)
+  
+    # Spatial overdispersion between rectangles
+    etaR[s]~dunif(0.001,1)
+  
+ }
 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
 # spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
@@ -230,7 +204,7 @@ model{
 
 
 }"
-modelname<-deparse(substitute(GRAHS4_12))
+modelname<-"GRAHS4_etaE4etaR4"
 
 cat(GRAHS_model,file=paste0(modelname,".txt"))
 
@@ -277,41 +251,21 @@ data<-list(
 )
 
 parnames=c(
-  #"muH",
-  "mu_EZ", "sd_EZ",
+  "deviance",
   "muS",
   "PopAge",
   "Lstar",
   "cv_nasc", "cv_nascX", "etaX",
-  "etaR", "etaE", "etaL","etaG","etaS",#"etaH", 
+  "etaR", "etaE", "etaL","etaG","etaS",
   "Ntot","N"
 )
 
-# 
- run0<-run.jags(modelname, monitor=parnames,#inits = inits,
-        data=data,n.chains = 2, method = 'parallel', thin=10,
-         burnin =1000, modules = "mix",
-         sample =2000, adapt = 1000,
-         keep.jags.files=F,
-         progress.bar=TRUE, jags.refresh=100)
-plot(run0, var="etaE")
-plot(run0, var="etaR")
-plot(run0, var="Ntot")
-# plot(run0, var="EZ")
-# 
-
- inits<-list(list(etaE=0.1),#array(0.1, dim=c(Nspecies, 4, Nyears))),
-             list(etaE=0.4))#array(0.4, dim=c(Nspecies, 4, Nyears))))
-
-
-
-
-#sink(paste0("sink_",modelname,"_",".txt"))
+sink(paste0("sink_",modelname,"_",".txt"))
 
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(modelname, monitor=parnames,data=data,n.chains = 2, 
-               inits=inits,
+               #inits=inits,
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
                sample =10000, adapt = 50000,
@@ -324,6 +278,8 @@ print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
 # 
+plot_this<-F
+if(plot_this==T){
 plot(run, var="etaE")
 plot(run, var="etaR")
 summary(run, var="eta")
@@ -342,19 +298,9 @@ sum_run<-summary(run)
 
 as_tibble(sum_run) |> 
   filter(psrf>1.1)
+}
 
-
-#sink()
-
-t2<-Sys.time();print(t2)
-run1 <- extend.jags(run0, combine=F, sample=10000, thin=100, keep.jags.files=F)
-t3<-Sys.time();print(t3)
-print("run1 done"); print(difftime(t3,t2))
-print("--------------------------------------------------")
-run<-run1
-save(run, file=paste0(path_output,modelname,".RData"))
-
-run2 <- extend.jags(run1, combine=T, sample=50000, thin=100, keep.jags.files=F)
+run2 <- extend.jags(run1, combine=T, sample=100000, thin=100, keep.jags.files=F)
  t3<-Sys.time();print(t3)
  print("run2 done"); print(difftime(t3,t2))
  print("--------------------------------------------------")
@@ -363,10 +309,13 @@ run2 <- extend.jags(run1, combine=T, sample=50000, thin=100, keep.jags.files=F)
 
 
  t31<-Sys.time();print(t31)
-run3 <- extend.jags(run2, combine=T, sample=50000, thin=100, keep.jags.files=F)
+run3 <- extend.jags(run2, combine=T, sample=100000, thin=100, keep.jags.files=F)
  t32<-Sys.time();print(t32)
  print("run3 done"); print(difftime(t31,t32))
  print("--------------------------------------------------")
  run<-run3
  save(run, file=paste0(path_output,modelname,".RData"))
+ 
+ 
+sink()
  

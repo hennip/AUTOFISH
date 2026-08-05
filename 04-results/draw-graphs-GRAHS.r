@@ -2,9 +2,163 @@
 #rm(list = ls())
 
 source("00-basics/packages-and-paths.R")
-load(paste0(path_output,"GRAHS4.RData"))
+#load(paste0(path_output,"GRAHS4.RData"))
+
+#load(paste0(path_output,"GRAHS4_12.RData"))
+load(paste0(path_output,"GRAHS4_etaE4etaR4.RData"))
+
+
 summary(run, var="Ntot")
 summary(run, var="eta")
+summary(run, var="PopAge")
+
+
+chains<-as.mcmc(run)
+
+N<-chains[,"Ntot[1,1]"]
+Ap<-chains[,"PopAge[1,1]"]
+
+
+A<-N/1000000 *Ap
+summary(N/1000000 *A, quantiles=c(0.05,0.5,0.95))$quantiles
+
+
+min<-low<-med<-up<-max<-array(NA, dim=c(10,2))
+for(y in 1:2){
+for(i in 1:10){
+  
+  p<-chains[,str_c("PopAge[",i,",",y,"]")]
+  N<-chains[,str_c("Ntot[1,",y,"]")]
+  tmp<-p*N/1000000
+  sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+  min[i,y]<-sum_tmp[1]
+  low[i,y]<-sum_tmp[2]
+  med[i,y]<-sum_tmp[3]
+  up[i,y]<-sum_tmp[4]
+  max[i,y]<-sum_tmp[5]
+}
+}
+
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2023:2024)
+max
+
+df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
+  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="min")
+df_low<-as_tibble(low) |> mutate(age=row_number()) |> 
+  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="low")
+df_med<-as_tibble(med) |> mutate(age=row_number()) |> 
+  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="med")
+df_up<-as_tibble(up) |> mutate(age=row_number()) |> 
+  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="up")
+df_max<-as_tibble(max) |> mutate(age=row_number()) |> 
+  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="max")
+
+df<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max)
+  
+
+
+
+
+
+
+
+
+
+
+
+df<-tibble()
+for(y in 1:2){
+  for(i in 1:10){
+    if(i==1 & y==1){
+      df1<-NperAge[,i,y]
+#      colnames(df1)<-"N"
+      df<-as_tibble(df1) |> mutate(age=i, year=2022+y) |> rename(N=value)
+    }else{
+      df2<-NperAge[,i,y]
+#      colnames(df2)<-"N"
+      df2<-as_tibble(df2) |> mutate(age=i, year=2022+y) |> rename(N=value)
+      df<-full_join(df,df2)
+ 
+    }
+    
+  #df |> mutate(year=2023)
+    }
+}
+View(df)
+
+ggplot(df, aes(Age, group=Age))+
+  labs(x="Year", y="Number of smolts (in 1000's)", title="Annual size of the smolt run")+
+  coord_cartesian(ylim=c(0,40))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = q5/1000, lower = q25/1000, middle = q50/1000, upper = q75/1000, ymax = q95/1000),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~year)
+  geom_point(aes(x=Year, y=Ntot/1000), size=2)+
+  theme(title = element_text(size=15), axis.text = element_text(size=12), strip.text = element_text(size=15))+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))+
+  coord_cartesian(xlim=c(2002,2021), ylim=c(0,40))
+
+
+
+
+
+
+ggplot(df, aes(Year, group=Year))+
+  labs(x="Year", y="Number of smolts (in 1000's)", title="Annual size of the smolt run")+
+  coord_cartesian(ylim=c(0,40))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = q5/1000, lower = q25/1000, middle = q50/1000, upper = q75/1000, ymax = q95/1000),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  geom_point(aes(x=Year, y=Ntot/1000), size=2)+
+  theme(title = element_text(size=15), axis.text = element_text(size=12), strip.text = element_text(size=15))+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))+
+  coord_cartesian(xlim=c(2002,2021), ylim=c(0,40))
+
+
+
+
+
+
+boxplot.jags.df<-function(mcmc.chains, name1, X){ # chain object, variable name, values to x-axis
+  # note: length of x and dim variable need to match
+  
+  d<-as.matrix(mcmc.chains)
+  
+  Q5<-c();Q25<-c();Q50<-c();Q75<-c();Q95<-c()
+  n<-length(X)
+  
+  for(i in 1:n){
+    
+    y<-d[,str_c(name1,i,"]")]
+    
+    Q5[i] = quantile(y,0.05)
+    Q25[i] = quantile(y,0.25)
+    Q50[i] = quantile(y,0.5)
+    Q75[i] = quantile(y,0.75)
+    Q95[i] = quantile(y,0.95)
+  }
+  
+  df<-data.frame(
+    x<-X,
+    q5=Q5,
+    q25=Q25,
+    q50=Q50,
+    q75=Q75,
+    q95=Q95
+  )
+  colnames(df)<-c("x","q5","q25","q50","q75","q95")
+  return(df)
+}
+
+
+
+
+
 windows()
 plot(run, var="eta")
 
@@ -13,6 +167,7 @@ summary(run, var="eta")
 summary(run, var="Ntot")
 summary(run, var="N")
 plot(run, var="Ntot")
+plot(run, var="eta")
 plot(run, var="cv_nasc")
 chains<-as.mcmc.list(run)
 chains<-window(chains, start=2000000)

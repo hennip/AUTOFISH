@@ -1,9 +1,4 @@
-#
-# Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
-# => binomijakauman approksimointi beta-jakaumalla
-#
 
-source("01-data/workflow-data.R")
 
 MonkeyModel<-"
 model{
@@ -20,8 +15,8 @@ model{
                   sigma[2]*n[LOG[i],2]+
                   sigma[3]*n[LOG[i],3])/pA[i]
                   
-    M_nasc[i]<-log(mu_nasc[i)-0.5*(1/tau_nasc)
-    propA[LOG[i]]<-pA[i] # proportion of area i of total area
+    M_nasc[i]<-log(mu_nasc[i])-0.5*(1/tau_nasc)
+    #propA[LOG[i]]<-pA[i] # proportion of area i of total area
   }
   tau_nasc<-1/log(cv_nasc*cv_nasc+1)
   cv_nasc<-0.001 # noise/ measurement error, assume now known but small 
@@ -34,26 +29,30 @@ model{
 
   # Species composition in trawl catch
   ########################################
-  for(h in 1:Nhaul){ # h: index for haul number
-    # Sobs: observed number per species in the trawl catch per species
-    # Cobs: total trawl catch
-    # qS: relative proportion of each species (eg. c(0.3,0.3,0.4)) in haul h
-    Sobs[1:Nspecies,h]~dmulti(qS[1:Nspecies,h],Cobs[h])
-      
-    # qS~ddirich() but for computational reasons we approximate dirichlet distribution 
-    # with a set of lognormal distns (technical, monkey can ignore this)
-    qS[1:Nspecies,h]~ddirich(muS[1:Nspecies])
-    # qS[1:Nspecies,h]<-zS[1:Nspecies,h]/sum(zS[1:Nspecies,h])
-    # for(s in 1:Nspecies){
-    #     zS[s,h]~dlnorm(MS[s],tauS[s])
-    #   }
-  }
+  # Only one haul at first
+  Sobs[1:Nspecies]~dmulti(qS[1:Nspecies],Cobs)
+  qS[1:Nspecies]~ddirich(muS[1:Nspecies])
+  
+  # for(h in 1:Nhaul){ # h: index for haul number
+  #   # Sobs: observed number per species in the trawl catch per species
+  #   # Cobs: total trawl catch
+  #   # qS: relative proportion of each species (eg. c(0.3,0.3,0.4)) in haul h
+  #   Sobs[1:Nspecies,h]~dmulti(qS[1:Nspecies,h],Cobs[h])
+  #     
+  #   # qS~ddirich() but for computational reasons we approximate dirichlet distribution 
+  #   # with a set of lognormal distns (technical, monkey can ignore this)
+  #   qS[1:Nspecies,h]~ddirich(muS[1:Nspecies])
+  #   # qS[1:Nspecies,h]<-zS[1:Nspecies,h]/sum(zS[1:Nspecies,h])
+  #   # for(s in 1:Nspecies){
+  #   #     zS[s,h]~dlnorm(MS[s],tauS[s])
+  #   #   }
+  # }
   
  # Species composition in total population
  ###########################################
  for(s in 1:Nspecies){ # s: index for species
     # muS[s]: expected proportion of species s is its relative share in the total population
-    muS[s]<-n[s]/Ntot[s]
+    muS[s]<-Ntot[s]/sum(Ntot[1:3])
   }
   # # Parameters MS and tauS link the species composition between observed hauls and the total population
   # MS[1:Nspecies]<-log(muS[1:Nspecies])-0.5*(1/tauS[1:Nspecies])
@@ -68,7 +67,7 @@ model{
     # E(pE[i]): proportion of echo area i compared to total area
     # etaE: overdispersion parameter
     pE[1:Necho,s]~ddirich(alphaE[1:Necho,s])
-    alphaE[1:Necho,s]<-propA[1:Necho]*Ntot[s]*etaE
+    alphaE[1:Necho,s]<-pA[1:Necho]*Ntot[s]*etaE
         
     for(e in 1:Necho){
       # n: true number of fish of species s on subarea e. Last subarea is the part that was not visited
@@ -97,54 +96,35 @@ cat(MonkeyModel,file="MonkeyModel.txt")
 data<-list(
   Nobs=4,
   Nhaul=1,
-  
-  Nyears=2,
-  Nrec=4,
-  Nages=10,
+  NASC=c(600,600,600,600),
   Nspecies=3,
-  Nlengths=c(N_lh,N_ls,N_lo),
   pi=3.14159265358979323846,
-  A=A_NM2, # Areas of rectangles, NM^2
-  Atot=sum(A_NM2),
+  pA=c(rep(1/16,4),12/16),
   
-  NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
-  R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
-  pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
-  LOG= tot_nasc_per_log_plus_one$LOG,
-  
-  Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
-  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
-  Nhaul=Nhaul, # Number of hauls per rectangle
-  nascY=nascY, # Year index
-  
-  Cobs=C_obs, # Total catch per species
-  Sobs=S_obs, # Number of individuals per species in each haul
-  nLobs=nL_obs, # Sample size per length group
-  Lobs=L_obs, # Number of individuals per length group in each sample
-  Gobs=G_obs, # Number of individuals per age group in each sample
-  nGobs=nG_obs, # sample size per age group
-  aG=rep(1,10),
-  aL1=rep(1,N_lh),
-  aL2=rep(1,N_ls),
-  aL3=rep(1,N_lo),
-  meanL=meanL/10 # mean lengths in cm's!!!
+  LOG= 1:5, # = LOGs 1:4 + 1 for area not visited
+  Necho=4+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
+
+  Cobs= 120,
+  Sobs= c(40,40,40),
+  meanL=c(100,75,50)/10 # mean lengths in cm's
 )
 
 parnames=c(
   "muH",
-  "PopAge",
-  "Lstar",
-  "cv_nasc", "cv_nascX", "etaX",
-  "etaR", "etaE", "etaL","etaG","etaH", "etaS",
+  "etaE", 
   "Ntot","N"
 )
+library(runjags)
 
-# 
-run0<-run.jags(GRAHS_model3, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
-               burnin =1000, modules = "mix",
-               sample =1000, adapt = 1000,
+run0<-run.jags(MonkeyModel, monitor=parnames,data=data,n.chains = 2, thin=1,
+               method = 'parallel',
+               burnin =1000,
+               sample =1000, adapt = 1000, modules = "mix",
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
+
+summary(run0)
+
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(GRAHS_model3, monitor=parnames,data=data,n.chains = 2, 

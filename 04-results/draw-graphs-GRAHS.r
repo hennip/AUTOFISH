@@ -43,15 +43,15 @@ colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2023
 max
 
 df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
-  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="min")
+  pivot_longer(1:2,names_to = "year", values_to = "min")
 df_low<-as_tibble(low) |> mutate(age=row_number()) |> 
-  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="low")
+  pivot_longer(1:2,names_to = "year", values_to = "low") 
 df_med<-as_tibble(med) |> mutate(age=row_number()) |> 
-  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="med")
-df_up<-as_tibble(up) |> mutate(age=row_number()) |> 
-  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="up")
+  pivot_longer(1:2,names_to = "year", values_to = "med")
+df_up<-as_tibble(up) |> mutate(age=row_number()) |>  
+  pivot_longer(1:2,names_to = "year", values_to = "up")
 df_max<-as_tibble(max) |> mutate(age=row_number()) |> 
-  pivot_longer(1:2,names_to = "year", values_to = "N") |> mutate(quant="max")
+  pivot_longer(1:2,names_to = "year", values_to = "max")
 
 df<-full_join(df_min, df_low) |> 
   full_join(df_med) |> 
@@ -60,100 +60,16 @@ df<-full_join(df_min, df_low) |>
   
 
 
-
-
-
-
-
-
-
-
-
-df<-tibble()
-for(y in 1:2){
-  for(i in 1:10){
-    if(i==1 & y==1){
-      df1<-NperAge[,i,y]
-#      colnames(df1)<-"N"
-      df<-as_tibble(df1) |> mutate(age=i, year=2022+y) |> rename(N=value)
-    }else{
-      df2<-NperAge[,i,y]
-#      colnames(df2)<-"N"
-      df2<-as_tibble(df2) |> mutate(age=i, year=2022+y) |> rename(N=value)
-      df<-full_join(df,df2)
- 
-    }
-    
-  #df |> mutate(year=2023)
-    }
-}
-View(df)
-
-ggplot(df, aes(Age, group=Age))+
-  labs(x="Year", y="Number of smolts (in 1000's)", title="Annual size of the smolt run")+
-  coord_cartesian(ylim=c(0,40))+
+ggplot(df, aes(age, group=age))+
+  labs(x="Age class", y="Number of herring", title="Herring abundance per age (GRAHS)")+
+  coord_cartesian(xlim=c(0.5,10.4))+
   theme_bw()+
   geom_boxplot(
-    aes(ymin = q5/1000, lower = q25/1000, middle = q50/1000, upper = q75/1000, ymax = q95/1000),
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year)
-  geom_point(aes(x=Year, y=Ntot/1000), size=2)+
-  theme(title = element_text(size=15), axis.text = element_text(size=12), strip.text = element_text(size=15))+
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))+
-  coord_cartesian(xlim=c(2002,2021), ylim=c(0,40))
+  facet_wrap(~year)+scale_x_continuous(breaks = scales::pretty_breaks(n = 10))
 
 
-
-
-
-
-ggplot(df, aes(Year, group=Year))+
-  labs(x="Year", y="Number of smolts (in 1000's)", title="Annual size of the smolt run")+
-  coord_cartesian(ylim=c(0,40))+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = q5/1000, lower = q25/1000, middle = q50/1000, upper = q75/1000, ymax = q95/1000),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  geom_point(aes(x=Year, y=Ntot/1000), size=2)+
-  theme(title = element_text(size=15), axis.text = element_text(size=12), strip.text = element_text(size=15))+
-  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))+
-  coord_cartesian(xlim=c(2002,2021), ylim=c(0,40))
-
-
-
-
-
-
-boxplot.jags.df<-function(mcmc.chains, name1, X){ # chain object, variable name, values to x-axis
-  # note: length of x and dim variable need to match
-  
-  d<-as.matrix(mcmc.chains)
-  
-  Q5<-c();Q25<-c();Q50<-c();Q75<-c();Q95<-c()
-  n<-length(X)
-  
-  for(i in 1:n){
-    
-    y<-d[,str_c(name1,i,"]")]
-    
-    Q5[i] = quantile(y,0.05)
-    Q25[i] = quantile(y,0.25)
-    Q50[i] = quantile(y,0.5)
-    Q75[i] = quantile(y,0.75)
-    Q95[i] = quantile(y,0.95)
-  }
-  
-  df<-data.frame(
-    x<-X,
-    q5=Q5,
-    q25=Q25,
-    q50=Q50,
-    q75=Q75,
-    q95=Q95
-  )
-  colnames(df)<-c("x","q5","q25","q50","q75","q95")
-  return(df)
-}
 
 
 

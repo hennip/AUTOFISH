@@ -88,21 +88,33 @@ C_obs
 # 1: herring
 # 2: sprat
 # 3: stickleback
-# 3: ther
+# 4: other
 # group by rec, haul & species, calculate total catch
 Nspecies<-4
 
 S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,4,Nyears))
 
+
 for(y in 1:Nyears){
+#  y<-1
   for(r in 1:4){
+#    r<-4
     dat<-dfB_catch_all_species |> 
       filter(year==(y+min_years-1) &rec_ruhnu ==r)
-    df<-t(as.data.frame(dat |> pivot_wider(names_from = species, values_from = catch3) |> 
-                  #filter(year==2023, rec_ruhnu==1) |> 
+    
+    for(s in 1:Nspecies){
+      if(dim(dat |> filter(species==s))[1]==0){
+        dat<-full_join(dat, tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, catch3=NA ))
+      }
+    }
+
+    df<-t(as.data.frame(dat |>
+                          arrange(species) |> 
+                          pivot_wider(names_from = species, values_from = catch3) |> 
                     ungroup() |>  select(-year, -rec_ruhnu, -HaulNumber)))
-S_obs[,1:dim(df)[2],r,y]<-df
-}}
+    S_obs[,1:dim(df)[2],r,y]<-df
+  }
+}
 S_obs
 
 # Replace NA's with 0 in cases where haul took place but
@@ -181,14 +193,28 @@ sample_size
 # Sample size per species and rec in a form that feeds to the model
 nL_obs<-array(NA, dim=c(4,Nspecies,Nyears))
 for(y in 1:Nyears){
-  nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==1) |>  
-                                pivot_wider(values_from = tot_sample, names_from = species))[,3]
-  nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==2) |>  
-                                pivot_wider(values_from = tot_sample, names_from = species))[,3]
-  nL_obs[,4,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==4) |>  
-                                pivot_wider(values_from = tot_sample, names_from = species))[,3]
-  nL_obs[,3,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==3) |>  
-                                pivot_wider(values_from = tot_sample, names_from = species))[,3]
+  for(r in 1:4){
+    for(s in 1:Nspecies){
+    tmp<-(sample_size |> filter(year==(y+min_years-1), species==s, rec_ruhnu==r))$tot_sample
+    
+    if(length(tmp)==0){
+      nL_obs[r,s,y]<-NA
+    }else{
+      nL_obs[r,s,y]<-tmp    
+    }
+    
+    }
+  }
+
+ # y<-1  
+  # nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==1) |>
+  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
+  # nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==2) |>
+  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
+  # nL_obs[,3,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==3) |>
+  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
+  # nL_obs[,4,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==4) |>
+  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
 }
 nL_obs
 
@@ -239,10 +265,8 @@ numbers_at_length_stickl<-numbers_at_length|>
   mutate(length_group=ifelse(length>=55 & length<60, 3, length_group)) |> 
   mutate(length_group=ifelse(length>=60, 4, length_group)) 
 
-
 numbers_at_length_other<-numbers_at_length|>
-  #filter(species==2) |>  # If two species
-  filter(species==4) |>  # If three species
+  filter(species==4) |> 
   mutate(length_group=ifelse(length<60, 1, NA)) |> 
   mutate(length_group=ifelse(length>=60  & length<80, 2, length_group)) |> 
   mutate(length_group=ifelse(length>=80 & length<100, 3, length_group)) |> 
@@ -462,40 +486,60 @@ nL_obs
 
 # NOTE! REPLACE NA's IN LENGTH DATA WHERE NA NOT SUITABLE OR IN REALITY 0
 ##########################################################################
-# For computational reasons, sample size can't be missing so imput sample of 500 
+# For computational reasons, sample size can't be missing so imput sample of 1000 
 # for all that are currently NA. Numbers per length will be then predicted by the model 
 # (THIS PROPABLY DOES NOT HAPPEN BUT IF IT WOULD, THIS PIECE OF CODE WOULD DEAL WITH IT)
+# ...well it certainly does happen, eg. stickleback in rec 2 in 2020...
+# in such cases the L_obs must be NA, and not 0
+
+# Note that if you make changes below you must always run the previous Lobs/nLobs 
+# code as well, otherwise the loop never goes to the is.na part (if it's already replaced)
+
+N_l<-c(N_lh,N_lsprat, N_lstickl, N_lo)
 # AND
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
-for(r in 1:4){
-  for(s in 1:Nspecies){
-    for(y in 1:Nyears){
-      if(is.na(nL_obs[r,s,y])==T){
-        nL_obs[r,s,y]<-500}else{ # Input imaginary 500 sample where no sample was taken
-          for(l in 1:N_lh){ # Herring
-            if(is.na(L_obs[l,r,1,y])==T){
-              L_obs[l,r,1,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-            }
-          }
-          for(l in 1:N_lsprat){ # Sprat
-            if(is.na(L_obs[l,r,2,y])==T){
-              L_obs[l,r,2,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-            }
-          }
-          for(l in 1:N_lstickl){ # Stickleback
-            if(is.na(L_obs[l,r,3,y])==T){
-              L_obs[l,r,3,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-            }
-          }
-          for(l in 1:N_lo){ # Other
-            if(is.na(L_obs[l,r,4,y])==T){
-              L_obs[l,r,4,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-            }
-          }
+for(y in 1:Nyears){
+  for(r in 1:4){
+    for(s in 1:Nspecies){
+#    y<-1;r<-2;s<-3
+        if(is.na(nL_obs[r,s,y])==T){ # no catch of a particular species
+        nL_obs[r,s,y]<-1000 # Input imaginary 1000 sample where no sample exists
+        
+        for(l in 1:N_l[s]){# different species have different number of length groups
+          L_obs[l,r,s,y]<-NA # replace all observed lengths with NA when no sample exists
         }
-      }
+        
+        }else{ 
+          for(l in 1:N_l[s]){ # different species have different number of length groups
+            if(is.na(L_obs[l,r,s,y])==T){
+              L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            }
+          }
+          
+          # for(l in 1:N_lh){ # Herring
+          #   if(is.na(L_obs[l,r,1,y])==T){
+          #     L_obs[l,r,1,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+          #   }
+          # }
+          # for(l in 1:N_lsprat){ # Sprat
+          #   if(is.na(L_obs[l,r,2,y])==T){
+          #     L_obs[l,r,2,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+          #   }
+          # }
+          # for(l in 1:N_lstickl){ # Stickleback
+          #   if(is.na(L_obs[l,r,3,y])==T){
+          #     L_obs[l,r,3,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+          #   }
+          # }
+          # for(l in 1:N_lo){ # Other
+          #   if(is.na(L_obs[l,r,4,y])==T){
+          #     L_obs[l,r,4,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+          #   }
+          # }
+        }
     }
   }
+}
 L_obs
 nL_obs
 

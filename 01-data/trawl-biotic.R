@@ -38,10 +38,13 @@ sum(df_pivot[,2:17], na.rm=T)# 9347
 #View(df_pivot)
 
 
-# Pool older ages to age group 9, remove missing ages
+# Pool older ages to age group 8, remove missing ages
 # Length as the first grouping argument keeps the length groups in correct order in the pivot table
+age_plus<-8
+Nages<-age_plus+1 # +1 are the 0yr olds
+
 df<-df_length_at_age |>
-  mutate(age=ifelse(age>9, 9, age)) |>   # pool ages >=9 together (10th age group)
+  mutate(age=ifelse(age>age_plus, age_plus, age)) |>   # pool ages >=8 together (9th age group)
   filter(is.na(age)==F) |> # Remove individuals with missing age 
   group_by(length_group, year, rec_ruhnu, age) |> 
   summarise(n=n())

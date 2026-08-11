@@ -8,7 +8,6 @@ load(paste0(path_output,"GRAHS_etaE_2020-2025.RData"))
 load(paste0(path_output,"GRAHS4_etaE4etaR4_2020-2025.RData"))
 load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
 
-
 summary(run, var="deviance")
 plot(run, var="deviance")
 
@@ -25,40 +24,43 @@ summary(run, var="Lstar")
 
 chains<-as.mcmc(run)
 
+Nyears<-6
+Nages<-9
+
+
 #################
 # Prior vs posterior
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-
-# Koita eta priorina dunif(0.001,1000)
 
 plot(density(chains[,"cv_nasc"]),main=expression(CV[nasc]))
 lines(density(chains[,"cv_nascX"]))
 
 plot(density(chains[,"etaG"]),main=expression(eta^G))
-#lines(density(chains[,"etaX"]))
+lines(density(chains[,"etaX"]))
 #plot(density(chains[,"etaX"]),main=expression(eta^X), xlim=c(0,4000))
 
 for(y in 1:Nyears){
   plot(density(chains[,str_c("etaS[",y,"]")]),main=bquote(.(y+2019) ~ eta^S))
-  }
+  lines(density(chains[,"etaX"]))
+}
 
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-plot(density(chains[,"etaR[1]"]),main=expression(eta[1]^R))
-plot(density(chains[,"etaR[2]"]),main=expression(eta[2]^R))
-plot(density(chains[,"etaR[3]"]),main=expression(eta[3]^R))
-plot(density(chains[,"etaR[4]"]),main=expression(eta[4]^R))
+plot(density(chains[,"etaR[1]"]),main=expression(eta[1]^R));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaR[2]"]),main=expression(eta[2]^R));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaR[3]"]),main=expression(eta[3]^R));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaR[4]"]),main=expression(eta[4]^R));  lines(density(chains[,"etaX"]))
 
-plot(density(chains[,"etaE[1]"]),main=expression(eta[1]^E))
-plot(density(chains[,"etaE[2]"]),main=expression(eta[2]^E))
-plot(density(chains[,"etaE[3]"]),main=expression(eta[3]^E))
-plot(density(chains[,"etaE[4]"]),main=expression(eta[4]^E))
+plot(density(chains[,"etaE[1]"]),main=expression(eta[1]^E));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaE[2]"]),main=expression(eta[2]^E));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaE[3]"]),main=expression(eta[3]^E));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaE[4]"]),main=expression(eta[4]^E));  lines(density(chains[,"etaX"]))
 
 
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-plot(density(chains[,"etaL[1]"]),main=expression(eta[1]^L))
-plot(density(chains[,"etaL[2]"]),main=expression(eta[2]^L))
-plot(density(chains[,"etaL[3]"]),main=expression(eta[3]^L))
-plot(density(chains[,"etaL[4]"]),main=expression(eta[4]^L))
+plot(density(chains[,"etaL[1]"]),main=expression(eta[1]^L));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaL[2]"]),main=expression(eta[2]^L));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaL[3]"]),main=expression(eta[3]^L));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaL[4]"]),main=expression(eta[4]^L));  lines(density(chains[,"etaX"]))
 
 par(mfrow=c(2,3),mar=c(2.5,4,4,1))
 for(s in 1:Nspecies){
@@ -67,36 +69,17 @@ for(s in 1:Nspecies){
   }
 }
 
-par(mfrow=c(3,8),mar=c(2.5,4,4,1))
-for(y in 1:nyears){
-  for(i in 1:8){
-    traceplot(chains[,paste(sep="","Lstar[",i,",1,",y,"]")],
-              main=paste(sep="","Lstar, LC=",i,", ",vuosi[y]))
-    
-    print(y)
-    print(i)
-    print(gelman.diag(chains[,paste(sep="","Lstar[",i,",1,",y,"]")]))
-    
-  }
-}
-
-
-
-
 
 ######################################
 # Herring abundance per age group
 ######################################
 
 
-Nyears<-6
-Nages<-9
-
 min<-low<-med<-up<-max<-array(NA, dim=c(Nages,Nyears))
 for(y in 1:Nyears){
 for(i in 1:Nages){
   
-  p<-chains[,str_c("PopAge[",i,",",y,"]")]
+  p<-chains[,str_c("ageH[",i,",",y,"]")]
   N<-chains[,str_c("Ntot[1,",y,"]")] #1: herring
   tmp<-p*N/1000000
   sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
@@ -189,6 +172,20 @@ ggplot(df, aes(year, group=year))+
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~species2, scales="free")+
   expand_limits(y = 0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

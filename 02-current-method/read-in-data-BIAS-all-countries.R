@@ -97,6 +97,9 @@ hauls_all<-full_join(hauls_EE, hauls_FI)|>
   mutate(HaulNumber=HaulNumber+CountryCoef) |> 
   select(country, HaulNumber, everything())
 
+hauls_invalid<-hauls_all |> filter(HaulValidity=="I") |> select(HaulValidity, everything())
+hauls_all<-hauls_all|>filter(HaulValidity!="I")
+
 catch_all<-full_join(catch_EE, catch_FI)|> 
   full_join(catch_DE) |>
   full_join(catch_PL) |>
@@ -112,6 +115,7 @@ catch_all<-full_join(catch_EE, catch_FI)|>
   mutate(CatchLengthClass_mm=ifelse(CatchLengthCode=="cm", CatchLengthClass*10, CatchLengthClass)) |> 
   mutate(offset=ifelse(CatchLengthCode=="cm", 0.45, 
                        ifelse(CatchLengthCode=="halfcm", 0.2, 0))) 
+
 
 # Note! In some cases there are several length categories for the same species
 catch_all |> group_by(country) |>
@@ -131,9 +135,13 @@ biol_all<-full_join(bio_EE, bio_FI)|>
   mutate(BiologyLengthClass=as.numeric(BiologyLengthClass)) |> 
   mutate(BiologyLengthClass_mm=ifelse(BiologyLengthCode=="cm", BiologyLengthClass*10, BiologyLengthClass)) 
   
-
-
-#View(bio_all)
+# Remove invalid hauls from catch and biology tables
+n<-dim(hauls_invalid)[1]
+for(i in 1:n){
+  inv<-hauls_invalid$HaulNumber[i] 
+  catch_all<-catch_all |> filter(HaulNumber!=inv)
+  biol_all<-biol_all |> filter(HaulNumber!=inv)
+}
 
 # Rectangle specific info: ICES sub division and area as NM^2
 df_rec_info<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |> 
@@ -141,9 +149,4 @@ df_rec_info<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |>
 
 
 
-# dfA
-# catch_all
-# hauls_all
-# biol_all
-# rec_areas
 

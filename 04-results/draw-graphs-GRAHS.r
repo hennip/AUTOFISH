@@ -26,7 +26,8 @@ chains<-as.mcmc(run)
 
 Nyears<-6
 Nages<-9
-
+Nspecies<-4
+species_name<-c("Herring", "Sprat", "Stickleback", "Other")
 
 #################
 # Prior vs posterior
@@ -65,7 +66,7 @@ plot(density(chains[,"etaL[4]"]),main=expression(eta[4]^L));  lines(density(chai
 par(mfrow=c(2,3),mar=c(2.5,4,4,1))
 for(s in 1:Nspecies){
   for(y in 1:Nyears){
-  plot(density(chains[,str_c("Ntot[",s,",",y,"]")]/1e+06), main=str_c("species ",s,", ", y+2019))
+  plot(density(chains[,str_c("Ntot[",s,",",y,"]")]/1e+06), main=str_c(species_name[s]," ", y+2019))
   }
 }
 

@@ -334,7 +334,10 @@ df_bio_SD<-df_biol |>
   select(species,rec,HaulNumber, everything()) |> 
 left_join(df_rec_ICES_SD, relationship = "many-to-many")
 
+# NOTE!!! Remove individuals that do not have known age
+# -> these individuals will not be accounted for when forming age-length key
 n_per_age_length<-df_bio_SD |> 
+  filter(is.na(age)==F) |> 
   group_by(species, age,BiologyLengthClass_mm, ICES_SD) |> 
   summarise(n=n())|> 
   select(ICES_SD, species,  everything()) |> 
@@ -353,7 +356,7 @@ df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |>
 pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
   arrange(species,ICES_SD,BiologyLengthClass_mm,age) |> 
-  pivot_wider(names_from = age, values_from = p_age_at_length) #|> 
+  pivot_wider(names_from = age, values_from = p_age_at_length)
 
 # Abundance at age for herring and sprat
 # ================================
@@ -375,6 +378,10 @@ df_n_at_age<-df_n_per_length_ICES_SD |>
   left_join(age_length_key, relationship="many-to-many") |> 
   mutate(n_age_at_length=p_age_at_length*n_per_length)
 print(x=df_n_at_age, n=100)
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# NOTE! sum function removes now those that have age as NA
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
@@ -495,8 +502,7 @@ pivot_mean_weight_at_age <-df_mean_weight_at_age |>
 # ==========================
 # RESULT FILE
 # ==========================
-# Abundances per species per age
-AH<-pivot_n_at_age|> filter(species==126417) |> select( -`NA`)
+AH<-pivot_n_at_age|> filter(species==126417) |> select(-`NA`)
 AS<-pivot_n_at_age|> filter(species==126425)|> select( -`NA`)
 AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
 

@@ -2,163 +2,196 @@
 #rm(list = ls())
 
 source("00-basics/packages-and-paths.R")
-load(paste0(path_output,"GRAHS4.RData"))
+#load(paste0(path_output,"GRAHS4.RData"))
+
+load(paste0(path_output,"GRAHS_etaE_2020-2025.RData"))
+load(paste0(path_output,"GRAHS4_etaE4etaR4_2020-2025.RData"))
+load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
+
+summary(run, var="deviance")
+plot(run, var="deviance")
+
 summary(run, var="Ntot")
 summary(run, var="eta")
-windows()
+summary(run, var="PopAge")
+
 plot(run, var="eta")
-
-
-summary(run, var="eta")
-summary(run, var="Ntot")
-summary(run, var="N")
-plot(run, var="Ntot")
 plot(run, var="cv_nasc")
-chains<-as.mcmc.list(run)
-chains<-window(chains, start=2000000)
-traceplot(chains[,"etaE[1]"])
-traceplot(chains[,"etaE[2]"])
-traceplot(chains[,"etaE[3]"])
-traceplot(chains[,"etaE[4]"])
-summary(chains[,"etaE[1]"])
 
 
-chains<-as.mcmc.list(run)
-chains<-window(chains,start=200000)
-#summary(chains)
+summary(run, var="Lstar")
 
-years<-c(2023:2024)
-nyears<-length(years)
 
-#ageOld<-read.table("data/der/AgeDist_oldEstimates.txt", header=T)
-#source("prg/model/TrawlData/StandardLengthEstimates.r")
-#LengthObs<-Pst
+chains<-as.mcmc(run)
 
-data<-list(
-  Nyears=2,
-  Nrec=4,
-  Nages=10,
-  Nspecies=4,
-  Nlengths=c(N_lh,N_lsprat,N_lstickl,N_lo),
-  pi=3.14159265358979323846,
-  A=A_NM2, # Areas of rectangles, NM^2
-  Atot=sum(A_NM2),
-  
-  NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
-  R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
-  pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
-  LOG= tot_nasc_per_log_plus_one$LOG,
-  
-  Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
-  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
-  Nhaul=Nhaul, # Number of hauls per rectangle
-  nascY=nascY, # Year index
-  
-  Cobs=C_obs, # Total catch per species
-  Sobs=S_obs, # Number of individuals per species in each haul
-  nLobs=nL_obs, # Sample size per length group
-  Lobs=L_obs, # Number of individuals per length group in each sample
-  Gobs=G_obs, # Number of individuals per age group in each sample
-  nGobs=nG_obs, # sample size per age group
-  aG=rep(1,10),
-  aL1=rep(1,N_lh),
-  aL2=rep(1,N_lsprat),
-  aL3=rep(1,N_lstickl),
-  aL4=rep(1,N_lo),
-  meanL=meanL/10 # mean lengths in cm's!!!
-)
-summary(data)
-
+Nyears<-6
+Nages<-9
+Nspecies<-4
+species_name<-c("Herring", "Sprat", "Stickleback", "Other")
 
 #################
-# Traces
+# Prior vs posterior
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-traceplot(chains[,"etaE[1]"],main=expression(eta[1]^E), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaE[2]"],main=expression(eta[2]^E), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaE[3]"],main=expression(eta[3]^E), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaE[4]"],main=expression(eta[4]^E), cex.main=1.5, col=c("black", "gray"))
 
-traceplot(chains[,"etaR[1]"],main=expression(eta[1]^R), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaR[2]"],main=expression(eta[2]^R), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaR[3]"],main=expression(eta[3]^R), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaR[4]"],main=expression(eta[4]^R), cex.main=1.5, col=c("black", "gray"))
+plot(density(chains[,"cv_nasc"]),main=expression(CV[nasc]))
+lines(density(chains[,"cv_nascX"]))
 
-traceplot(chains[,"etaL[1]"],main=expression(eta[1]^L), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaL[2]"],main=expression(eta[2]^L), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaL[3]"],main=expression(eta[3]^L), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"etaL[4]"],main=expression(eta[4]^L), cex.main=1.5, col=c("black", "gray"))
+plot(density(chains[,"etaG"]),main=expression(eta^G))
+lines(density(chains[,"etaX"]))
+#plot(density(chains[,"etaX"]),main=expression(eta^X), xlim=c(0,4000))
 
-traceplot(chains[,"etaG"],main=expression(eta^G), cex.main=1.5, col=c("black", "gray"))
-traceplot(chains[,"cv_nasc"],main=expression(CV[nasc]), cex.main=1.2, col=c("black", "gray"))
+for(y in 1:Nyears){
+  plot(density(chains[,str_c("etaS[",y,"]")]),main=bquote(.(y+2019) ~ eta^S))
+  lines(density(chains[,"etaX"]))
+}
+
+par(mfrow=c(3,3),mar=c(2.5,4,4,1))
+plot(density(chains[,"etaR[1]"]),main=expression(eta[1]^R));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaR[2]"]),main=expression(eta[2]^R));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaR[3]"]),main=expression(eta[3]^R));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaR[4]"]),main=expression(eta[4]^R));  lines(density(chains[,"etaX"]))
+
+plot(density(chains[,"etaE[1]"]),main=expression(eta[1]^E));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaE[2]"]),main=expression(eta[2]^E));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaE[3]"]),main=expression(eta[3]^E));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaE[4]"]),main=expression(eta[4]^E));  lines(density(chains[,"etaX"]))
 
 
-plot(density(chains[,"cv_nasc"][[1]]),main=expression(CV[nasc]))
-lines(density(chains[,"cv_nascX"][[1]]))
-
-plot(density(chains[,"etaG"][[1]]),main=expression(eta^G))
-lines(density(chains[,"etaX"][[1]]))
-
- 
-?traceplot
-
-gelman.diag(chains[,"etaE[1]"])
-gelman.diag(chains[,"etaE[2]"])
-gelman.diag(chains[,"etaR[1]"])
-gelman.diag(chains[,"etaR[2]"])
-gelman.diag(chains[,"etaL[1]"])
-gelman.diag(chains[,"etaL[2]"])
-gelman.diag(chains[,"etaH"])
-gelman.diag(chains[,"etaG"])
-gelman.diag(chains[,"cv_nasc"])
-
+par(mfrow=c(3,3),mar=c(2.5,4,4,1))
+plot(density(chains[,"etaL[1]"]),main=expression(eta[1]^L));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaL[2]"]),main=expression(eta[2]^L));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaL[3]"]),main=expression(eta[3]^L));  lines(density(chains[,"etaX"]))
+plot(density(chains[,"etaL[4]"]),main=expression(eta[4]^L));  lines(density(chains[,"etaX"]))
 
 par(mfrow=c(2,3),mar=c(2.5,4,4,1))
-traceplot(chains[,"muH[1]"],main="muH[1]")
-traceplot(chains[,"muH[2]"],main="muH[2]")
-traceplot(chains[,"muH[3]"],main="muH[3]")
-traceplot(chains[,"muH[4]"],main="muH[4]")
-traceplot(chains[,"muH[5]"],main="muH[5]")
-traceplot(chains[,"muH[6]"],main="muH[6]")
-
-par(mfrow=c(4,7),mar=c(2.5,4,4,1))
-for(y in 1:6){    
-  for(r in 1:28){
-    traceplot(chains[,paste(sep="","muH[",r,",",y,"]")],
-    main=paste(sep="","muH[",r,",",y,"]"), ylim=c(0,1))
-   # abline(h=data$HobsProp[r,y], col="cyan")                   
+for(s in 1:Nspecies){
+  for(y in 1:Nyears){
+  plot(density(chains[,str_c("Ntot[",s,",",y,"]")]/1e+06), main=str_c(species_name[s]," ", y+2019))
   }
 }
 
 
-
-par(mfrow=c(2,3),mar=c(2.5,4,4,1))
-for(i in 1:nyears){
-  traceplot(chains[,paste(sep="","Ntot[1,",i,"]")],
-  main=vuosi[i], col=c("black", "gray"))           
-}
-par(mfrow=c(2,3),mar=c(2.5,4,4,1))
-for(i in 1:nyears){
-  traceplot(chains[,paste(sep="","Ntot[2,",i,"]")],
-  main=vuosi[i], col=c("black", "gray"))           
-}
+######################################
+# Herring abundance per age group
+######################################
 
 
-par(mfrow=c(2,3),mar=c(2.5,4,4,1))
-for(i in 1:nyears){
-  print(gelman.diag(chains[,paste(sep="","Ntot[1,",i,"]")]))
-}
-
-
-
-
-
-par(mfrow=c(4,7),mar=c(2,4,3,1))
-for(y in 1:nyears){
-for(i in 1:28){
-  traceplot(chains[,paste(sep="","N[",i,",1,",y,"]")],
-  main=paste(sep="","N, r=",i," y=",y))
+min<-low<-med<-up<-max<-array(NA, dim=c(Nages,Nyears))
+for(y in 1:Nyears){
+for(i in 1:Nages){
+  
+  p<-chains[,str_c("ageH[",i,",",y,"]")]
+  N<-chains[,str_c("Ntot[1,",y,"]")] #1: herring
+  tmp<-p*N/1000000
+  sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+  min[i,y]<-sum_tmp[1]
+  low[i,y]<-sum_tmp[2]
+  med[i,y]<-sum_tmp[3]
+  up[i,y]<-sum_tmp[4]
+  max[i,y]<-sum_tmp[5]
 }
 }
+
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2020:2025)
+max
+
+df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up) |> mutate(age=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+
+df<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max)
+  
+df<-df |> mutate(age=age-1)
+
+ggplot(df, aes(age, group=age))+
+  labs(x="Age class", y="Number of herring", title="Herring abundance per age (GRAHS)")+
+  #coord_cartesian(xlim=c(0.5,9.4))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_grid(~year)+scale_x_continuous(breaks = scales::pretty_breaks(n = 9))
+
+######################################
+# Total abundance per species
+######################################
+
+Nspecies<-4
+min<-low<-med<-up<-max<-array(NA, dim=c(Nspecies,Nyears))
+for(y in 1:Nyears){
+  for(s in 1:Nspecies){
+    tmp<-chains[,str_c("Ntot[",s,",",y,"]")]
+    sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+    min[s,y]<-sum_tmp[1]/1e+06
+    low[s,y]<-sum_tmp[2]/1e+06
+    med[s,y]<-sum_tmp[3]/1e+06
+    up[s,y]<-sum_tmp[4]/1e+06
+    max[s,y]<-sum_tmp[5]/1e+06
+  }
+}
+
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2020:2025)
+
+df_min<-as_tibble(min) |> mutate(species=row_number()) |>
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low) |> mutate(species=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med) |> mutate(species=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up) |> mutate(species=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max) |> mutate(species=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+
+df<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max) |> 
+  mutate(species2=ifelse(species==1, "Herring", 
+                         ifelse(species==2, "Sprat",
+                                ifelse(species==3, "Stickleback",
+                                       ifelse(species==4, "Other",NA))))) |> 
+  arrange(species)
+
+
+ggplot(df, aes(year, group=year))+
+  labs(x="Species", y="Year", title="Total abundance per species (in millions)")+
+  #coord_cartesian(ylim=c(0,60000))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~species2, scales="free")+
+  expand_limits(y = 0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # length dist, herring

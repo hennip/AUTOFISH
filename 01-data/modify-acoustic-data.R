@@ -135,6 +135,8 @@ plus_one<-full_join(nasc_plus_one, log_plus_one) |> select(-max_LOG)
 tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |> 
   full_join(plus_one)
 
+#print(x=tot_nasc_per_log_plus_one |> filter(year==2020, rec==1), n=100)
+
 # nascY is year index in the model, must be the same length as sum_nasc
 nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-2022), use.names = F)
 nascY

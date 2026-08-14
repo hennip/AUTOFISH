@@ -1,4 +1,3 @@
-df<-res$AH
 
 df<-df_n_at_age |> 
   mutate(ICES_SD=ifelse(rec=="43H2"|

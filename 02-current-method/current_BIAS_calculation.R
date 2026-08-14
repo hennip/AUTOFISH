@@ -404,7 +404,7 @@ df_n_at_age<-df_n_at_age |>
 # Check again what remaining NA's consist of:
 df_n_at_age |> filter(is.na(age)==T)
 
-# Case2: Sprat in sd 23, length 145mm -> take mean alk of sd 21-24 
+# Case3: Sprat in sd 23, length 145mm -> take mean alk of sd 21-24 
 sprat_145mm_SD23<-df_n_at_age |> 
   filter(is.na(age)==T, species==126425, CatchLengthClass_mm==145) |> 
   select(-age, -p_age_at_length)
@@ -562,9 +562,9 @@ pivot_mean_weight_at_age <-df_mean_weight_at_age |>
 # ==========================
 # RESULT FILE
 # ==========================
-AH<-pivot_n_at_age|> filter(species==126417)
-AS<-pivot_n_at_age|> filter(species==126425)
-AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
+AH<-pivot_n_at_age|> filter(species==126417) |> arrange(ICES_SD)
+AS<-pivot_n_at_age|> filter(species==126425)|> arrange(ICES_SD)
+AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)|> arrange(ICES_SD)
 
 # Biomass per species if of interest
 #pivot_bm_at_age|> filter(species==126417)
@@ -572,9 +572,9 @@ AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
 #pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
 # Mean weights per species per age
-WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)
-WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)
-WO<-pivot_mean_weight_per_length|> filter(species!=126417 & species!=126425)
+WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)|> arrange(ICES_SD)
+WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)|> arrange(ICES_SD)
+WO<-pivot_mean_weight_per_length|> filter(species!=126417 & species!=126425)|> arrange(ICES_SD)
 
 # Takes % of species per rectangle for ST table (we added also GTA)
 df_p_species_per_rec<-df_p_species_per_rec |> 
@@ -613,7 +613,8 @@ ST<-df_sigma_rec |>
   left_join(p_stickl_per_rec) |> 
   left_join(p_cod_per_rec) |>  
   rename(RECT=rec, SD=ICES_SD, SA=mean_nasc) |>  
-select(SD, RECT, A_NM2, SA, SIGMA, p_herring, p_sprat, p_stickleback, p_cod)
+select(SD, RECT, A_NM2, SA, SIGMA, p_herring, p_sprat, p_stickleback, p_cod) |> 
+  arrange(SD)
 ST  
 #View(ST)
 

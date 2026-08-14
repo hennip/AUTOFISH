@@ -351,47 +351,105 @@ df_sum_per_length_class<-n_per_age_length |> ungroup() |>
 
 # Calculate the percentage at age per length class
 df_p_age_at_length<-n_per_age_length |> full_join(df_sum_per_length_class) |> 
+  filter(species== 126417 | species==126425) |> 
+  mutate(age=as.numeric(age)) |> 
   mutate(p_age_at_length=n/sum_per_length_class)
 
 pivot_p_age_at_length<-df_p_age_at_length|> 
   select(-n, -sum_per_length_class) |> 
   arrange(species,ICES_SD,BiologyLengthClass_mm,age) |> 
   pivot_wider(names_from = age, values_from = p_age_at_length)
+#View(pivot_p_age_at_length)
 
 # Abundance at age for herring and sprat
 # ================================
 # The age length key is SD based
 age_length_key<-df_p_age_at_length |>
-  mutate(age=as.numeric(age)) |> 
   ungroup() |> 
   select(species,ICES_SD, BiologyLengthClass_mm, age, p_age_at_length)
 
-# Join SD's, many-to-many is ok
+age_length_key |> filter(is.na(age)==T) # should be empty
+
+# Join SD's to number per length, many-to-many is ok
 df_n_per_length_ICES_SD<-df_n_per_length |> 
   left_join(df_rec_ICES_SD, relationship="many-to-many")|> 
   select(species,ICES_SD,rec,CatchLengthClass_mm, n_per_length)
 
-# Join age length key with numbers at length. 
+# Join age length key with numbers at length 
 # Many-to-many is ok
 df_n_at_age<-df_n_per_length_ICES_SD |>
+  filter(species== 126417 | species==126425) |> 
   mutate(BiologyLengthClass_mm=CatchLengthClass_mm) |> 
-  left_join(age_length_key, relationship="many-to-many") |> 
-  mutate(n_age_at_length=p_age_at_length*n_per_length)
-print(x=df_n_at_age, n=100)
+  left_join(age_length_key, by=c("species", "ICES_SD","BiologyLengthClass_mm"), 
+            relationship="many-to-many") 
 
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# NOTE! sum function removes now those that have age as NA
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Cases where age info is missing
+# NOTE! Decisions what to do need to be checked case specifically
+# ================================================================
+df_n_at_age |> filter(is.na(age)==T)
 
-pivot_n_at_age<-df_n_at_age |> group_by(species, rec, age) |> 
+# Case1: Herring <85mm -> age=0
+df_n_at_age<-df_n_at_age |> 
+  mutate(age=ifelse(species==126417 & is.na(age)==T & CatchLengthClass_mm<85,0, age),
+         p_age_at_length=ifelse(species==126417 & is.na(p_age_at_length)==T & CatchLengthClass_mm<85,1, p_age_at_length)
+         )
+
+# Case2: Sprat<55mm -> age=0
+df_n_at_age<-df_n_at_age |> 
+  mutate(age=ifelse(species==126425 & is.na(age)==T & CatchLengthClass_mm<70, 0, age),
+         p_age_at_length=ifelse(species==126425 & is.na(p_age_at_length)==T & CatchLengthClass_mm<70,1, p_age_at_length)
+  )
+
+
+# Check again what remaining NA's consist of:
+df_n_at_age |> filter(is.na(age)==T)
+
+# Case2: Sprat in sd 23, length 145mm -> take mean alk of sd 21-24 
+sprat_145mm_SD23<-df_n_at_age |> 
+  filter(is.na(age)==T, species==126425, CatchLengthClass_mm==145) |> 
+  select(-age, -p_age_at_length)
+
+alk_sprat_145mm_SD2124<-df_p_age_at_length |>
+  ungroup() |> 
+  filter(species==126425,BiologyLengthClass_mm==145, ICES_SD<25) |> 
+  group_by(species,age, BiologyLengthClass_mm) |>  select(-p_age_at_length) |> 
+  summarise(sum_per_length_class2=sum(n)) 
+
+tot<-as.matrix(sprat_145mm_SD2124 |> ungroup() |>  summarise(ntot=sum(sum_per_length_class2)))[1]
+
+alk_sprat_145mm_SD2124<-alk_sprat_145mm_SD2124 |>
+  mutate(p_age_at_length=sum_per_length_class2/tot) |> 
+  select(-sum_per_length_class2)
+
+n_sprat_145mm_SD23<-sprat_145mm_SD23 |> 
+  left_join(alk_sprat_145mm_SD2124) |> 
+  mutate(n_age_at_length=n_per_length*p_age_at_length)
+
+df_n_at_age_new<-full_join(df_n_at_age, n_sprat_145mm_SD23) 
+
+# NOTE! CHECK THAT ONLY THIS PARTICULAR CASE OF age==NA remains!!! And then remove 
+# it as the replacing lines have now been added
+df_n_at_age_new |> filter(is.na(age)==T)
+
+df_n_at_age<-df_n_at_age_new |> filter(is.na(age)==F)
+
+df_n_at_age |> filter(is.na(age)==T) # should be empty
+
+# ================================================================
+
+# Finalise by calculating number at age per length
+# 
+ df_n_at_age_length<-df_n_at_age |>
+   mutate(n_age_at_length=p_age_at_length*n_per_length)
+ print(x=df_n_at_age_length, n=100)
+
+
+pivot_n_at_age<-df_n_at_age_length |> group_by(species, rec, age) |> 
   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
   left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
   arrange(age, species, ICES_SD,rec) |> 
   pivot_wider(names_from = age, values_from = n_at_age) |> 
   mutate(NTOT=rowSums(across(c(`0`:`19`)), na.rm = T)) |> 
-  #rename(N0=`0`,N1=`1`,N2=`2`,N3=`3`,N4=`4`,N5=`5`,N6=`6`,N7=`7`,N8=`8`,
-  #       N9=`9`,N10=`10`,N11=`11`#,N12=`12`
-  #       )|> 
   select(species,ICES_SD,rec,NTOT,everything()) |> 
   ungroup()
 
@@ -459,16 +517,16 @@ df_bm_per_length_ICES_SD<-df_bm_at_length |>
 
 # Biomass per age for herring and sprat
 df_bm_at_age<-df_bm_per_length_ICES_SD |>
+  filter(species==126417 | species==126425) |> 
   mutate(BiologyLengthClass_mm=CatchLengthClass_mm) |> 
   left_join(age_length_key, relationship="many-to-many") |> 
   mutate(bm_age_at_length=p_age_at_length*bm_per_length)
 print(x=df_bm_at_age, n=100)
 
 pivot_bm_at_age<-df_bm_at_age |> 
-  filter(species==126417 | species==126425) |> 
   group_by(species, rec, age) |> 
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
-  left_join(df_rec_ICES_SD)|> 
+  left_join(df_rec_ICES_SD, relationship = "many-to-many")|> 
   arrange(age,species,ICES_SD) |> 
   pivot_wider(names_from = age, values_from = bm_at_age) |> 
   mutate(WTOT=rowSums(across(c(`0`:`11`)), na.rm = T)) |>
@@ -481,9 +539,11 @@ print(x=pivot_bm_at_age, n=100)
 
 # Mean weight at age
 # join bm (biomass) at age
-df_mean_weight_at_age<-df_bm_at_age|> full_join(df_n_at_age) |> 
+df_mean_weight_at_age<-df_bm_at_age|> 
+  left_join(df_n_at_age_length) |> 
   group_by(species, rec, age) |> 
-  summarise(mean_weight_at_age=round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
+  summarise(mean_weight_at_age=
+              round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
 
 pivot_mean_weight_at_age <-df_mean_weight_at_age |> 
   left_join(df_rec_ICES_SD, relationship = "many-to-many") |>
@@ -502,8 +562,8 @@ pivot_mean_weight_at_age <-df_mean_weight_at_age |>
 # ==========================
 # RESULT FILE
 # ==========================
-AH<-pivot_n_at_age|> filter(species==126417) |> select(-`NA`)
-AS<-pivot_n_at_age|> filter(species==126425)|> select( -`NA`)
+AH<-pivot_n_at_age|> filter(species==126417)
+AS<-pivot_n_at_age|> filter(species==126425)
 AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)
 
 # Biomass per species if of interest
@@ -549,9 +609,9 @@ ST<-df_sigma_rec |>
   select(-sigma_rec) |> 
   left_join(df_nasc|> select(-year)) |> 
   left_join(p_herring_per_rec) |>  
-  left_join(p_sprat_per_rec) |> #select(-species) |> 
-  left_join(p_stickl_per_rec) |># select(-species) |> 
-  left_join(p_cod_per_rec) |> #select(-species) |> 
+  left_join(p_sprat_per_rec) |>
+  left_join(p_stickl_per_rec) |> 
+  left_join(p_cod_per_rec) |>  
   rename(RECT=rec, SD=ICES_SD, SA=mean_nasc) |>  
 select(SD, RECT, A_NM2, SA, SIGMA, p_herring, p_sprat, p_stickleback, p_cod)
 ST  

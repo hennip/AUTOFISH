@@ -1,19 +1,19 @@
 source("00-basics/packages-and-paths.R")
 
-modelname<-deparse(substitute(GRAHS4_12))
+run_name<-"GRAHS4_etaE4etaR4_2020-2025"
 
-load(paste0(path_output,modelname,".RData")) # contains run
+load(paste0(path_output,run_name,".RData")) # contains run
 
-sink(paste0("sink_",modelname,"_",".txt"))
-modelname
+sink(paste0("sink_extend_",run_name,"_",".txt"))
+run_name
 
-t31<-Sys.time();print(t31)
-run3 <- extend.jags(run, combine=T, #add.monitor = c("deviance"),
-                    sample=500000, thin=100, keep.jags.files=F)
-t32<-Sys.time();print(t32)
-print("run3 done"); print(difftime(t31,t32))
+t101<-Sys.time();print(t101)
+run10 <- extend.jags(run, combine=T, 
+                    sample=10000, thin=100, keep.jags.files=F)
+t102<-Sys.time();print(102)
+print("run10 done"); print(difftime(t101,t102))
 print("--------------------------------------------------")
-run<-run3
-save(run, file=paste0(path_output,modelname,".RData"))
+run<-run10
+save(run, file=paste0(path_output,run_name,".RData"))
 
 sink()

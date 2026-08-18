@@ -2,10 +2,11 @@ rm(list = ls())
 source("00-basics/packages-and-paths.R")
 
 # Define time series for data
-min_year<-2020
+min_year<-2016
 max_year<-2025
+Nyears=length(min_year:max_year)
 model_data<-str_c("_",min_year,"-",max_year)
-source("01-data/workflow-data.R")
+source("01-data/workflow-data-bayesmodel.R")
 
 
 # Choose model

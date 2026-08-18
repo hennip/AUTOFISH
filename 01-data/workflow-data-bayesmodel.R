@@ -28,12 +28,12 @@ ruhnuLong<-23.26012233
 
 #source("01-data/read-in-acoustic-data.R") 
 source("01-data/func-read-in-acoustic-data.R") 
-acoustic_data_all<-read_in_acoustic_data(pathA_Bayes)
+acoustic_data_all<-read_in_acoustic_data(pathA_GRAHS)
 source("01-data/modify-acoustic-data.R") 
 
 #source("01-data/read-in-trawl-data.R") 
 source("01-data/func-read-in-trawl-data.R") 
-trawl<-read_in_trawl_data(pathB_Bayes)
+trawl<-read_in_trawl_data(pathB_GRAHS)
 hauls_all<-trawl[[1]]
 catch_all<-trawl[[2]]
 bio_all<-trawl[[3]]

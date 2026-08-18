@@ -119,9 +119,21 @@ df_p_per_length |>
   summarise(sum=sum(p_per_length)) |> filter(is.na(sum)==T)
 
 # Number of hauls per rectangle and per species
+# AND LENGTH?????
+
 df_n_hauls_per_case<- df_p_per_length|>
-  group_by(rec,species) |>
+  group_by(rec,species) |> #,CatchLengthClass_mm) |>
   summarise(n_hauls_per_case=n_distinct(HaulNumber))
+
+#df_n_hauls_per_species_and_length<- df_p_per_length|>
+#  group_by(rec,species,CatchLengthClass_mm) |>
+#  summarise(n_hauls_per_species_and_length=n_distinct(HaulNumber))
+
+
+#print(x=df_n_hauls_per_case |> filter(rec=="47H3"), n=20)
+#print(x=df_p_per_length_per_rec|> filter(rec=="47H3"), n=20)
+
+#df_p_per_length_per_rec|> filter(rec=="47H3") |> summarise(tot=sum(mean_p_per_length_per_rec))
 
 # Rectangle specific proportion of individuals of certain length is the
 # mean over length class specific percentages

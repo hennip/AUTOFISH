@@ -44,8 +44,8 @@ if(computer_name=="hp_laptop"){
   
   pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS/"
   
-  pathA_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
-  pathB_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
+  pathA_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Acoustic/"
+  pathB_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Biotic/"
   
   path_output<-"../../01-Projects/AUTOFISH/out/"  
 }

@@ -133,51 +133,6 @@ for(y in 1:Nyears){
 }
 S_obs
 
-# If Hobsprop will be used later, please notice that the data contains duplicates
-# Probably doesn't matter because of the proportions, but should anyways be cleaned up
-# # Hobsprop: Proportion of herring in each catch
-# ###############################################
-# # group by rec, haul & species, calculate total catch
-# dfB_herring<-catch_all %>% mutate(year=SurveyYear)|> 
-#   filter(year>=min_year & year<=max_year)|>
-#   mutate(HaulNumber=as.numeric(HaulNumber)) |> 
-#   mutate(catch=as.numeric(CatchSpeciesCategoryNumber)) |> 
-#   mutate(catch=round(catch,0)) |> 
-#   mutate(CatchNumberAtLength=as.numeric(CatchNumberAtLength)) |> 
-#   mutate(length=as.numeric(CatchLengthClass)) |> 
-#   full_join(df_rec) |> 
-#   mutate(species=ifelse(CatchSpeciesCode==126417,1,2))  |> # 1: Herring, 2:other
-#   select(year,rec_ruhnu, everything())|> 
-#   #select(-Catch, -Header, -HaulGear, -CruiseLocalID)|> 
-#   select(-CatchDataType, -CatchSpeciesValidity)
-# dfB_herring
-# 
-# herring<-dfB_catch  |> 
-#   group_by(year,rec_ruhnu,HaulNumber, species) |> 
-#   summarise(tot_catch=sum(catch))|> 
-#   select(year,rec_ruhnu, HaulNumber, species, tot_catch) |> 
-#   filter(species==1) |>  # herring only
-#   mutate(herring_catch=tot_catch) |> 
-#   select(-tot_catch)
-# herring
-# 
-# dfH<-full_join(herring, TotCatch) |> 
-#   mutate(hprop=herring_catch/tot_catch)
-
-# 
-# #HobsProp[h,r,y]
-# # Build table for herring proportions in which rows are hauls and columns are rectangles
-# Hprops<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
-# for(y in 1:Nyears){
-#   for(r in 1:4){
-#     apu<-1
-#     for(i in 1:length(dfH$rec_ruhnu)){
-#       if(dfH$year[i]==(y+min_years-1) & dfH$rec_ruhnu[i]==r){
-#         Hprops[apu,r,y]<-dfH$hprop[i]
-#         apu<-apu+1
-#       }}}}
-# Hprops
-# 
 
 # nLobs[r,s,y]: Total sample size per rectangle and species
 # Lobs[1:8,r,s,y]: Number of fish of species s in all haul samples at rectangle r from length groups 1:8
@@ -206,16 +161,7 @@ for(y in 1:Nyears){
     }
   }
 
- # y<-1  
-  # nL_obs[,1,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==1) |>
-  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
-  # nL_obs[,2,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==2) |>
-  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
-  # nL_obs[,3,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==3) |>
-  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
-  # nL_obs[,4,y]<-as.data.frame(sample_size |> filter(year==(y+min_years-1), species==4) |>
-  #                               pivot_wider(values_from = tot_sample, names_from = species))[,3]
-}
+ }
 nL_obs
 
 # Lobs 
@@ -516,26 +462,7 @@ for(y in 1:Nyears){
             }
           }
           
-          # for(l in 1:N_lh){ # Herring
-          #   if(is.na(L_obs[l,r,1,y])==T){
-          #     L_obs[l,r,1,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-          #   }
-          # }
-          # for(l in 1:N_lsprat){ # Sprat
-          #   if(is.na(L_obs[l,r,2,y])==T){
-          #     L_obs[l,r,2,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-          #   }
-          # }
-          # for(l in 1:N_lstickl){ # Stickleback
-          #   if(is.na(L_obs[l,r,3,y])==T){
-          #     L_obs[l,r,3,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-          #   }
-          # }
-          # for(l in 1:N_lo){ # Other
-          #   if(is.na(L_obs[l,r,4,y])==T){
-          #     L_obs[l,r,4,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
-          #   }
-          # }
+
         }
     }
   }

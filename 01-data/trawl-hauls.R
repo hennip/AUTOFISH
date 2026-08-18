@@ -44,11 +44,3 @@ minmax_depth<-dfB_haul2 |> arrange(rec) |> group_by(year,rec) |>
   mutate(rec=as.numeric(rec)) |> 
   summarise(min_trawl_depth=min(minDepth), max_trawl_depth=max(maxDepth))#, mean=(min+max)/2)
 
-
-# df<-dfB_haul |> select(rec, minDepth, maxDepth, HaulNumber) |> 
-#   pivot_longer(cols = minDepth:maxDepth, names_to="minmax",values_to = "depth")
-# 
-# ggplot(data=df, aes(x=HaulNumber, y=depth, group=rec))+
-#   geom_line(aes(col=rec))
-
-#View(dfB_haul)

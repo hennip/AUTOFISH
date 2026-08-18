@@ -55,8 +55,8 @@ if(computer_name=="es_laptop"){
 }
 
 if(computer_name=="hp_kala1"){
-  pathA_Bayes<-"../../dat/AUTOFISH/orig/Acoustic/"
-  pathB_Bayes<-"../../dat/AUTOFISH/orig/Biotic/"
+  pathA_Bayes<-"../../dat/AUTOFISH/GRAHS/Acoustic/"
+  pathB_Bayes<-"../../dat/AUTOFISH/GRAHS/Biotic/"
   path_output<-"../out/"
 }
 

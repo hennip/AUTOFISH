@@ -22,9 +22,9 @@ ruhnuLong<-23.26012233
 # 4: SE from ruhnu 
 
 
-# If needed, define years to take into account
-min_year<-2023
-max_year<-2024
+# Define years to take into account
+#min_year<-2020
+#max_year<-2025
 
 #source("01-data/read-in-acoustic-data.R") 
 source("01-data/func-read-in-acoustic-data.R") 

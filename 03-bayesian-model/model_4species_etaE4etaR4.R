@@ -1,35 +1,30 @@
-#
-# Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
-# => binomijakauman approksimointi beta-jakaumalla
-#
-rm(list = ls())
 
-source("01-data/workflow-data.R")
+# 
+# rm(list = ls())
+# 
+# source("01-data/workflow-data.R")
+# 
 
-
-GRAHS_model4<-"
+modelname<-"GRAHS_etaE4etaR4"
+GRAHS_model<-GRAHS4_etaE4etaR4<-"
 model{
 
   # Observation model for nautical area scattering coefficients
   ##############################################################
   for(i in 1:Nobs){# total number of observations over years
-    NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2) at depth 6-100m
-    # expected NASC at point i, year nascY[i] 
-    # is a combination of sigmaR and n over 4 species divided by the area covered 
-  mu_nasc[i,nascY[i]]<- (sigmaR[R[i],1,nascY[i]]*n[LOG[i],R[i],1,nascY[i]]+
-                           sigmaR[R[i],2,nascY[i]]*n[LOG[i],R[i],2,nascY[i]]+
-                           sigmaR[R[i],3,nascY[i]]*n[LOG[i],R[i],3,nascY[i]]+
-                           sigmaR[R[i],4,nascY[i]]*n[LOG[i],R[i],4,nascY[i]])/
-                           (pA[i]*A[R[i]])
-                           
-                           #sum(sigmaR[R[i],1:4,nascY[i]]*n[LOG[i],R[i],1:4,nascY[i]])/
-                           #(pA[i]*A[R[i]])
+  
+    NASC[i]~dlnorm(M_nasc[i,nascY[i]], tau_nasc) # NASC (m2/NM2)
+    
+    # Expected NASC at piece of cruise track i, year nascY[i] is a combination 
+    # of sigmaR and n over 4 species divided by the area covered 
+    mu_nasc[i,nascY[i]]<- sum(sigmaR[R[i],1:4,nascY[i]]*n[LOG[i],R[i],1:4,nascY[i]])/
+                        (pA[i]*A[R[i]])
                            
     M_nasc[i,nascY[i]]<-log(mu_nasc[i,nascY[i]])-0.5*(1/tau_nasc)
     propA[LOG[i],R[i],nascY[i]]<-pA[i] # proportion of area i of rectangle R[i]
   }
   tau_nasc<-1/log(cv_nasc*cv_nasc+1)
-  cv_nasc~dlnorm(0.03,3.26) # kohina/mittausvirhe, voidaan pit?? samana vuosien yli
+  cv_nasc~dlnorm(0.03,3.26) # measurement error, same over years
 
   # Abundances
   ############
@@ -44,10 +39,13 @@ model{
       # Ekspertit: onko kalojen jakauma ruuduille satunnainen, vai onko kalat todenn?k?isemmin
       # samalla ruudulla eri vuosina? pR:lle voisi tehd? rakenteen jossa vuosikohinaa mutta yleinen
       # tn osua tietylle ruudulle
-      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
+     # pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
+      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s,y])
+      alphaR[1:Nrec,s,y]<-(A[1:Nrec]/Atot)*Ntot[s,y]*etaR[s] # Tämä muoto ei näytä ainakaan parantavan konvergointia, ks GRAHS_etaR1.rdata. 
     }
-    alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] # Palautettu kässärin muotoon, jossa ruudun osuuden odotusarvo sama yli vuosien
-  }
+    #alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] 
+  #  etaR~dunif(0.001,1)
+  }  
 
   for(y in 1:Nyears){
     for(r in 1:Nrec){
@@ -75,8 +73,8 @@ model{
       # Kumpi? Riippuu kai siitä, onko dirichlet-multi vai 
       # approksimoidaanko sitä dirichlet:lla
       # Paitsi että approksimaatiossa mukaan tulee myös h (haul)
-      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[1:Nspecies]+1)
-      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[1:Nspecies]+1)
+      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[y]+1)
+      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[y]+1)
       
       for(s in 1:Nspecies){
         # N: Number of fish of species s on rectangle r
@@ -87,7 +85,7 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE[s]
 
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -158,15 +156,37 @@ model{
   }
   TSa<- -71.2
   
+  ########################
+  # Dispersion parameters
+  ########################
+  
+  # Age composition of herring among catch samples
   etaG~dlnorm(0.8,0.1)
-
-  for(s in 1:Nspecies){
-    etaS[s]~dlnorm(0.8,0.1)
-    etaR[s]~dlnorm(0.8,0.1)
-    etaE[s]<-exp(etaEZ[s])
-    etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
-    etaL[s]~dlnorm(0.8,0.1)
+  
+  # Species composition among trawl catches
+  for(y in 1:Nyears){
+    etaS[y]~dlnorm(0.8,0.1)
   }
+
+  # Tämä alkuun ilman indeksejä. Katsotaan miten toimii ja lisätään tarvittavat,
+  # ehkä ainakin s, mahdollisesti myös y
+  # eta-parametrit näyttävät sämpläytyvän parhaiten kun on vain yksi etaE. 
+  # etaE[s]-versiossa myös etaR[4] alkaa käyttäytyä kummasti (ks GRAHS_11.rdata)
+  # Johtuisiko siitä, että 1NM pätkiä on niin paljon että laji- tai vuosikohtaisilla etaE:illä
+  # ei synny lisäarvoa, vaan sekottaa? Ajetaan tätä pitempi ajo ja katsotaan miten konvergenssi kehittyy
+  # Tsekkaa myös devianssi -> JAGSUI?
+  
+  for(s in 1:Nspecies){
+    # Length composition per species among hauls
+    etaL[s]~dlnorm(0.8,0.1)
+  
+    # Spatial overdispersion within rectangles
+    etaE[s]~dunif(0.001,1)
+  
+    # Spatial overdispersion between rectangles
+    etaR[s]~dunif(0.001,1)
+  
+ }
 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
 # spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
@@ -185,114 +205,121 @@ model{
 
 
 }"
-modelname<-"GRAHS4"
+modelname<-"GRAHS4_etaE4etaR4"
 
-cat(GRAHS_model4,file=paste0(modelname,".txt"))
-
-#############################
-
-# A_NM2<-c(819.8155089,# NW
-#          1014.006703,# NE
-#          536.3622401,# SW
-#          1558.658342# SE
-# )
-
-data<-list(
-  Nyears=2,
-  Nrec=4,
-  Nages=10,
-  Nspecies=4,
-  Nlengths=c(N_lh,N_lsprat,N_lstickl,N_lo),
-  pi=3.14159265358979323846,
-  A=A_NM2, # Areas of rectangles, NM^2
-  Atot=sum(A_NM2),
-  
-  NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
-  R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
-  pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
-  LOG= tot_nasc_per_log_plus_one$LOG,
-  
-  Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
-  Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
-  Nhaul=Nhaul, # Number of hauls per rectangle
-  nascY=nascY, # Year index
-  
-  Cobs=C_obs, # Total catch per species
-  Sobs=S_obs, # Number of individuals per species in each haul
-  nLobs=nL_obs, # Sample size per length group
-  Lobs=L_obs, # Number of individuals per length group in each sample
-  Gobs=G_obs, # Number of individuals per age group in each sample
-  nGobs=nG_obs, # sample size per age group
-  aG=rep(1,10),
-  aL1=rep(1,N_lh),
-  aL2=rep(1,N_lsprat),
-  aL3=rep(1,N_lstickl),
-  aL4=rep(1,N_lo),
-  meanL=meanL/10 # mean lengths in cm's!!!
-)
-
-parnames=c(
-  #"muH",
-  "muS",
-  "PopAge",
-  "Lstar",
-  "cv_nasc", "cv_nascX", "etaX",
-  "etaR", "etaE", "etaL","etaG","etaS",#"etaH", 
-  "Ntot","N"
-)
+cat(GRAHS_model,file=paste0(modelname,".txt"))
 
 # 
-run0<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
-         burnin =1000, modules = "mix",
-         sample =1000, adapt = 1000,
-         keep.jags.files=F,
-         progress.bar=TRUE, jags.refresh=100)
-
-t1<-Sys.time();print(t1)
-run1<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, 
-               method = 'parallel', thin=100,
-               burnin =10000, modules = "mix",
-               sample =50000, adapt = 50000,
-               keep.jags.files=F,
-               progress.bar=TRUE, jags.refresh=100)
-run<-run1
-save(run, file=paste0(path_output,modelname,".RData"))
-t2<-Sys.time();print(t2)
-print("run1 done");print(difftime(t2,t1))
-print("--------------------------------------------------")
-
-plot(run, var="eta")
-summary(run, var="eta")
-summary(run, var="Ntot")
-summary(run, var="N")
-plot(run, var="Ntot")
-plot(run, var="cv_nasc")
-chains<-as.mcmc.list(run)
-chains<-window(chains, start=2000000)
-traceplot(chains[,"etaE[1]"])
-traceplot(chains[,"etaE[2]"])
-traceplot(chains[,"etaE[3]"])
-traceplot(chains[,"etaE[4]"])
-summary(chains[,"etaE[1]"])
-
-run2 <- extend.jags(run1, combine=T, sample=50000, thin=100, keep.jags.files=F)
-t3<-Sys.time();print(t3)
-print("run2 done"); print(difftime(t3,t2))
-print("--------------------------------------------------")
-run<-run2
-save(run, file=paste0(path_output,modelname,".RData"))
-
-run3 <- extend.jags(run2, combine=T, sample=15000, thin=1000, keep.jags.files=F)
-t4<-Sys.time();print(t4)
-print("run3 done"); print(difftime(t4,t3))
-print("--------------------------------------------------")
-run<-run3
-save(run, file=paste0(path_output,modelname,".RData"))
-
-run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=F)
-t5<-Sys.time();print(t5)
-print("run4 done"); print(difftime(t5,t4))
-print("--------------------------------------------------")
-run<-run4
-save(run, file=paste0(path_output,modelname,".RData"))
-
+# # inits<-list(list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))),
+# # list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))))
+# # 
+# # inits<-list(list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))),
+# #             list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))))
+# # 
+# model_data<-"_2020-2025"
+# run_name<-str_c(modelname, model_data)
+# 
+# data<-list(
+#   Nyears=Nyears,
+#   Nrec=4,
+#   Nages=Nages, # Herring 0 - 8+ yr olds => 9 age groups 
+#   
+#   Nspecies=4,
+#   Nlengths=c(N_lh,N_lsprat,N_lstickl,N_lo),
+#   pi=3.14159265358979323846,
+#   A=A_NM2, # Areas of rectangles, NM^2
+#   Atot=sum(A_NM2),
+#   
+#   NASC=tot_nasc_per_log_plus_one$sum_nasc, # All depths summed together for now
+#   R=   tot_nasc_per_log_plus_one$rec, # rectangle at log
+#   pA=  tot_nasc_per_log_plus_one$pA, # proportion of echo area out of total rectangle
+#   LOG= tot_nasc_per_log_plus_one$LOG,
+#   
+#   Nobs=length(tot_nasc_per_log_plus_one$sum_nasc), # Total number of observations over years
+#   Necho=necho+1, # number of echo areas = number of logs per rectangle+1 (+1 is the rest of the rec)  
+#   Nhaul=Nhaul, # Number of hauls per rectangle
+#   nascY=nascY, # Year index
+#   
+#   Cobs=C_obs, # Total catch per species
+#   Sobs=S_obs, # Number of individuals per species in each haul
+#   nLobs=nL_obs, # Sample size per length group
+#   Lobs=L_obs, # Number of individuals per length group in each sample
+#   Gobs=G_obs, # Number of individuals per age group in each sample
+#   nGobs=nG_obs, # sample size per age group
+#   aG=rep(1,Nages),
+#   aL1=rep(1,N_lh),
+#   aL2=rep(1,N_lsprat),
+#   aL3=rep(1,N_lstickl),
+#   aL4=rep(1,N_lo),
+#   meanL=meanL/10 # mean lengths in cm's!!!
+# )
+# 
+# parnames=c(
+#   "deviance",
+#   "muS",
+#   "PopAge",
+#   "Lstar",
+#   "cv_nasc", "cv_nascX", "etaX",
+#   "etaR", "etaE", "etaL","etaG","etaS",
+#   "Ntot","N"
+# )
+# 
+# sink(paste0("sink_",run_name,"_",".txt"))
+# #sink()
+# 
+# t1<-Sys.time();print(t1)
+# run1<-run.jags(modelname, monitor=parnames,data=data,n.chains = 2, 
+#                #inits=inits,
+#                method = 'parallel', thin=100,
+#                burnin =10000, modules = "mix",
+#                sample =10000, adapt = 50000,
+#                keep.jags.files=F,
+#                progress.bar=TRUE, jags.refresh=100)
+# run<-run1
+# save(run, file=paste0(path_output,run_name,".RData"))
+# t2<-Sys.time();print(t2)
+# print("run1 done");print(difftime(t2,t1))
+# print("--------------------------------------------------")
+# 
+# # 
+# # plot_this<-F
+# # if(plot_this==T){
+# # plot(run, var="etaE")
+# # plot(run, var="etaR")
+# # summary(run, var="eta")
+# # summary(run, var="Ntot")
+# # summary(run, var="N")
+# # plot(run, var="Ntot")
+# # plot(run, var="cv_nasc")
+# # # chains<-as.mcmc.list(run)
+# # # chains<-window(chains, start=2000000)
+# # # traceplot(chains[,"etaE[1]"])
+# # # traceplot(chains[,"etaE[2]"])
+# # # traceplot(chains[,"etaE[3]"])
+# # # traceplot(chains[,"etaE[4]"])
+# # # summary(chains[,"etaE[1]"])
+# # sum_run<-summary(run)
+# # 
+# # as_tibble(sum_run) |> 
+# #   filter(psrf>1.1)
+# # }
+# 
+# run2 <- extend.jags(run1, combine=T, sample=10000, thin=100, keep.jags.files=F)
+#  t3<-Sys.time();print(t3)
+#  print("run2 done"); print(difftime(t3,t2))
+#  print("--------------------------------------------------")
+#  run<-run2
+#  save(run, file=paste0(path_output,run_name,".RData"))
+# 
+# 
+#  t31<-Sys.time();print(t31)
+# run3 <- extend.jags(run2, combine=T, sample=10000, thin=100, keep.jags.files=F)
+#  t32<-Sys.time();print(t32)
+#  print("run3 done"); print(difftime(t31,t32))
+#  print("--------------------------------------------------")
+#  run<-run3
+#  save(run, file=paste0(path_output,run_name,".RData"))
+#  
+#  
+# sink()
+#  

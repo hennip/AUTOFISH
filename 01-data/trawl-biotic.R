@@ -69,7 +69,7 @@ df
 # Let's take ages 0-9 (10 age groups)
 G_obs<-array(NA, dim=c(10,8,4,Nyears))
 for(i in 1:dim(df)[1]){
-  y<-df$year[i]-(min_years-1)
+  y<-df$year[i]-(min_year-1)
   r<-df$rec_ruhnu[i]
   r<-df$rec_ruhnu[i]
   l<-df$length_group[i]
@@ -83,7 +83,7 @@ nG_obs<-array(NA, dim=c(8,4,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
     nG_obs[,r,y]<-as.data.frame(  df |> 
-                                    filter(year==(y+min_years-1))  |> 
+                                    filter(year==(y+min_year-1))  |> 
                                     summarise(ntot=sum(n))|> 
                                     pivot_wider(names_from = rec_ruhnu, values_from = ntot) |>
                                     select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up

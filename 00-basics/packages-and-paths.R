@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
   library(purrr)
   library(tidyr)
   library(tibble)
-  library(rjags)
+  #library(rjags)
   library(runjags)
   library(coda)
   library(mapplots)
@@ -42,18 +42,22 @@ options(rlib_message_verbosity = "quiet")
 
 if(computer_name=="hp_laptop"){
   
-  #pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_24/"
-  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS_25/"
+  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS/"
   
-  pathA_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Acoustic/"
-  pathB_Bayes<-"../../01-Projects/AUTOFISH/dat/orig/Biotic/"
-  path_output<-"../../01-Projects/AUTOFISH/out/"
+  pathA_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Acoustic/"
+  pathB_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Biotic/"
+  
+  path_output<-"../../01-Projects/AUTOFISH/out/"  
 }
+if(computer_name=="es_laptop"){
+  pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"
+  path_output<-"../../R projects/out/"  
+}
+
 if(computer_name=="hp_kala1"){
-  pathA_Bayes<-"../../dat/AUTOFISH/orig/Acoustic/"
-  pathB_Bayes<-"../../dat/AUTOFISH/orig/Biotic/"
+  pathA_Bayes<-"../../dat/AUTOFISH/GRAHS/Acoustic/"
+  pathB_Bayes<-"../../dat/AUTOFISH/GRAHS/Biotic/"
   path_output<-"../out/"
 }
-if(computer_name=="es_laptop"){pathA<-pathB<-"../../ICES Acoustic database/GRAHS/"}
 
 

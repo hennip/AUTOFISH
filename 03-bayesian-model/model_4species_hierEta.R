@@ -7,7 +7,7 @@ rm(list = ls())
 source("01-data/workflow-data.R")
 
 
-GRAHS_model4<-"
+GRAHS_model<-GRAHS4_10<-"
 model{
 
   # Observation model for nautical area scattering coefficients
@@ -47,7 +47,9 @@ model{
       pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
     }
     alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] # Palautettu kässärin muotoon, jossa ruudun osuuden odotusarvo sama yli vuosien
-  }
+  #  alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*Ntot[s,y]*etaR
+  #  etaR~dunif(0.001,1)
+  }  
 
   for(y in 1:Nyears){
     for(r in 1:Nrec){
@@ -75,8 +77,8 @@ model{
       # Kumpi? Riippuu kai siitä, onko dirichlet-multi vai 
       # approksimoidaanko sitä dirichlet:lla
       # Paitsi että approksimaatiossa mukaan tulee myös h (haul)
-      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[1:Nspecies]+1)
-      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[1:Nspecies]+1)
+      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[y]+1)
+      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[y]+1)
       
       for(s in 1:Nspecies){
         # N: Number of fish of species s on rectangle r
@@ -87,7 +89,8 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE
+        etaE~dunif(0.001,1)
 
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -158,15 +161,43 @@ model{
   }
   TSa<- -71.2
   
+  ########################
+  # Dispersion parameters
+  ########################
+  
+  # Age composition of herring among catch samples
   etaG~dlnorm(0.8,0.1)
+  
+  # Species composition among trawl catches
+  for(y in 1:Nyears){
+    etaS[y]~dlnorm(0.8,0.1)
+    #etaS[y]~dlnorm(log(mu_etaS)-0.5*log(pow(cv_etaS,2)+1), 1/log(pow(cv_etaS,2)+1))
+  }
+  mu_etaS~dlnorm(log(10)-0.5*log(pow(2,2)+1),1/log(pow(2,2)+1))
+  cv_etaS~dunif(0.01,2)
 
   for(s in 1:Nspecies){
-    etaS[s]~dlnorm(0.8,0.1)
-    etaR[s]~dlnorm(0.8,0.1)
-    etaE[s]<-exp(etaEZ[s])
-    etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
+    # Length composition per species among hauls
     etaL[s]~dlnorm(0.8,0.1)
-  }
+    
+    # Spatial distribution between rectangles
+    etaR[s]~dlnorm(0.8,0.1)
+
+    # Spatial distribution within rectangle
+  #   for(r in 1:4){
+  # for(y in 1:Nyears){
+  #     etaE[s,r,y]<-exp(etaEZ[s,r,y])
+  #     etaEZ[s,r,y]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
+  #     #etaEZ[s,r,y]~dnorm(mu_EZ,1/pow(sd_EZ,2))
+  # }
+  #   }
+  # mu_EZ[s]~dnorm(13,0.001)
+  # sd_EZ[s]~dlnorm(log(1000)-0.5*log(1*1+1),log(1*1+1))# tau=1/log(cv^2+1)
+  #   
+   }
+
+  etaE<-exp(etaEZ)
+  etaEZ~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
 # spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
@@ -185,17 +216,17 @@ model{
 
 
 }"
-modelname<-"GRAHS4"
+modelname<-deparse(substitute(GRAHS4_10))
 
-cat(GRAHS_model4,file=paste0(modelname,".txt"))
+cat(GRAHS_model,file=paste0(modelname,".txt"))
 
-#############################
 
-# A_NM2<-c(819.8155089,# NW
-#          1014.006703,# NE
-#          536.3622401,# SW
-#          1558.658342# SE
-# )
+inits<-list(list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))),
+list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))))
+
+inits<-list(list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))),
+            list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))))
+
 
 data<-list(
   Nyears=2,
@@ -233,6 +264,7 @@ data<-list(
 
 parnames=c(
   #"muH",
+  "mu_EZ", "sd_EZ",
   "muS",
   "PopAge",
   "Lstar",
@@ -242,11 +274,18 @@ parnames=c(
 )
 
 # 
-run0<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+run0<-run.jags(modelname, monitor=parnames,inits = inits,
+        data=data,n.chains = 2, method = 'parallel', thin=1,
          burnin =1000, modules = "mix",
          sample =1000, adapt = 1000,
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
+plot(run0, var="etaE")
+plot(run0, var="EZ")
+
+
+
+
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, 

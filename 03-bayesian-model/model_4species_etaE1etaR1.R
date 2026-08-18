@@ -1,13 +1,11 @@
-#
-# Korvataan silakkamaaran sovitus silakkaosuuden sovituksella
-# => binomijakauman approksimointi beta-jakaumalla
-#
+
+
 rm(list = ls())
 
 source("01-data/workflow-data.R")
 
 
-GRAHS_model4<-"
+GRAHS_model<-GRAHS4_12<-"
 model{
 
   # Observation model for nautical area scattering coefficients
@@ -44,10 +42,13 @@ model{
       # Ekspertit: onko kalojen jakauma ruuduille satunnainen, vai onko kalat todenn?k?isemmin
       # samalla ruudulla eri vuosina? pR:lle voisi tehd? rakenteen jossa vuosikohinaa mutta yleinen
       # tn osua tietylle ruudulle
-      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
+     # pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s])
+      pR[1:Nrec,s,y]~ddirich(alphaR[1:Nrec,s,y])
+      alphaR[1:Nrec,s,y]<-(A[1:Nrec]/Atot)*Ntot[s,y]*etaR # Tämä muoto ei näytä ainakaan parantavan konvergointia, ks GRAHS_etaR1.rdata. 
     }
-    alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] # Palautettu kässärin muotoon, jossa ruudun osuuden odotusarvo sama yli vuosien
-  }
+    #alphaR[1:Nrec,s]<-(A[1:Nrec]/Atot)*etaR[s] 
+  #  etaR~dunif(0.001,1)
+  }  
 
   for(y in 1:Nyears){
     for(r in 1:Nrec){
@@ -75,8 +76,8 @@ model{
       # Kumpi? Riippuu kai siitä, onko dirichlet-multi vai 
       # approksimoidaanko sitä dirichlet:lla
       # Paitsi että approksimaatiossa mukaan tulee myös h (haul)
-      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[1:Nspecies]+1)
-      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[1:Nspecies]+1)
+      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[y]+1)
+      #alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*Cobs[h,r,y]*(etaS[y]+1)
       
       for(s in 1:Nspecies){
         # N: Number of fish of species s on rectangle r
@@ -87,7 +88,7 @@ model{
         # E(pE[i,r]): proportion of echo area i compared to total area of rectangle r
         # etaE: overdispersion parameter
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*etaE[s] 
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE#[s,y]
 
         for(e in 1:Necho[r,y]){
           # n: number of fish of species s on echo area e of rectangle r
@@ -158,15 +159,59 @@ model{
   }
   TSa<- -71.2
   
+  ########################
+  # Dispersion parameters
+  ########################
+  
+  # Age composition of herring among catch samples
   etaG~dlnorm(0.8,0.1)
-
-  for(s in 1:Nspecies){
-    etaS[s]~dlnorm(0.8,0.1)
-    etaR[s]~dlnorm(0.8,0.1)
-    etaE[s]<-exp(etaEZ[s])
-    etaEZ[s]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
-    etaL[s]~dlnorm(0.8,0.1)
+  
+  # Species composition among trawl catches
+  for(y in 1:Nyears){
+    etaS[y]~dlnorm(0.8,0.1)
+   #etaS[y]~dlnorm(log(mu_etaS)-0.5*log(pow(cv_etaS,2)+1), 1/log(pow(cv_etaS,2)+1))
   }
+#  mu_etaS~dlnorm(log(10)-0.5*log(pow(2,2)+1),1/log(pow(2,2)+1))
+#  cv_etaS~dunif(0.01,2)
+
+
+  # Tämä alkuun ilman indeksejä. Katsotaan miten toimii ja lisätään tarvittavat,
+  # ehkä ainakin s, mahdollisesti myös y
+  # eta-parametrit näyttävät sämpläytyvän parhaiten kun on vain yksi etaE. 
+  # etaE[s]-versiossa myös etaR[4] alkaa käyttäytyä kummasti (ks GRAHS_11.rdata)
+  # Johtuisiko siitä, että 1NM pätkiä on niin paljon että laji- tai vuosikohtaisilla etaE:illä
+  # ei synny lisäarvoa, vaan sekottaa? Ajetaan tätä pitempi ajo ja katsotaan miten konvergenssi kehittyy
+  # Tsekkaa myös devianssi -> JAGSUI?
+  etaE~dunif(0.001,1)
+  etaR~dunif(0.001,1)
+  
+  for(s in 1:Nspecies){
+  # for(y in 1:Nyears){
+  #   etaE[s,y]~dunif(0.001,1)
+  # }
+  
+    # Length composition per species among hauls
+    etaL[s]~dlnorm(0.8,0.1)
+    
+    # Spatial distribution between rectangles
+    #etaR[s]~dlnorm(0.8,0.1)
+
+
+    # Spatial distribution within rectangle
+  #   for(r in 1:4){
+  # for(y in 1:Nyears){
+  #     etaE[s,r,y]<-exp(etaEZ[s,r,y])
+  #     etaEZ[s,r,y]~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
+  #     #etaEZ[s,r,y]~dnorm(mu_EZ,1/pow(sd_EZ,2))
+  # }
+  #   }
+  # mu_EZ[s]~dnorm(13,0.001)
+  # sd_EZ[s]~dlnorm(log(1000)-0.5*log(1*1+1),log(1*1+1))# tau=1/log(cv^2+1)
+  #   
+   }
+
+  #etaE<-exp(etaEZ)
+  #etaEZ~dnorm(13,0.0000001)  # this parameterisation may help with JAGS
 
 # ajattele eta otoskokona joka jaetaan eri luokkiin dir-jakaumassa.
 # spatiaalisen vaihtelun maara, voitaisiin ehka pitaa samana vuosien yli (ainakin alkuun)
@@ -185,17 +230,17 @@ model{
 
 
 }"
-modelname<-"GRAHS4"
+modelname<-deparse(substitute(GRAHS4_12))
 
-cat(GRAHS_model4,file=paste0(modelname,".txt"))
+cat(GRAHS_model,file=paste0(modelname,".txt"))
 
-#############################
 
-# A_NM2<-c(819.8155089,# NW
-#          1014.006703,# NE
-#          536.3622401,# SW
-#          1558.658342# SE
-# )
+# inits<-list(list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))),
+# list(mu_EZ=array(10000, dim=c(Nspecies, 4, Nyears))))
+# 
+# inits<-list(list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))),
+#             list(etaE=array(10000, dim=c(Nspecies, 4, Nyears))))
+# 
 
 data<-list(
   Nyears=2,
@@ -233,6 +278,7 @@ data<-list(
 
 parnames=c(
   #"muH",
+  "mu_EZ", "sd_EZ",
   "muS",
   "PopAge",
   "Lstar",
@@ -242,17 +288,33 @@ parnames=c(
 )
 
 # 
-run0<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, method = 'parallel', thin=1,
+ run0<-run.jags(modelname, monitor=parnames,#inits = inits,
+        data=data,n.chains = 2, method = 'parallel', thin=10,
          burnin =1000, modules = "mix",
-         sample =1000, adapt = 1000,
+         sample =2000, adapt = 1000,
          keep.jags.files=F,
          progress.bar=TRUE, jags.refresh=100)
+plot(run0, var="etaE")
+plot(run0, var="etaR")
+plot(run0, var="Ntot")
+# plot(run0, var="EZ")
+# 
+
+ inits<-list(list(etaE=0.1),#array(0.1, dim=c(Nspecies, 4, Nyears))),
+             list(etaE=0.4))#array(0.4, dim=c(Nspecies, 4, Nyears))))
+
+
+
+
+#sink(paste0("sink_",modelname,"_",".txt"))
+
 
 t1<-Sys.time();print(t1)
-run1<-run.jags(GRAHS_model4, monitor=parnames,data=data,n.chains = 2, 
+run1<-run.jags(modelname, monitor=parnames,data=data,n.chains = 2, 
+               inits=inits,
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
-               sample =50000, adapt = 50000,
+               sample =10000, adapt = 50000,
                keep.jags.files=F,
                progress.bar=TRUE, jags.refresh=100)
 run<-run1
@@ -261,38 +323,50 @@ t2<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-plot(run, var="eta")
+# 
+plot(run, var="etaE")
+plot(run, var="etaR")
 summary(run, var="eta")
 summary(run, var="Ntot")
 summary(run, var="N")
 plot(run, var="Ntot")
 plot(run, var="cv_nasc")
-chains<-as.mcmc.list(run)
-chains<-window(chains, start=2000000)
-traceplot(chains[,"etaE[1]"])
-traceplot(chains[,"etaE[2]"])
-traceplot(chains[,"etaE[3]"])
-traceplot(chains[,"etaE[4]"])
-summary(chains[,"etaE[1]"])
+# chains<-as.mcmc.list(run)
+# chains<-window(chains, start=2000000)
+# traceplot(chains[,"etaE[1]"])
+# traceplot(chains[,"etaE[2]"])
+# traceplot(chains[,"etaE[3]"])
+# traceplot(chains[,"etaE[4]"])
+# summary(chains[,"etaE[1]"])
+sum_run<-summary(run)
+
+as_tibble(sum_run) |> 
+  filter(psrf>1.1)
+
+
+#sink()
+
+t2<-Sys.time();print(t2)
+run1 <- extend.jags(run0, combine=F, sample=10000, thin=100, keep.jags.files=F)
+t3<-Sys.time();print(t3)
+print("run1 done"); print(difftime(t3,t2))
+print("--------------------------------------------------")
+run<-run1
+save(run, file=paste0(path_output,modelname,".RData"))
 
 run2 <- extend.jags(run1, combine=T, sample=50000, thin=100, keep.jags.files=F)
-t3<-Sys.time();print(t3)
-print("run2 done"); print(difftime(t3,t2))
-print("--------------------------------------------------")
-run<-run2
-save(run, file=paste0(path_output,modelname,".RData"))
+ t3<-Sys.time();print(t3)
+ print("run2 done"); print(difftime(t3,t2))
+ print("--------------------------------------------------")
+ run<-run2
+ save(run, file=paste0(path_output,modelname,".RData"))
 
-run3 <- extend.jags(run2, combine=T, sample=15000, thin=1000, keep.jags.files=F)
-t4<-Sys.time();print(t4)
-print("run3 done"); print(difftime(t4,t3))
-print("--------------------------------------------------")
-run<-run3
-save(run, file=paste0(path_output,modelname,".RData"))
 
-run4 <- extend.jags(run3, combine=T, sample=20000, thin=1000, keep.jags.files=F)
-t5<-Sys.time();print(t5)
-print("run4 done"); print(difftime(t5,t4))
-print("--------------------------------------------------")
-run<-run4
-save(run, file=paste0(path_output,modelname,".RData"))
-
+ t31<-Sys.time();print(t31)
+run3 <- extend.jags(run2, combine=T, sample=50000, thin=100, keep.jags.files=F)
+ t32<-Sys.time();print(t32)
+ print("run3 done"); print(difftime(t31,t32))
+ print("--------------------------------------------------")
+ run<-run3
+ save(run, file=paste0(path_output,modelname,".RData"))
+ 

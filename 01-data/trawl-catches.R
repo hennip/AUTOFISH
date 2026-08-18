@@ -73,7 +73,7 @@ for(y in 1:Nyears){
     #r<-1
     apu<-1
     for(i in 1:length(TotCatch$rec_ruhnu)){
-      if(TotCatch$year[i]==(y+min_years-1) & TotCatch$rec_ruhnu[i]==r){
+      if(TotCatch$year[i]==(y+min_year-1) & TotCatch$rec_ruhnu[i]==r){
         C_obs[apu,r,y]<-TotCatch$tot_catch[i]
         apu<-apu+1
       }}}
@@ -100,7 +100,7 @@ for(y in 1:Nyears){
   for(r in 1:4){
 #    r<-4
     dat<-dfB_catch_all_species |> 
-      filter(year==(y+min_years-1) &rec_ruhnu ==r)
+      filter(year==(y+min_year-1) &rec_ruhnu ==r)
     
     for(s in 1:Nspecies){
       if(dim(dat |> filter(species==s))[1]==0){
@@ -195,7 +195,7 @@ nL_obs<-array(NA, dim=c(4,Nspecies,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
     for(s in 1:Nspecies){
-    tmp<-(sample_size |> filter(year==(y+min_years-1), species==s, rec_ruhnu==r))$tot_sample
+    tmp<-(sample_size |> filter(year==(y+min_year-1), species==s, rec_ruhnu==r))$tot_sample
     
     if(length(tmp)==0){
       nL_obs[r,s,y]<-NA
@@ -452,28 +452,28 @@ for(y in 1:Nyears){
   for(r in 1:4){
       for(g in 1:N_lh){ # Herring
       tmp<-numbers_per_length_group |> 
-        filter(species==1 & year==(y+min_years-1) & length_group==g)
+        filter(species==1 & year==(y+min_year-1) & length_group==g)
       L_obs[g,r,1,y]<-ifelse(is.null(tmp)==F,
                              as.data.frame(tmp|>
         ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
     for(g in 1:N_lsprat){ # Sprat
       tmp<-numbers_per_length_group |> 
-        filter(species==2 & year==(y+min_years-1) & length_group==g)
+        filter(species==2 & year==(y+min_year-1) & length_group==g)
       L_obs[g,r,2,y]<-ifelse(is.null(tmp)==F,
                              as.data.frame(tmp|>
         ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
     for(g in 1:N_lstickl){ # Stickleback
       tmp<-numbers_per_length_group |> 
-        filter(species==3 & year==(y+min_years-1) & length_group==g)
+        filter(species==3 & year==(y+min_year-1) & length_group==g)
       L_obs[g,r,3,y]<-ifelse(is.null(tmp)==F,
                              as.data.frame(tmp|>
                                              ungroup() |> select(-year, -species, -length_group))[,r],0)
     }
     for(g in 1:N_lo){ # Other species
       tmp<-numbers_per_length_group |> 
-        filter(species==4 & year==(y+min_years-1) & length_group==g)
+        filter(species==4 & year==(y+min_year-1) & length_group==g)
       L_obs[g,r,4,y]<-ifelse(is.null(tmp)==F,
                              as.data.frame(tmp|>
         ungroup() |> select(-year, -species, -length_group))[,r],0)

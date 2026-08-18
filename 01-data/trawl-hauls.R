@@ -6,9 +6,7 @@ dfB_haul<-hauls_all %>% mutate(year=SurveyYear)|>
   filter(year>=min_year & year<=max_year)
 
 # How many years in the data?
-tmp<-dfB_haul |> group_by(year) |> summarise(n=n())
-Nyears<-length(tmp$year)
-min_years<-min(tmp$year)
+#dfB_haul |> group_by(year) |> summarise(n=n())
 
 # Define rec_ruhnu 
 # 1: NW from ruhnu 

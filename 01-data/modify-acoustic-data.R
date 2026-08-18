@@ -14,9 +14,6 @@ ruhnuLong<-23.26012233
 ################################
 # Acoustic data
 
-#dfA25<-read.csv(str_c(path,"Acoustic_2025-ZR012_2026-03-03T10.07.30.860.csv"), skip=11) |> as_tibble() |> mutate(year=2025)
-#dfA24<-read.csv(str_c(path,"Acoustic_2024-ZR038_2025-03-12T10.25.26.053.csv"), skip=11) |> as_tibble() |> mutate(year=2024)
-#dfA23<-read.csv(str_c(path,"Acoustic_2023-ZR055_2024-02-05T18.20.41.813.csv"), skip=11) |> as_tibble() |> mutate(year=2023) 
 dfA<-acoustic_data_all %>% mutate(year=SurveyYear)
 #View(dfA)
 
@@ -143,52 +140,3 @@ nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(ye
 nascY
 
 
-# # Testing stuff
-# ################################################################################
-# 
-# # psi: indicator of whether the depth is less than 25m
-# tmp<-dfA2 |> mutate(psi=ifelse(depthLow>25, 1, 0)) |> group_by(LogDistance, psi, rec) |> 
-#   summarise(nasc_tot=sum(DataValue))
-# tmp
-# # About 15% of observations is from deeper layers than 25m
-# tmp |> group_by(psi) |> summarise(tot=sum(nasc_tot))
-# 
-# # Run minmax_depth from trawl data (code below)
-# # delta: does the acoustic go lower than the trawl data in corresponding ruhnu-rectangle?
-# tmp2<-full_join(dfA2, minmax_depth) |> 
-#   select(min_trawl_depth, max_trawl_depth, rec, DataValue, depthUpp, depthLow, LogDistance, LogLatitude, LogLongitude) |> 
-#   arrange(rec) |> 
-#   mutate(delta=ifelse(depthLow>max_trawl_depth, 1, 0))
-# 
-# View(tmp2)
-# 
-# 
-# 
-# # Calculate autocorrelation of nascs as the distance increases (chatGPT)
-# #######################################################################
-# obs <- tmp3$sum_nasc
-# max_lag <- length(obs) - 1
-# lag_cor <- numeric(max_lag)
-# for (h in 1:max_lag) {
-#   lag_cor[h] <- cor(obs[1:(length(obs)-h)], 
-#                     obs[(1+h):length(obs)])
-# }
-# lag_cor
-# 
-# plot(1:max_lag, lag_cor, type = "b",
-#      xlab = "Distance (km)",
-#      ylab = "Pearson Correlation",
-#      main = "Spatial Correlation vs Distance")
-# abline(h = 0, lty = 2)
-# 
-# acf(obs, lag.max = 5) # Compact solution!
-# #######################################################################
-# 
-# 
-# 
-# 
-# tmp |> filter(LogDistance==174)
-# 
-# 
-# ggplot(data=tmp2, aes(x=LogDistance, y=sum_nasc))+
-#   geom_col()

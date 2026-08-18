@@ -119,21 +119,9 @@ df_p_per_length |>
   summarise(sum=sum(p_per_length)) |> filter(is.na(sum)==T)
 
 # Number of hauls per rectangle and per species
-# AND LENGTH?????
-
 df_n_hauls_per_case<- df_p_per_length|>
-  group_by(rec,species) |> #,CatchLengthClass_mm) |>
+  group_by(rec,species) |>
   summarise(n_hauls_per_case=n_distinct(HaulNumber))
-
-#df_n_hauls_per_species_and_length<- df_p_per_length|>
-#  group_by(rec,species,CatchLengthClass_mm) |>
-#  summarise(n_hauls_per_species_and_length=n_distinct(HaulNumber))
-
-
-#print(x=df_n_hauls_per_case |> filter(rec=="47H3"), n=20)
-#print(x=df_p_per_length_per_rec|> filter(rec=="47H3"), n=20)
-
-#df_p_per_length_per_rec|> filter(rec=="47H3") |> summarise(tot=sum(mean_p_per_length_per_rec))
 
 # Rectangle specific proportion of individuals of certain length is the
 # mean over length class specific percentages
@@ -427,7 +415,7 @@ alk_sprat_145mm_SD2124<-df_p_age_at_length |>
   group_by(species,age, BiologyLengthClass_mm) |>  select(-p_age_at_length) |> 
   summarise(sum_per_length_class2=sum(n)) 
 
-tot<-as.matrix(sprat_145mm_SD2124 |> ungroup() |>  summarise(ntot=sum(sum_per_length_class2)))[1]
+tot<-as.matrix(alk_sprat_145mm_SD2124 |> ungroup() |>  summarise(ntot=sum(sum_per_length_class2)))[1]
 
 alk_sprat_145mm_SD2124<-alk_sprat_145mm_SD2124 |>
   mutate(p_age_at_length=sum_per_length_class2/tot) |> 
@@ -502,7 +490,12 @@ df_mean_w_at_length_per_haul_biol<-df_biol |>
 # Combine
 df_mean_w_at_length_per_haul<-
   full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
-#View(df_mean_w_at_length_per_haul)
+#View(df_mean_w_at_length_per_haul |> arrange(species, CatchLengthClass_mm))
+
+ggplot(df_mean_w_at_length_per_haul, aes(CatchLengthClass_mm, mean_w_at_length_per_haul))+
+  geom_point(stat = "identity")+
+  facet_wrap(~species, scales="free")
+
 
 # Mean weight per rec (equal weights on hauls) per length per species
 df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 

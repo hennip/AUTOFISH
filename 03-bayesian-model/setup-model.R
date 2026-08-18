@@ -2,10 +2,10 @@ rm(list = ls())
 source("00-basics/packages-and-paths.R")
 
 # Define time series for data
-min_year<-2020
+min_year<-2016
 max_year<-2025
 model_data<-str_c("_",min_year,"-",max_year)
-source("01-data/workflow-data.R")
+source("01-data/workflow-data-bayesmodel.R")
 
 
 # Choose model
@@ -19,7 +19,7 @@ run_name<-str_c(modelname, model_data)
 
 data<-list(
   Nyears=Nyears,
-  Nrec=4,
+  Nrec=length(min_year:max_year),
   Nages=Nages, # Herring 0 - 8+ yr olds => 9 age groups 
   
   Nspecies=4,

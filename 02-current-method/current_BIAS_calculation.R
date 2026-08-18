@@ -415,7 +415,7 @@ alk_sprat_145mm_SD2124<-df_p_age_at_length |>
   group_by(species,age, BiologyLengthClass_mm) |>  select(-p_age_at_length) |> 
   summarise(sum_per_length_class2=sum(n)) 
 
-tot<-as.matrix(sprat_145mm_SD2124 |> ungroup() |>  summarise(ntot=sum(sum_per_length_class2)))[1]
+tot<-as.matrix(alk_sprat_145mm_SD2124 |> ungroup() |>  summarise(ntot=sum(sum_per_length_class2)))[1]
 
 alk_sprat_145mm_SD2124<-alk_sprat_145mm_SD2124 |>
   mutate(p_age_at_length=sum_per_length_class2/tot) |> 
@@ -490,7 +490,12 @@ df_mean_w_at_length_per_haul_biol<-df_biol |>
 # Combine
 df_mean_w_at_length_per_haul<-
   full_join(df_mean_w_at_length_per_haul_catch,df_mean_w_at_length_per_haul_biol)
-#View(df_mean_w_at_length_per_haul)
+#View(df_mean_w_at_length_per_haul |> arrange(species, CatchLengthClass_mm))
+
+ggplot(df_mean_w_at_length_per_haul, aes(CatchLengthClass_mm, mean_w_at_length_per_haul))+
+  geom_point(stat = "identity")+
+  facet_wrap(~species, scales="free")
+
 
 # Mean weight per rec (equal weights on hauls) per length per species
 df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 

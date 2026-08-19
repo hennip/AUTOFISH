@@ -7,12 +7,28 @@
 # If one wants to run results from a smaller subset of countries, please comment
 # out other countries lines in read-data-in-BIAS-all-countries.R
 ################################################################################
+rm(list = ls())
 
-# Read in data from all countries
-source("02-current-method/read-in-data-BIAS-all-countries.R")
 
-# Define the year to be investigated
+
+# Define data
+###############################
+
+# Select data from one country or choose all countries
+# Currently other options (eg two countries) are not available
+#all_countries<-"yes" # In this option you need to have all countries data available
+all_countries<-"no" # Choose this if you want results from single country data only
+if(all_countries=="no"){
+  # Supported abbreviations are EE, FI, SE, DE, PL, LV, LT
+  country<-"EE" 
+  }
+
+# Define year
 choose_year<-2025
+
+# Read in data 
+source("02-current-method/read-in-data-BIAS-all-countries-test.R")
+
 
 ###########################
 # Workflow for taking into account rectangles that split between 2 ICES sub divisions:
@@ -443,13 +459,18 @@ df_n_at_age |> filter(is.na(age)==T) # should be empty
    mutate(n_age_at_length=p_age_at_length*n_per_length)
  print(x=df_n_at_age_length, n=100)
 
+df_n_at_age<- df_n_at_age_length |> group_by(species, rec, age) |> 
+   summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
+   left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
+   arrange(age, species, ICES_SD,rec)
+ 
+NTOT<- df_n_at_age |> 
+   group_by(species, ICES_SD, rec) |> 
+   summarise(NTOT=sum(n_at_age, na.rm=T))
 
-pivot_n_at_age<-df_n_at_age_length |> group_by(species, rec, age) |> 
-  summarise(n_at_age= round(sum(n_age_at_length),2)) |> 
-  left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
-  arrange(age, species, ICES_SD,rec) |> 
+pivot_n_at_age<- df_n_at_age|> 
   pivot_wider(names_from = age, values_from = n_at_age) |> 
-  mutate(NTOT=rowSums(across(c(`0`:`19`)), na.rm = T)) |> 
+  full_join(NTOT) |> 
   select(species,ICES_SD,rec,NTOT,everything()) |> 
   ungroup()
 
@@ -500,15 +521,18 @@ ggplot(df_mean_w_at_length_per_haul, aes(CatchLengthClass_mm, mean_w_at_length_p
 # Mean weight per rec (equal weights on hauls) per length per species
 df_mean_w_at_length_per_rec<-df_mean_w_at_length_per_haul |> 
   group_by(rec,species, CatchLengthClass_mm) |> 
-  summarise(sum_w=sum(mean_w_at_length_per_haul, na.rm=T)) |> 
-  left_join(df_n_hauls_per_case) |> 
-  mutate(mean_w_at_length=round(sum_w/n_hauls_per_case,2)) #OK
+  summarise(mean_w_at_length=round(mean(mean_w_at_length_per_haul),5))
+
+tmp<-df_mean_w_at_length_per_rec |> filter(rec=="46H1", species==126417)
+print(x=tmp, n=100)
 
 pivot_mean_weight_per_length<-df_mean_w_at_length_per_rec |> 
   select(rec, species,CatchLengthClass_mm, mean_w_at_length) |> 
   group_by(rec, species, CatchLengthClass_mm) |> 
   arrange(CatchLengthClass_mm, species, rec) |> 
-  pivot_wider(values_from = mean_w_at_length, names_from = CatchLengthClass_mm)
+  pivot_wider(values_from = mean_w_at_length, names_from = CatchLengthClass_mm) |> 
+  left_join(df_rec_ICES_SD, relationship="many-to-many") |> 
+  select(ICES_SD, everything()) |> arrange(ICES_SD)
 
 # Biomass per length per rectangle = n per length per rec * mean w_at length
 # Unit is grams times millions individuals = millions of grams = tonnes
@@ -527,6 +551,10 @@ df_bm_at_age<-df_bm_per_length_ICES_SD |>
   left_join(age_length_key, relationship="many-to-many") |> 
   mutate(bm_age_at_length=p_age_at_length*bm_per_length)
 print(x=df_bm_at_age, n=100)
+
+#tmp<-age_length_key |> filter(species==126417, ICES_SD==29)
+#print(x=tmp, n=100)
+
 
 pivot_bm_at_age<-df_bm_at_age |> 
   group_by(species, rec, age) |> 
@@ -627,7 +655,12 @@ ST
 # simply set x to a named list of data frames.
 res<-list(ST=ST,AH=AH, WH=WH, AS=AS, WS=WS, AO=AO, WO=WO)
 
-write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, ".xlsx"))
+if(all_countries=="no"){
+  write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, "_one_country.xlsx"))
+}
+if(all_countries=="yes"){
+  write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year, "_all_countries.xlsx"))
+}
 
 #source("plots-for-current-methodoogy.R")
 

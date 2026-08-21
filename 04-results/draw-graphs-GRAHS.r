@@ -2,11 +2,12 @@
 #rm(list = ls())
 
 source("00-basics/packages-and-paths.R")
-#load(paste0(path_output,"GRAHS4.RData"))
 
 load(paste0(path_output,"GRAHS_etaE_2020-2025.RData"))
 load(paste0(path_output,"GRAHS4_etaE4etaR4_2020-2025.RData"))
 load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
+
+load(paste0(path_output,"GRAHS4_cleaned_2016-2025.RData"))
 
 summary(run, var="deviance")
 plot(run, var="deviance")
@@ -24,7 +25,7 @@ summary(run, var="Lstar")
 
 chains<-as.mcmc(run)
 
-Nyears<-6
+Nyears<-10
 Nages<-9
 Nspecies<-4
 species_name<-c("Herring", "Sprat", "Stickleback", "Other")
@@ -37,12 +38,12 @@ plot(density(chains[,"cv_nasc"]),main=expression(CV[nasc]))
 lines(density(chains[,"cv_nascX"]))
 
 plot(density(chains[,"etaG"]),main=expression(eta^G))
-lines(density(chains[,"etaX"]))
+lines(density(chains[,"etaX1"]))
 #plot(density(chains[,"etaX"]),main=expression(eta^X), xlim=c(0,4000))
 
 for(y in 1:Nyears){
   plot(density(chains[,str_c("etaS[",y,"]")]),main=bquote(.(y+2019) ~ eta^S))
-  lines(density(chains[,"etaX"]))
+  lines(density(chains[,"etaX1"]))
 }
 
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
@@ -92,7 +93,7 @@ for(i in 1:Nages){
 }
 }
 
-colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2020:2025)
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2016:2025)
 max
 
 df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
@@ -120,7 +121,7 @@ ggplot(df, aes(age, group=age))+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_grid(~year)+scale_x_continuous(breaks = scales::pretty_breaks(n = 9))
+  facet_wrap(~year)+scale_x_continuous(breaks = scales::pretty_breaks(n = 9))
 
 ######################################
 # Total abundance per species
@@ -140,7 +141,7 @@ for(y in 1:Nyears){
   }
 }
 
-colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2020:2025)
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2016:2025)
 
 df_min<-as_tibble(min) |> mutate(species=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")

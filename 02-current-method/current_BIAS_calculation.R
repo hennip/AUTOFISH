@@ -8,27 +8,6 @@
 # out other countries lines in read-data-in-BIAS-all-countries.R
 ################################################################################
 # rm(list = ls())
-# 
-# # Define data
-# ###############################
-# 
-# # Select data from one country or choose all countries
-# # Currently other options (eg two countries) are not available
-# 
-# all_countries<-"yes" # In this option you need to have all countries data available
-# #all_countries<-"no" # Choose this if you want results from single country data only
-# 
-# if(all_countries=="no"){
-#   # Supported abbreviations are EE, FI, SE, DE, PL, LV, LT
-#   country<-"EE" 
-# }
-# 
-# # Define year
-# choose_year<-2025
-# 
-# # Read in data 
-# source("02-current-method/read-in-data-BIAS-all-countries.R")
-
 
 ###########################
 # Workflow for taking into account rectangles that split between 2 ICES sub divisions:
@@ -545,7 +524,7 @@ df_bm_per_length_ICES_SD<-df_bm_at_length |>
   select(species,ICES_SD,rec,CatchLengthClass_mm, bm_per_length)
 
 # Biomass per age for herring and sprat
-df_bm_at_age<-df_bm_per_length_ICES_SD |>
+df_bm_age_at_length<-df_bm_per_length_ICES_SD |>
   filter(species==126417 | species==126425) |> 
   mutate(BiologyLengthClass_mm=CatchLengthClass_mm) |> 
   left_join(age_length_key, relationship="many-to-many") |> 
@@ -555,17 +534,23 @@ print(x=df_bm_at_age, n=100)
 #tmp<-age_length_key |> filter(species==126417, ICES_SD==29)
 #print(x=tmp, n=100)
 
-
-pivot_bm_at_age<-df_bm_at_age |> 
+df_bm_at_age<-df_bm_age_at_length |> 
   group_by(species, rec, age) |> 
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
   left_join(df_rec_ICES_SD, relationship = "many-to-many")|> 
-  arrange(age,species,ICES_SD) |> 
+  arrange(age,species,ICES_SD) 
+
+WTOT<-df_bm_at_age |> ungroup() |> 
+  group_by(species, rec, ICES_SD) |> 
+  summarise(WTOT=sum(bm_at_age, na.rm=T))
+
+df_bm_at_age |>
+  full_join(WTOT) |>
+  filter(ICES_SD==24, species==126417, rec=="37G2")
+  
+pivot_bm_at_age<-df_bm_at_age |>
+  full_join(WTOT) |> 
   pivot_wider(names_from = age, values_from = bm_at_age) |> 
-  mutate(WTOT=rowSums(across(c(`0`:`11`)), na.rm = T)) |>
-  rename(W0=`0`,W1=`1`,W2=`2`,W3=`3`,W4=`4`,W5=`5`,W6=`6`,W7=`7`,W8=`8`,
-         W9=`9`,W10=`10`,W11=`11`,W12=`12`
-         )|> 
   select(species,ICES_SD, rec, WTOT, everything()) |> 
   ungroup()
 print(x=pivot_bm_at_age, n=100)
@@ -573,10 +558,10 @@ print(x=pivot_bm_at_age, n=100)
 # Mean weight at age
 # join bm (biomass) at age
 df_mean_weight_at_age<-df_bm_at_age|> 
-  left_join(df_n_at_age_length) |> 
+  left_join(df_n_at_age) |> 
   group_by(species, rec, age) |> 
   summarise(mean_weight_at_age=
-              round(sum(bm_age_at_length, na.rm=T)/sum(n_age_at_length, na.rm=T),2))
+              round(sum(bm_at_age, na.rm=T)/sum(n_at_age, na.rm=T),2))
 
 pivot_mean_weight_at_age <-df_mean_weight_at_age |> 
   left_join(df_rec_ICES_SD, relationship = "many-to-many") |>
@@ -605,8 +590,8 @@ AO<-pivot_n_per_length|> filter(species!=126417 & species!=126425)|> arrange(ICE
 #pivot_bm_per_length|>filter(species!=126417 & species!=126425)
 
 # Mean weights per species per age
-WH<-pivot_mean_weight_at_age|> filter(species==126417)|> select( -`NA`)|> arrange(ICES_SD)
-WS<-pivot_mean_weight_at_age|> filter(species==126425)|> select( -`NA`)|> arrange(ICES_SD)
+WH<-pivot_mean_weight_at_age|> filter(species==126417)|> arrange(ICES_SD)
+WS<-pivot_mean_weight_at_age|> filter(species==126425)|> arrange(ICES_SD)
 WO<-pivot_mean_weight_per_length|> filter(species!=126417 & species!=126425)|> arrange(ICES_SD)
 
 # Takes % of species per rectangle for ST table (we added also GTA)

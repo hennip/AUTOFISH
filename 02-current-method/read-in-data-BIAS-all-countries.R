@@ -12,7 +12,7 @@ df_rec_info<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |>
   rename(ICES_SD=SD, rec=ICES_rectangle, A_NM2=Area_NM2)
 
 # Single country option
-if(all_countries=="no"){ 
+if(country!="all"){ 
   
   if(country=="EE"){CountryCoef<-10000}
   if(country=="FI"){CountryCoef<-20000}
@@ -36,7 +36,7 @@ if(all_countries=="no"){
   
 # All countries option
 # Takes currently in all countries except Lithuania (not uploaded to the database)
-if(all_countries=="yes"){ 
+if(country=="all"){ 
   dfA_EE<-read_in_acoustic_data(paste0(pathA,"EE/"))|> mutate(country="EE", CountryCoef=10000)
   dfA_FI<-read_in_acoustic_data(paste0(pathA,"FI/"))|> mutate(country="FI", CountryCoef=20000)
   dfA_DE<-read_in_acoustic_data(paste0(pathA,"DE/"))|> mutate(country="DE", CountryCoef=30000)

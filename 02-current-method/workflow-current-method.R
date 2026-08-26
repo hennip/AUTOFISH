@@ -10,13 +10,19 @@
 
 rm(list = ls())
 
-# Define input
+# Input
 ###############################
 
 # Define year
 choose_year<-2025
 
-# Define country specific data:
+# Define paths 
+#pathA<- # Path for acoustic data
+pathB<-pathA # Path for trawl data, if different than pathA
+# path_output<- # Path on which you wish to have the output stored
+
+# Define country or countries whose results you wish to calculate:
+# ====================================================================
 
 # Option 1: Choose this if you wish to run only one country data
 # =================================

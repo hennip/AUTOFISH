@@ -1,42 +1,28 @@
 
-# Define in packages-and-paths.R your own path for input data and resulting output
 source("00-basics/packages-and-paths.R")
 
-# Call functions that read in all data in a folder, pick up only necessary and in
-# case of trawl data, separate to haul, catch and biology tables
+# Functions for reading data in
 source("01-data/func-read-in-acoustic-data.R")
 source("01-data/func-read-in-trawl-data.R") 
 
-# Rectangle specific info: ICES sub division and area as NM^2
-df_rec_info<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |> 
-  rename(ICES_SD=SD, rec=ICES_rectangle, A_NM2=Area_NM2)
 
-# Single country option
-if(country!="all"){ 
-  
-  if(country=="EE"){CountryCoef<-10000}
-  if(country=="FI"){CountryCoef<-20000}
-  if(country=="DE"){CountryCoef<-30000}
-  if(country=="PL"){CountryCoef<-40000}
-  if(country=="SE"){CountryCoef<-50000}
-  if(country=="LV"){CountryCoef<-60000}
-  if(country=="LT"){CountryCoef<-70000}
-  
-  dfA<-read_in_acoustic_data(paste0(pathA,country,"/"))|> 
-    mutate(country=country, CountryCoef=10000)|>
+if(all_countries=="no"){ #define country specific data
+  dfA<-read_in_acoustic_data(paste0(pathA,"EE/"))|> mutate(country="EE", CountryCoef=10000)|>
     select(country, everything()) |>
-    mutate(LogDistance = as.numeric(LogDistance), lognew = LogDistance + CountryCoef)
+    mutate(
+      LogDistance = as.numeric(LogDistance),
+      lognew = LogDistance + CountryCoef)
 
-  dfB<-read_in_trawl_data(paste0(pathB,country,"/"))
-  hauls_all<-dfB[[1]]|> mutate(country=country, CountryCoef=CountryCoef)
-  catch_all<-dfB[[2]]|> mutate(country=country, CountryCoef=CountryCoef)
-  biol_all<- dfB[[3]]|> mutate(country=country, CountryCoef=CountryCoef)
-
-} # one country option ends
+  source("01-data/func-read-in-trawl-data.R") 
   
-# All countries option
-# Takes currently in all countries except Lithuania (not uploaded to the database)
-if(country=="all"){ 
+  dfB<-read_in_trawl_data(paste0(pathB,"EE/"))
+  hauls_all<-dfB[[1]] |> mutate(country="EE", CountryCoef=10000)
+  catch_all<-dfB[[2]]|> mutate(country="EE", CountryCoef=10000)
+  biol_all<-dfB[[3]]|> mutate(country="EE", CountryCoef=10000)
+
+} # one country selection ends
+  
+if(all_countries=="yes"){ #all countries included. Note! Lithuanian data not available
   dfA_EE<-read_in_acoustic_data(paste0(pathA,"EE/"))|> mutate(country="EE", CountryCoef=10000)
   dfA_FI<-read_in_acoustic_data(paste0(pathA,"FI/"))|> mutate(country="FI", CountryCoef=20000)
   dfA_DE<-read_in_acoustic_data(paste0(pathA,"DE/"))|> mutate(country="DE", CountryCoef=30000)
@@ -52,7 +38,10 @@ if(country=="all"){
     full_join(dfA_SE) |>
     full_join(dfA_LV) |>
     select(country, everything()) |>
-    mutate(LogDistance = as.numeric(LogDistance),lognew = LogDistance + CountryCoef)
+    mutate(
+      LogDistance = as.numeric(LogDistance),
+      lognew = LogDistance + CountryCoef
+    )
 
   dfB_EE<-read_in_trawl_data(paste0(pathB,"EE/"))
   hauls_EE<-dfB_EE[[1]] |> mutate(country="EE", CountryCoef=10000)
@@ -81,7 +70,8 @@ if(country=="all"){
       select(BiologyIndividualWeight,#BiologyIndividualWeight2, 
              everything())
   }
-
+  #View(bio_PL)
+  
   dfB_SE<-read_in_trawl_data(paste0(pathB,"SE/"))
   hauls_SE<-dfB_SE[[1]]|> mutate(country="SE", CountryCoef=50000)
   catch_SE<-dfB_SE[[2]]|> mutate(country="SE", CountryCoef=50000)
@@ -172,6 +162,9 @@ for(i in 1:n){
 }
 }
 
+# Rectangle specific info: ICES sub division and area as NM^2
+df_rec_info<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |> 
+  rename(ICES_SD=SD, rec=ICES_rectangle, A_NM2=Area_NM2)
 
 
 

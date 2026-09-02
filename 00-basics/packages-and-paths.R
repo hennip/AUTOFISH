@@ -47,7 +47,8 @@ if(computer_name=="hp_laptop"){
   pathA_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Acoustic/"
   pathB_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Biotic/"
   
-  path_output<-"../../01-Projects/AUTOFISH/out/"  
+  path_output_GRAHS<-"../../01-Projects/AUTOFISH/out/GRAHS/"  
+  path_output_BIAS<-"../../01-Projects/AUTOFISH/out/BIAS/"  
 }
 if(computer_name=="es_laptop"){
   pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"

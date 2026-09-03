@@ -3,8 +3,13 @@
 # biotic data to separate data frames 
 # ----------------
 
+
 read_in_trawl_data<-function(input_dir){
 
+# Silence warnings when using this function 
+oldw <- getOption("warn")
+options(warn = -1)
+  
 #input_dir <- pathB # Path defined in packages-and-paths.R
 
 # ===== FUNCTIONS =====
@@ -175,4 +180,7 @@ catch_all <- parsed %>% map("Catch")   %>% compact() %>% list_rbind()
 bio_all   <- parsed %>% map("Biology") %>% compact() %>% list_rbind()
 
 return(list(hauls_all,catch_all,bio_all))
+
+# return original warnings
+options(warn = oldw)
 }

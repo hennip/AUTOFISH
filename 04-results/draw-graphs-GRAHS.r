@@ -14,13 +14,10 @@ plot(run, var="deviance")
 
 summary(run, var="Ntot")
 summary(run, var="eta")
-#summary(run, var="PopAge")
 
 plot(run, var="eta")
 plot(run, var="cv_nasc")
-
-
-summary(run, var="Lstar")
+summary(run, var="muL")
 
 
 chains<-as.mcmc(run)
@@ -128,7 +125,6 @@ ggplot(df, aes(age, group=age))+
 # Total abundance per species
 ######################################
 
-Nspecies<-4
 min<-low<-med<-up<-max<-array(NA, dim=c(Nspecies,Nyears))
 for(y in 1:Nyears){
   for(s in 1:Nspecies){
@@ -164,7 +160,7 @@ df<-full_join(df_min, df_low) |>
                                 ifelse(species==3, "Stickleback",
                                        ifelse(species==4, "Other",NA))))) |> 
   arrange(species)
-
+df
 
 ggplot(df, aes(year, group=year))+
   labs(x="Species", y="Year", title="Total abundance per species (in millions)")+
@@ -176,23 +172,164 @@ ggplot(df, aes(year, group=year))+
   facet_wrap(~species2, scales="free")+
   expand_limits(y = 0)
 
+######################################
+# Abundance at length per species
+######################################
+
+df_compiled_lengths<-read_xlsx(str_c(path_output_GRAHS,"GOR_output_compiled_lengths.xlsx"), range="M40:W57")
+df_comp<-df_compiled_lengths |> 
+  pivot_longer(cols=c(`2017`:`2025`), names_to = "year", values_to = "N")|> rename(length=length_g)
 
 
+Nlengths<-c(N_lh,N_lsprat,N_lstickl,N_lo)
+#Nlengths<-c(8,5,4,8)
+
+min<-low<-med<-up<-max<-array(NA, dim=c(max(Nlengths),Nspecies,Nyears))
+for(y in 1:Nyears){
+  for(s in 1:Nspecies){
+    for(l in 1:Nlengths[s]){
+      p<-chains[,str_c("muL[",l,",",s,",",y,"]")]
+      N<-chains[,str_c("Ntot[",s,",",y,"]")] 
+      tmp<-p*N/1000000
+      
+      sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+      min[l,s,y]<-sum_tmp[1]
+      low[l,s,y]<-sum_tmp[2]
+      med[l,s,y]<-sum_tmp[3]
+      up[l,s,y]<-sum_tmp[4]
+      max[l,s,y]<-sum_tmp[5]
+    }
+  }
+}
 
 
+# herring
+min2<-min[,1,]
+low2<-low[,1,]
+med2<-med[,1,]
+up2<-up[,1,]
+max2<-max[,1,]
 
 
+colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(2016:2025)
+
+df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+
+df1<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max) |> 
+  mutate(species="herring")
+
+df2<-filter(df_comp, species==1) |> select(-species) |> mutate(year=as.numeric(year))
+df<-df1 |> mutate(year=as.numeric(year))|> 
+  full_join(df2)
+
+df1 |> filter(year==2017) |> select(-species, -length, -low, -up)
+print(x=df1, n=100)
+
+ggplot(df, aes(length, group=length))+
+  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, herring")+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~year)+
+  geom_point(aes(length, N))
 
 
+# Sprat
+
+min2<-min[,2,]
+low2<-low[,2,]
+med2<-med[,2,]
+up2<-up[,2,]
+max2<-max[,2,]
 
 
+colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(2016:2025)
+
+df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+
+df1<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max) |> 
+  mutate(species="sprat")
+
+df2<-filter(df_comp, species==2) |> select(-species) |> mutate(year=as.numeric(year))
+df<-df1 |> mutate(year=as.numeric(year))|> 
+  full_join(df2) |> 
+  filter(is.na(min)==F)
+View(df)
+
+ggplot(df, aes(length, group=length))+
+  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, sprat")+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~year, scales="free")+
+  geom_point(aes(length, N))
 
 
+# GTA
+
+min2<-min[,3,]
+low2<-low[,3,]
+med2<-med[,3,]
+up2<-up[,3,]
+max2<-max[,3,]
 
 
+colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(2016:2025)
 
+df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
 
+df1<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max) |> 
+  mutate(species="GTA")
 
+df2<-filter(df_comp, species==3) |> select(-species) |> mutate(year=as.numeric(year))
+df<-df1 |> mutate(year=as.numeric(year))|> 
+  full_join(df2) |> 
+  filter(is.na(min)==F)
+#View(df)
 
-
-
+ggplot(df, aes(length, group=length))+
+  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, stickleback")+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~year, scales="free")+
+  geom_point(aes(length, N))

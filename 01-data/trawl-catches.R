@@ -180,36 +180,47 @@ summarise(n=sum(CatchNumberAtLength))
 numbers_at_length
 #View(numbers_at_length)
 
-#length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
-#length_limits_sprat<-c(70,90,110,130) # 5 groups for sprat
-#length_limits_other<-c(60,80,100,120,140,160, 180) # 8 groups for other species
+# See length limits also in workflow-data-bayesmodel.R  !!!!!
 
 # Number of herring/other species in the sample per rectangle and length group
 numbers_at_length_herring<-numbers_at_length|>
   filter(species==1) |> 
-  mutate(length_group=ifelse(length<90, 1, NA)) |> 
-  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(length>=180, 8, length_group)) 
+  mutate(length_group=ifelse(length<60, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=60  & length<70, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=70 & length<80, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=80 & length<90, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=90 & length<100, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=100 & length<110, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=110 & length<120, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<130, 8, length_group)) |> 
+  mutate(length_group=ifelse(length>=130 & length<140, 9, length_group)) |> 
+  mutate(length_group=ifelse(length>=140 & length<150, 10, length_group)) |> 
+  mutate(length_group=ifelse(length>=150 & length<160, 11, length_group)) |> 
+  mutate(length_group=ifelse(length>=160 & length<170, 12, length_group)) |> 
+  mutate(length_group=ifelse(length>=170 & length<180, 13, length_group)) |> 
+  mutate(length_group=ifelse(length>=180, 14, length_group)) 
 
 numbers_at_length_sprat<-numbers_at_length|>
   filter(species==2) |> 
-  mutate(length_group=ifelse(length<70, 1, NA)) |> 
-  mutate(length_group=ifelse(length>=70  & length<90, 2, length_group)) |> 
-  mutate(length_group=ifelse(length>=90 & length<110, 3, length_group)) |> 
-  mutate(length_group=ifelse(length>=110 & length<130, 4, length_group)) |> 
-  mutate(length_group=ifelse(length>=130, 5, length_group)) 
+  mutate(length_group=ifelse(length<80, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=80  & length<90, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=90 & length<100, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=100 & length<110, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=110 & length<120, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<130, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=130 & length<140, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=140, 8, length_group)) 
 
 numbers_at_length_stickl<-numbers_at_length|>
   filter(species==3) |> 
-  mutate(length_group=ifelse(length<50, 1, NA)) |> 
-  mutate(length_group=ifelse(length>=50  & length<55, 2, length_group)) |> 
-  mutate(length_group=ifelse(length>=55 & length<60, 3, length_group)) |> 
-  mutate(length_group=ifelse(length>=60, 4, length_group)) 
+  mutate(length_group=ifelse(length<45, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=45  & length<50, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=50  & length<55, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=55 & length<60, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=60 & length<65, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=65 & length<70, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=70 & length<75, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=75, 8, length_group)) 
 
 numbers_at_length_other<-numbers_at_length|>
   filter(species==4) |> 
@@ -254,7 +265,7 @@ medianL_herring<-as.data.frame(dfB_catch|>
               filter(length<length_limits_herring[1], species==1) |> 
                 select(-species) |> 
               summarise(medianL=median(length)))[[1]]
-for(i in 1:(N_lh-2)){ # groups 2-7
+for(i in 1:(N_lh-2)){ # groups 2-14
   medianL_herring[i+1]<-length_limits_herring[i]+
     (length_limits_herring[i+1]-length_limits_herring[i])/2
 }
@@ -374,7 +385,7 @@ medianL_other
 length_limits_other
 
 # Vector for mid lengths is called meanL, although the points are medians
-meanL<-array(NA, dim=c(8,Nspecies))
+meanL<-array(NA, dim=c(max(N_lh,N_lsprat,N_lstickl,N_lo),Nspecies))
 meanL[,1]<-medianL_herring
 meanL[1:N_lsprat,2]<-medianL_sprat
 meanL[1:N_lstickl,3]<-medianL_stickl

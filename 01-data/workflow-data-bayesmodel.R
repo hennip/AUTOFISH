@@ -23,7 +23,8 @@ ruhnuLong<-23.26012233
 
 
 # Define years to take into account
-#min_year<-2020
+# Note! This is usually done in setup-model.R
+#min_year<-2016
 #max_year<-2025
 
 #source("01-data/read-in-acoustic-data.R") 
@@ -46,9 +47,12 @@ source("01-data/trawl-hauls.R")
 # NOTE THAT THE UPPER AND LOWER LIMITS NEED TO BE DEFINED
 # IN trawl-catches.R AS WELL!!!
 
-length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
-length_limits_sprat<-c(70,90,110,130) # 5 groups for sprat
-length_limits_stickl<-c(50,55,60) # 4 groups for stickleback
+#length_limits_herring<-c(90,105,120,135,150,165,180) # 8 groups for herring
+length_limits_herring<-c(60,70,80,90,100,110,120,130,140,150,160,170,180) # 14 groups for herring
+#length_limits_sprat<-c(70,90,110,130) # 5 groups for sprat
+length_limits_sprat<-c(80,90,100,110,120,130,140) # 8 groups for sprat
+#length_limits_stickl<-c(50,55,60) # 4 groups for stickleback
+length_limits_stickl<-c(45,50,55,60,65,70,75) # 8 groups for stickleback
 length_limits_other<-c(60,80,100,120,140,160,180) # 8 groups for other species
 source("01-data/trawl-catches.R")
 

@@ -13,14 +13,20 @@ df_length_at_age<-dfB_biol|>
   filter(CatchSpeciesCode==126417) |> 
   mutate(length=as.numeric(BiologyLengthClass), # shorten names
          age=as.numeric(BiologyIndividualAge))|> 
-  mutate(length_group=ifelse(length<90, 1, NA)) |> 
-  mutate(length_group=ifelse(length>=90  & length<105, 2, length_group)) |> 
-  mutate(length_group=ifelse(length>=105 & length<120, 3, length_group)) |> 
-  mutate(length_group=ifelse(length>=120 & length<135, 4, length_group)) |> 
-  mutate(length_group=ifelse(length>=135 & length<150, 5, length_group)) |> 
-  mutate(length_group=ifelse(length>=150 & length<165, 6, length_group)) |> 
-  mutate(length_group=ifelse(length>=165 & length<180, 7, length_group)) |> 
-  mutate(length_group=ifelse(length>=180, 8, length_group))
+  mutate(length_group=ifelse(length<60, 1, NA)) |> 
+  mutate(length_group=ifelse(length>=60  & length<70, 2, length_group)) |> 
+  mutate(length_group=ifelse(length>=70 & length<80, 3, length_group)) |> 
+  mutate(length_group=ifelse(length>=80 & length<90, 4, length_group)) |> 
+  mutate(length_group=ifelse(length>=90 & length<100, 5, length_group)) |> 
+  mutate(length_group=ifelse(length>=100 & length<110, 6, length_group)) |> 
+  mutate(length_group=ifelse(length>=110 & length<120, 7, length_group)) |> 
+  mutate(length_group=ifelse(length>=120 & length<130, 8, length_group)) |> 
+  mutate(length_group=ifelse(length>=130 & length<140, 9, length_group)) |> 
+  mutate(length_group=ifelse(length>=140 & length<150, 10, length_group)) |> 
+  mutate(length_group=ifelse(length>=150 & length<160, 11, length_group)) |> 
+  mutate(length_group=ifelse(length>=160 & length<170, 12, length_group)) |> 
+  mutate(length_group=ifelse(length>=170 & length<180, 13, length_group)) |> 
+  mutate(length_group=ifelse(length>=180, 14, length_group)) 
 df_length_at_age
 #View(df_length_at_age |> select(length, length_group))
 
@@ -38,7 +44,7 @@ sum(df_pivot[,2:17], na.rm=T)# 9347
 #View(df_pivot)
 
 
-# Pool older ages to age group 8, remove missing ages
+# Pool older ages with 8 year olds, remove missing ages
 # Length as the first grouping argument keeps the length groups in correct order in the pivot table
 age_plus<-8
 Nages<-age_plus+1 # +1 are the 0yr olds
@@ -67,7 +73,7 @@ sum(df_pivot[,4:11], na.rm=T) #9336
 # ===================================================================
 df
 # Let's take ages 0-9 (10 age groups)
-G_obs<-array(NA, dim=c(10,8,4,Nyears))
+G_obs<-array(NA, dim=c(10,N_lh,4,Nyears))
 for(i in 1:dim(df)[1]){
   y<-df$year[i]-(min_year-1)
   r<-df$rec_ruhnu[i]
@@ -79,15 +85,20 @@ for(i in 1:dim(df)[1]){
 G_obs
 sum(G_obs, na.rm=T) # 9331
 
-nG_obs<-array(NA, dim=c(8,4,Nyears))
+# Use complete function to fill in rows that are missing (no individuals of 
+#particular length in any of the rectangles on given year)
+df_nG_obs_complete<-df |> 
+  summarise(ntot=sum(n))|> 
+  pivot_wider(names_from = rec_ruhnu, values_from = ntot) |>
+  select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
+  ungroup() |> complete(length_group,year)
+#View(df_nG_obs_complete) # Filled group 1 for 2016 and groups 1 and 3 for 2019
+
+nG_obs<-array(NA, dim=c(N_lh,4,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
-    nG_obs[,r,y]<-as.data.frame(  df |> 
+    nG_obs[,r,y]<-as.data.frame(  df_nG_obs_complete |> 
                                     filter(year==(y+min_year-1))  |> 
-                                    summarise(ntot=sum(n))|> 
-                                    pivot_wider(names_from = rec_ruhnu, values_from = ntot) |>
-                                    select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
-                                    ungroup() |> 
                                     select(-length_group, -year))[,r] 
   }
 }
@@ -102,7 +113,7 @@ sum(nG_obs, na.rm=T) # 2775 in 2022-2024
 # for all that are currently NA. Number per age will be predicted by the model
 # AND
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
-for(i in 1:8){
+for(i in 1:N_lh){
   for(r in 1:4){
     for(y in 1:Nyears){
       if(is.na(nG_obs[i,r,y])==T){

@@ -10,9 +10,8 @@ source("01-data/workflow-data-bayesmodel.R")
 
 
 # Choose model
-source("03-bayesian-model/model_4species_clean.R")
-#source("03-bayesian-model/model_4species_etaE.R")
-#source("03-bayesian-model/model_4species_etaE4etaR4.R")
+#source("03-bayesian-model/model_4species_clean.R")
+source("03-bayesian-model/model_4species_etaEry.R")
 
 
 

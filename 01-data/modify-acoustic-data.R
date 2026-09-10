@@ -14,7 +14,8 @@ ruhnuLong<-23.26012233
 ################################
 # Acoustic data
 
-dfA<-acoustic_data_all %>% mutate(year=SurveyYear)
+dfA<-acoustic_data_all |>  mutate(year=SurveyYear)|> 
+  filter(year>=min_year & year<=max_year)
 #View(dfA)
 
 ################################
@@ -37,7 +38,7 @@ dfA2<-dfA |>
   select(rec_ruhnu, DataValue, depthLow, depthUpp, everything()) |> 
   #select(-Data, -Header) |> 
   mutate(rec=rec_ruhnu)
-dfA2
+#dfA2
 #View(dfA2)  
 
 
@@ -82,7 +83,7 @@ tot_nasc_per_log
 #Necho[r,y]
 Necho_per_rec<-tot_nasc_per_log |> group_by(year, rec) |> summarise(n=n()) |> 
   pivot_wider(names_from = year, values_from = n) |> select(-rec)
-Necho_per_rec
+#Necho_per_rec
 
 necho<-as.matrix(Necho_per_rec)
 
@@ -102,7 +103,7 @@ pA1<-tot_nasc_per_log |>  ungroup()|>
   select(year, rec, LOG, sum_nasc, area_NM2) |> 
   full_join(rec_areas_NM2) |> 
   mutate(pA=area_NM2/A_NM2) 
-pA1
+#pA1
 
 # Calculate the sum of the area covered per rectangle and proportion observed/not observed
 pA2<-
@@ -114,12 +115,12 @@ pA2<-
   mutate(prop_covered=area_covered_NM2/A_NM2) |> 
   mutate(prop_not_covered=area_not_covered_NM2/A_NM2) |> 
   select(year, rec, A_NM2, everything())
-pA2 |> as.data.frame()# print as data.frame to see all digits
+#pA2 |> as.data.frame()# print as data.frame to see all digits
 
 # pick & rename the columns needed for the input data 
 pA3<-pA2 |> select(year, rec, prop_not_covered) |>
   mutate(pA=prop_not_covered) |> select(-prop_not_covered)|> as.data.frame()
-pA3
+#pA3
 
 # Give NA NASC value and LOG number as max(LOG[r,y])+1
 # -> this way the dimensions will match in the model
@@ -138,6 +139,6 @@ tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |>
 
 # nascY is year index in the model, must be the same length as sum_nasc
 nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-(min_year-1)), use.names = F)
-nascY
+#nascY
 
 

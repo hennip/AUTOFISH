@@ -9,20 +9,25 @@ load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
 
 load(paste0(path_output_GRAHS,"GRAHS4_cleaned_2016-2025.RData"))
 
+load(paste0(path_output_GRAHS,"GRAHS4_cleaned_14lengths_2016-2025.RData"))
+load(paste0(path_output_GRAHS,"GRAHS4_etaEry_14lengths_2020-2025.RData"))
+
+load(paste0(path_output_GRAHS,"GRAHS4_etaEry_etaSry_14lengths_2020-2025.RData"))
+
 summary(run, var="deviance")
 plot(run, var="deviance")
 
 summary(run, var="Ntot")
-summary(run, var="eta")
+summary(run, var="etaS")
 
-plot(run, var="eta")
+plot(run, var="etaS")
 plot(run, var="cv_nasc")
 summary(run, var="muL")
 
 
 chains<-as.mcmc(run)
 
-Nyears<-10
+Nyears<-6#10
 Nages<-9
 Nspecies<-4
 species_name<-c("Herring", "Sprat", "Stickleback", "Other")
@@ -91,7 +96,8 @@ for(i in 1:Nages){
 }
 }
 
-colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2016:2025)
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-
+  colnames(max)<-c(2020:2025)
 max
 
 df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
@@ -138,7 +144,8 @@ for(y in 1:Nyears){
   }
 }
 
-colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-c(2016:2025)
+colnames(min)<-colnames(low)<-colnames(med)<-
+  colnames(up)<-colnames(max)<-c(2020:2025)
 
 df_min<-as_tibble(min) |> mutate(species=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -176,13 +183,25 @@ ggplot(df, aes(year, group=year))+
 # Abundance at length per species
 ######################################
 
-df_compiled_lengths<-read_xlsx(str_c(path_output_GRAHS,"GOR_output_compiled_lengths.xlsx"), range="M40:W57")
+df_compare_herring<-read_xlsx(str_c(path_output_GRAHS,"GOR_output_compiled_lengths.xlsx"), range="N22:X36")
+df_compare_sprat<-read_xlsx(str_c(path_output_GRAHS,"GOR_output_compiled_lengths.xlsx"), range="N40:X48")
+df_compare_gta<-read_xlsx(str_c(path_output_GRAHS,"GOR_output_compiled_lengths.xlsx"), range="N51:X59")
+
+df_compiled_lengths<-full_join(df_compare_herring, df_compare_sprat) |> 
+  full_join(df_compare_gta)
+
+#df_compiled_lengths<-read_xlsx(str_c(path_output_GRAHS,"GOR_output_compiled_lengths.xlsx"), range="M40:W57")
 df_comp<-df_compiled_lengths |> 
   pivot_longer(cols=c(`2017`:`2025`), names_to = "year", values_to = "N")|> rename(length=length_g)
 
 
+df_comp<-df_compiled_lengths |> select(length_g, species,`2020`:`2025`) |>
+  pivot_longer(cols=c(`2020`:`2025`), names_to = "year", values_to = "N")|> 
+  rename(length=length_g)
+
+
 Nlengths<-c(N_lh,N_lsprat,N_lstickl,N_lo)
-#Nlengths<-c(8,5,4,8)
+#Nlengths<-c(14,8,8,8)
 
 min<-low<-med<-up<-max<-array(NA, dim=c(max(Nlengths),Nspecies,Nyears))
 for(y in 1:Nyears){
@@ -211,7 +230,9 @@ up2<-up[,1,]
 max2<-max[,1,]
 
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(2016:2025)
+colnames(min2)<-colnames(low2)<-colnames(med2)<-
+  colnames(up2)<-colnames(max2)<-c(2020:2025)#c(2016:2025)
+
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -224,13 +245,14 @@ df_up<-as_tibble(up2) |> mutate(length=row_number()) |>
 df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
   pivot_longer(1:Nyears,names_to = "year", values_to = "max")
 
-df1<-full_join(df_min, df_low) |> 
-  full_join(df_med) |> 
+df1<-full_join(df_min, df_low)|> 
+  full_join(df_med)|> 
   full_join(df_up) |> 
-  full_join(df_max) |> 
+  full_join(df_max)|> 
   mutate(species="herring")
 
 df2<-filter(df_comp, species==1) |> select(-species) |> mutate(year=as.numeric(year))
+
 df<-df1 |> mutate(year=as.numeric(year))|> 
   full_join(df2)
 
@@ -243,7 +265,7 @@ ggplot(df, aes(length, group=length))+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year)+
+  facet_wrap(~year, scales="free")+
   geom_point(aes(length, N))
 
 
@@ -256,7 +278,8 @@ up2<-up[,2,]
 max2<-max[,2,]
 
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(2016:2025)
+colnames(min2)<-colnames(low2)<-colnames(med2)<-
+  colnames(up2)<-colnames(max2)<-c(2020:2025)
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -279,14 +302,15 @@ df2<-filter(df_comp, species==2) |> select(-species) |> mutate(year=as.numeric(y
 df<-df1 |> mutate(year=as.numeric(year))|> 
   full_join(df2) |> 
   filter(is.na(min)==F)
-View(df)
+#View(df)
 
 ggplot(df, aes(length, group=length))+
   labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, sprat")+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
+    stat = "identity",fill=rgb(1,1,1,0.1))+ 
+  #coord_cartesian(ylim = c(0, 1500))+
   facet_wrap(~year, scales="free")+
   geom_point(aes(length, N))
 
@@ -300,7 +324,8 @@ up2<-up[,3,]
 max2<-max[,3,]
 
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(2016:2025)
+colnames(min2)<-colnames(low2)<-colnames(med2)<-
+  colnames(up2)<-colnames(max2)<-c(2020:2025)
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -333,3 +358,4 @@ ggplot(df, aes(length, group=length))+
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~year, scales="free")+
   geom_point(aes(length, N))
+

@@ -2,7 +2,7 @@ rm(list = ls())
 source("00-basics/packages-and-paths.R")
 
 # Define time series for data
-min_year<-2016
+min_year<-2020
 max_year<-2025
 Nyears=length(min_year:max_year)
 model_data<-str_c("_14lengths_",min_year,"-",max_year)

@@ -59,9 +59,8 @@ parnames=c(
   "NASC",
   "mu_nasc",
   "qS","qL",
-  "muS",
+  #"muS","muL",
   "ageH",
-  "muL",
   "cv_nasc", "cv_nascX", "etaX", "etaX1", "etaX2",
   "etaR", "etaE", "etaL","etaG","etaS",
   "Ntot","N", "NTX"

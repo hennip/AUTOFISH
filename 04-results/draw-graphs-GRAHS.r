@@ -14,15 +14,19 @@ load(paste0(path_output_GRAHS,"GRAHS4_etaEry_14lengths_2020-2025.RData"))
 
 load(paste0(path_output_GRAHS,"GRAHS4_etaEry_etaSry_14lengths_2020-2025.RData"))
 
+load(paste0(path_output_GRAHS,"GRAHS4_NASC1_14lengths_2020-2025.RData"))
+
 summary(run, var="deviance")
 plot(run, var="deviance")
 
+plot(run, var="Ntot")
 summary(run, var="Ntot")
 summary(run, var="etaS")
 
 plot(run, var="etaS")
 plot(run, var="cv_nasc")
 summary(run, var="muL")
+summary(run, var="cv_nasc")
 
 
 chains<-as.mcmc(run)
@@ -310,7 +314,7 @@ ggplot(df, aes(length, group=length))+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+ 
-  #coord_cartesian(ylim = c(0, 1500))+
+  coord_cartesian(ylim = c(0, 1000))+
   facet_wrap(~year, scales="free")+
   geom_point(aes(length, N))
 
@@ -358,4 +362,8 @@ ggplot(df, aes(length, group=length))+
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~year, scales="free")+
   geom_point(aes(length, N))
+
+##########################################
+# Relative species composition
+##########################################
 

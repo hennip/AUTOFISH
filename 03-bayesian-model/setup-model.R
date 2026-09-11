@@ -11,7 +11,9 @@ source("01-data/workflow-data-bayesmodel.R")
 
 # Choose model
 #source("03-bayesian-model/model_4species_clean.R")
-source("03-bayesian-model/model_4species_etaEry.R")
+#source("03-bayesian-model/model_4species_etaEry.R")
+#source("03-bayesian-model/model_4species_etaEry_etaSry.R")
+source("03-bayesian-model/model_NASC1.R")
 
 
 
@@ -54,6 +56,9 @@ data<-list(
 
 parnames=c(
   "deviance",
+  "NASC",
+  "mu_nasc",
+  "qS","qL",
   "muS",
   "ageH",
   "muL",

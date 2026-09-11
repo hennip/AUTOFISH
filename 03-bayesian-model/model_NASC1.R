@@ -113,13 +113,13 @@ model{
         for(l in 1:Nlengths[s]){
           zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
         }
-        sigmaR[r,s,y]<-sum(qL[1:Nlengths[s],r,s,y]*sigmaL[1:Nlengths[s],s])
+        #sigmaR[r,s,y]<-sum(qL[1:Nlengths[s],r,s,y]*sigmaL[1:Nlengths[s],s])
       }}
       
     # meanL: midpoint of each length class
-    sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,TSa/10)*pow(meanL[1:Nlengths[s],s],2)
+  #  sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,TSa/10)*pow(meanL[1:Nlengths[s],s],2)
   }
-  TSa<- -71.2
+#  TSa<- -71.2
   
   for(y in 1:Nyears){
     muL[1:Nlengths[1],1,y]~ddirich(aL1)

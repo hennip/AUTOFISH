@@ -1,6 +1,6 @@
 
-modelname<-"GRAHS4_NASC1"
-GRAHS_model<-GRAHS4_NASC1<-"
+modelname<-"GRAHS4_NASC1_Lr"
+GRAHS_model<-GRAHS4_NASC1_Lr<-"
 model{
 
   # Annual abundances
@@ -77,14 +77,14 @@ model{
     for(r in 1:Nrec){
 
       for(h in 1:Nhaul[r,y]){ # Several hauls per ruhne rectangle
-        Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,h,r,y],Cobs[h,r,y])
+        Sobs[1:Nspecies,h,r,y]~dmulti(qS[1:Nspecies,r,y],Cobs[h,r,y])
 
         # qS~ddirich() but  
         # approximate dirichlet (set of gamma distributions) with lognormal distns
-        qS[1:Nspecies,h,r,y]<-zS[1:Nspecies,h,r,y]/sum(zS[1:Nspecies,h,r,y])
+        qS[1:Nspecies,r,y]<-zS[1:Nspecies,r,y]/sum(zS[1:Nspecies,r,y])
 
         for(s in 1:Nspecies){
-          zS[s,h,r,y]~dlnorm(MS[s,r,y],tauS[s,r,y])
+          zS[s,r,y]~dlnorm(MS[s,r,y],tauS[s,r,y])
         }
       }
       for(s in 1:Nspecies){
@@ -105,37 +105,38 @@ model{
   for(y in 1:Nyears){
     for(r in 1:Nrec){
         # Observed number of fish of species s in each length class in rectangle r
-        Lobs[1:Nlengths[s],r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[r,s,y])
+        # in haul h
+        Lobs[1:Nlengths[s],h,r,s,y]~dmulti(qL[1:Nlengths[s],r,s,y],nLobs[h,r,s,y])
 
         # approximate dirichlet (set of gamma distributions) with lognormal distns
         qL[1:Nlengths[s],r,s,y]<-zL[1:Nlengths[s],r,s,y]/sum(zL[1:Nlengths[s],r,s,y])
 
         for(l in 1:Nlengths[s]){
-          zL[l,r,s,y]~dlnorm(ML[l,s,y],tauL[l,s,y])
+          zL[l,r,s,y]~dlnorm(ML[l,s,r,y],tauL[l,s,r,y])
         }
-        #sigmaR[r,s,y]<-sum(qL[1:Nlengths[s],r,s,y]*sigmaL[1:Nlengths[s],s])
       }}
-      
-    # meanL: midpoint of each length class
-  #  sigmaL[1:Nlengths[s],s]<-4*pi*pow(10,TSa/10)*pow(meanL[1:Nlengths[s],s],2)
   }
-#  TSa<- -71.2
-  
+
   for(y in 1:Nyears){
-    muL[1:Nlengths[1],1,y]~ddirich(aL1)
-    muL[1:Nlengths[2],2,y]~ddirich(aL2)
-    muL[1:Nlengths[3],3,y]~ddirich(aL3)
-    muL[1:Nlengths[4],4,y]~ddirich(aL4)
-    
-    
-    # MISSÄ ON r TÄSSÄ PITUUSJAKAUMASSA!? MIKSEI SITÄ OLE?
-    # KAIT SE PITÄISI OLLA KOSKA ERI PUOLILLA VOI KAIT OLLA ERI IKÄISIÄ....
-    for(s in 1:Nspecies){
-      ML[1:Nlengths[s],s,y]<-log(muL[1:Nlengths[s],s,y])-0.5*(1/tauL[1:Nlengths[s],s,y])
-      alphaL[1:Nlengths[s],s,y]<-muL[1:Nlengths[s],s,y]*(etaL[s]+1)
-      tauL[1:Nlengths[s],s,y]<-1/log((1/alphaL[1:Nlengths[s],s,y])+1)
+    # muL[1:Nlengths[1],1,y]~ddirich(aL1)
+    # muL[1:Nlengths[2],2,y]~ddirich(aL2)
+    # muL[1:Nlengths[3],3,y]~ddirich(aL3)
+    # muL[1:Nlengths[4],4,y]~ddirich(aL4)
+
+    for(r in 1:Nrec){
+      muL[1:Nlengths[1],1,r,y]~ddirich(aL1)
+      muL[1:Nlengths[2],2,r,y]~ddirich(aL2)
+      muL[1:Nlengths[3],3,r,y]~ddirich(aL3)
+      muL[1:Nlengths[4],4,r,y]~ddirich(aL4)
+      
+      # pitäisikö etaL:ssä olla r ja/tai y indeksi?
+      for(s in 1:Nspecies){
+        ML[1:Nlengths[s],s,r,y]<-log(muL[1:Nlengths[s],s,r,y])-
+                                0.5*(1/tauL[1:Nlengths[s],s,r,y])
+        alphaL[1:Nlengths[s],s,r,y]<-muL[1:Nlengths[s],s,r,y]*(etaL[s]+1)
+        tauL[1:Nlengths[s],s,r,y]<-1/log((1/alphaL[1:Nlengths[s],s,r,y])+1)
+      }
     }
-    
   }
 
   # Age composition of herring (aged individuals)
@@ -168,7 +169,7 @@ model{
       muG[1:Nages,l,y]~ddirich(aG)
       MG[1:Nages,l,y]<-log(muG[1:Nages,l,y])-0.5*(1/tauG[1:Nages,l,y])
       alphaG[1:Nages,l,y]<-muG[1:Nages,l,y]*etaG
-      tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
+      tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1) 
     }
   }
   

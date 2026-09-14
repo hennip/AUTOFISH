@@ -90,11 +90,8 @@ C_obs
 # 3: stickleback
 # 4: other
 # group by rec, haul & species, calculate total catch
-Nspecies<-4
 
 S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,4,Nyears))
-
-
 for(y in 1:Nyears){
 #  y<-1
   for(r in 1:4){
@@ -134,34 +131,58 @@ for(y in 1:Nyears){
 S_obs
 
 
-# nLobs[r,s,y]: Total sample size per rectangle and species
-# Lobs[1:8,r,s,y]: Number of fish of species s in all haul samples at rectangle r from length groups 1:8
+# nLobs[h,r,s,y]: Sample size per haul, rectangle and species
+# Lobs[1:Nlengths[s],h,r,s,y]: Number of fish of species s in a haul h at rectangle r from length groups 1:Nlengths[s]
 #######################################################################################
 # nLobs
 #==========================
 # catch sample size per ruhnu rectangle and species (1=herring, 2=other)
 sample_size<-dfB_catch_sample  |>
-  group_by(year,rec_ruhnu,species) |> 
+  group_by(year,rec_ruhnu,HaulNumber,species) |> 
   summarise(tot_sample=sum(CatchNumberAtLength))#|> 
 sample_size
 
 # Sample size per species and rec in a form that feeds to the model
-nL_obs<-array(NA, dim=c(4,Nspecies,Nyears))
+nL_obs<-array(NA, dim=c(max(Nhaul),4,Nspecies,Nyears))
+for(y in 1:Nyears){
+  for(r in 1:4){
+      #y<-1;r<-2
+      
+      dat<-sample_size |> filter(year==(y+min_year-1) &rec_ruhnu ==r)
+      
+      # 
+      for(s in 1:Nspecies){
+        if(dim(dat |> filter(species==s))[1]==0){
+          dat<-full_join(dat, tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, tot_sample=NA ))
+        }
+      }
+
+      df<-t(as.data.frame(dat |> arrange(species) |> 
+                            pivot_wider(names_from = HaulNumber, values_from = tot_sample) |> 
+                            ungroup() |>  select(-year, -rec_ruhnu, -species#, -`8000`
+                                                 )))
+      nL_obs[1:dim(df)[1],r,,y]<-df # dim= h, r, s, y
+    }
+}
+#View(sample_size)
+nL_obs
+
+
 for(y in 1:Nyears){
   for(r in 1:4){
     for(s in 1:Nspecies){
-    tmp<-(sample_size |> filter(year==(y+min_year-1), species==s, rec_ruhnu==r))$tot_sample
+      #y<-1;r<-2;s<-1
+      tmp<-(sample_size |> filter(year==(y+min_year-1),  species==s, rec_ruhnu==r))$tot_sample
+      
+      if(length(tmp)==0){
+        nL_obs[,r,s,y]<-rep(NA,8)
+      }else{
+        nL_obs[1:length(tmp),r,s,y]<-tmp    
+      }
     
-    if(length(tmp)==0){
-      nL_obs[r,s,y]<-NA
-    }else{
-      nL_obs[r,s,y]<-tmp    
     }
-    
     }
   }
-
- }
 nL_obs
 
 # Lobs 
@@ -175,7 +196,7 @@ print(x=dfB_catch_sample |>group_by(CatchSpeciesCode) |>
 # NOTE! Number of groups differs for different species
 
 numbers_at_length<-dfB_catch_sample  |> 
-  group_by(year,rec_ruhnu, species, length)|>  
+  group_by(year,rec_ruhnu, HaulNumber, species, length)|>  
 summarise(n=sum(CatchNumberAtLength)) 
 numbers_at_length
 #View(numbers_at_length)
@@ -233,16 +254,9 @@ numbers_at_length_other<-numbers_at_length|>
   mutate(length_group=ifelse(length>=160 & length<180, 7, length_group)) |> 
   mutate(length_group=ifelse(length>=180, 8, length_group))
 
-numbers_per_length_group<-full_join(numbers_at_length_herring, 
-                                    numbers_at_length_sprat) |> 
+numbers_at_length_all_species<-full_join(numbers_at_length_herring, numbers_at_length_sprat) |> 
   full_join(numbers_at_length_stickl)|> 
-  full_join(numbers_at_length_other)|> 
-  group_by(species, year, rec_ruhnu, length_group) |> 
-  summarise(number_at_length=sum(n)) |> 
-  pivot_wider(names_from = rec_ruhnu, values_from=number_at_length) |> 
-  arrange(species,year,length_group)
-print(n=100, x=numbers_per_length_group)
-#View(numbers_per_length_group)
+  full_join(numbers_at_length_other)
 
 #===============================
 # Median lengths in length groups
@@ -396,45 +410,35 @@ meanL
 # ==============================================
 
 # Sample size per species and rec in a form that feeds to the model
-# Lobs[1:8,r,s,y]
+# Lobs[1:Nlengths[s],h,r,s,y]
+N_l<-c(N_lh,N_lsprat, N_lstickl, N_lo)
+
+numbers_per_length_group<-numbers_at_length_all_species|> 
+  group_by(species, year, rec_ruhnu, HaulNumber, length_group) |> 
+  summarise(number_at_length=sum(n)) |> 
+  arrange(species,year,HaulNumber,length_group) 
+print(n=100, x=numbers_per_length_group)
+#View(numbers_per_length_group)
 
 numbers_per_length_group |>group_by(species) |> 
   summarise(max=max(length_group))
 
-# If there's no individuals in a case, replace 0
-# Need to check though that the NA's are still ok
 max_group_num<-max(numbers_per_length_group$length_group)
-L_obs<-array(NA, dim=c(max_group_num,4,Nspecies,Nyears))
+L_obs<-array(NA, dim=c(max_group_num, max(Nhaul), 4, Nspecies, Nyears)) 
 for(y in 1:Nyears){
   for(r in 1:4){
-      for(g in 1:N_lh){ # Herring
-      tmp<-numbers_per_length_group |> 
-        filter(species==1 & year==(y+min_year-1) & length_group==g)
-      L_obs[g,r,1,y]<-ifelse(is.null(tmp)==F,
-                             as.data.frame(tmp|>
-        ungroup() |> select(-year, -species, -length_group))[,r],0)
-    }
-    for(g in 1:N_lsprat){ # Sprat
-      tmp<-numbers_per_length_group |> 
-        filter(species==2 & year==(y+min_year-1) & length_group==g)
-      L_obs[g,r,2,y]<-ifelse(is.null(tmp)==F,
-                             as.data.frame(tmp|>
-        ungroup() |> select(-year, -species, -length_group))[,r],0)
-    }
-    for(g in 1:N_lstickl){ # Stickleback
-      tmp<-numbers_per_length_group |> 
-        filter(species==3 & year==(y+min_year-1) & length_group==g)
-      L_obs[g,r,3,y]<-ifelse(is.null(tmp)==F,
-                             as.data.frame(tmp|>
-                                             ungroup() |> select(-year, -species, -length_group))[,r],0)
-    }
-    for(g in 1:N_lo){ # Other species
-      tmp<-numbers_per_length_group |> 
-        filter(species==4 & year==(y+min_year-1) & length_group==g)
-      L_obs[g,r,4,y]<-ifelse(is.null(tmp)==F,
-                             as.data.frame(tmp|>
-        ungroup() |> select(-year, -species, -length_group))[,r],0)
-    }
+    for(s in 1:Nspecies)
+    for(g in 1:N_l[s]){ 
+      tmp<-numbers_per_length_group|> 
+      filter(species==s, year==(y+min_year-1), rec_ruhnu==r, length_group==g) |>
+      ungroup() |> 
+      select(-species, -year, -rec_ruhnu, -length_group) |> arrange(HaulNumber) |> 
+      pivot_wider(names_from = HaulNumber, values_from = number_at_length) 
+    
+      if(length(tmp!=0)){
+        L_obs[g,1:length(tmp),r,s,y]<-as.matrix(tmp)[1,]
+      }
+      }
   }
 }
 
@@ -452,30 +456,30 @@ nL_obs
 # Note that if you make changes below you must always run the previous Lobs/nLobs 
 # code as well, otherwise the loop never goes to the is.na part (if it's already replaced)
 
-N_l<-c(N_lh,N_lsprat, N_lstickl, N_lo)
 # AND
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
 for(y in 1:Nyears){
   for(r in 1:4){
     for(s in 1:Nspecies){
-#    y<-1;r<-2;s<-3
-        if(is.na(nL_obs[r,s,y])==T){ # no catch of a particular species
-        nL_obs[r,s,y]<-1000 # Input imaginary 1000 sample where no sample exists
-        
-        for(l in 1:N_l[s]){# different species have different number of length groups
-          L_obs[l,r,s,y]<-NA # replace all observed lengths with NA when no sample exists
-        }
-        
+      for(h in 1:max(Nhaul)){
+        #    y<-1;r<-2;s<-3
+        if(is.na(nL_obs[h,r,s,y])==T){ # no catch of a particular species
+          nL_obs[h,r,s,y]<-1000 # Input imaginary 1000 sample where no sample exists
+          
+          for(l in 1:N_l[s]){# different species have different number of length groups
+            L_obs[l,h,r,s,y]<-NA # replace all observed lengths with NA when no sample exists
+          }
         }else{ 
           for(l in 1:N_l[s]){ # different species have different number of length groups
-            if(is.na(L_obs[l,r,s,y])==T){
-              L_obs[l,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            if(is.na(L_obs[l,h,r,s,y])==T){
+              L_obs[l,h,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
           }
           
 
         }
     }
+  }
   }
 }
 L_obs

@@ -2,6 +2,7 @@ rm(list = ls())
 source("00-basics/packages-and-paths.R")
 
 # Define time series for data
+Nspecies<-4
 min_year<-2020
 max_year<-2025
 Nyears=length(min_year:max_year)
@@ -11,7 +12,10 @@ source("01-data/workflow-data-bayesmodel.R")
 
 # Choose model
 #source("03-bayesian-model/model_4species_clean.R")
-source("03-bayesian-model/model_4species_etaEry.R")
+#source("03-bayesian-model/model_4species_etaEry.R")
+#source("03-bayesian-model/model_4species_etaEry_etaSry.R")
+#source("03-bayesian-model/model_NASC1_qLr_qS.R")
+source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
 
 
 
@@ -54,17 +58,20 @@ data<-list(
 
 parnames=c(
   "deviance",
-  "muS",
+  #"NASC",
+  #"mu_nasc",
+  "qS","qL",
+  #"muS","muL",
   "ageH",
-  "muL",
   "cv_nasc", "cv_nascX", "etaX", "etaX1", "etaX2",
   "etaR", "etaE", "etaL","etaG","etaS",
   "Ntot","N", "NTX"
 )
 
+
 sink(paste0("sink_",run_name,"_",".txt"))
 #sink()
-run_name
+print(run_name)
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(modelname, monitor=parnames,data=data,n.chains = 2, 

@@ -3,6 +3,7 @@ source("00-basics/packages-and-paths.R")
 
 # Define time series for data
 Nspecies<-4
+Nrec<-4
 min_year<-2020
 max_year<-2025
 Nyears=length(min_year:max_year)
@@ -15,7 +16,8 @@ source("01-data/workflow-data-bayesmodel.R")
 #source("03-bayesian-model/model_4species_etaEry.R")
 #source("03-bayesian-model/model_4species_etaEry_etaSry.R")
 #source("03-bayesian-model/model_NASC1_qLr_qS.R")
-source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
+#source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
+source("03-bayesian-model/model_ind.R")
 
 
 

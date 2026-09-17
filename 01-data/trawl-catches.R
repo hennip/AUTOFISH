@@ -82,7 +82,7 @@ C_obs
 
 
 # Sobs: Number of individuals per species in the catch
-# Sobs[s,h,r,y]
+# Sobs[1:Nspecies,h,r,y]
 ###############################################
 # Species:
 # 1: herring
@@ -91,11 +91,10 @@ C_obs
 # 4: other
 # group by rec, haul & species, calculate total catch
 
-S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,4,Nyears))
+S_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,Nrec,Nyears))
 for(y in 1:Nyears){
-#  y<-1
-  for(r in 1:4){
-#    r<-4
+  for(r in 1:Nrec){
+    #  y<-6;r<-4
     dat<-dfB_catch_all_species |> 
       filter(year==(y+min_year-1) &rec_ruhnu ==r)
     
@@ -117,7 +116,7 @@ S_obs
 # Replace NA's with 0 in cases where haul took place but
 # did not contain the particular species
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     for(h in 1:max_number_of_hauls){
       for(s in 1:Nspecies){
         if(is.na(C_obs[h,r,y])==F&
@@ -131,8 +130,8 @@ for(y in 1:Nyears){
 S_obs
 
 
-# nLobs[h,r,s,y]: Sample size per haul, rectangle and species
-# Lobs[1:Nlengths[s],h,r,s,y]: Number of fish of species s in a haul h at rectangle r from length groups 1:Nlengths[s]
+# nLobs[h,s,r,y]: Sample size per haul, rectangle and species
+# Lobs[1:Nlengths[s],h,s,r,y]: Number of fish of species s in a haul h at rectangle r from length groups 1:Nlengths[s]
 #######################################################################################
 # nLobs
 #==========================
@@ -144,25 +143,23 @@ sample_size
 
 
 # Sample size per species and rec in a form that feeds to the model
-nL_obs<-array(NA, dim=c(max(Nhaul),4,Nspecies,Nyears))
+nL_obs<-array(NA, dim=c(max(Nhaul),Nspecies,Nrec,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
     for(s in 1:Nspecies){
-#      y<-1;r<-3;s<-2
+#      y<-6;r<-4;s<-2
       tmp<-sample_size |> 
         filter(year==(y+min_year-1), rec_ruhnu==r, species==s)
       
       if(dim(tmp)[1]!=0){ # skips this if df is empty -> NA's remain
         tmp<-tmp|>
-      arrange(HaulNumber) |> 
-      pivot_wider(names_from = HaulNumber, values_from = tot_sample) |> 
-      #complete(species=c(1:Nspecies)) |> 
-      #arrange(species) |> 
-      ungroup() |> 
-      select(-species, -year, -rec_ruhnu)
+        arrange(HaulNumber) |> 
+        pivot_wider(names_from = HaulNumber, values_from = tot_sample) |> 
+        ungroup() |> 
+        select(-species, -year, -rec_ruhnu)
     
-    nL_obs[1:dim(tmp)[2],r,s,y]<-t(as.matrix(tmp)) #dim(tmp)[2] = number of haul
-  }
+        nL_obs[1:dim(tmp)[2],s,r,y]<-t(as.matrix(tmp)) #dim(tmp)[2] = number of haul
+      }
   }
 }}
 
@@ -174,9 +171,9 @@ for(y in 1:Nyears){
       tmp<-(sample_size |> filter(year==(y+min_year-1),  species==s, rec_ruhnu==r))$tot_sample
       
       if(length(tmp)==0){
-        nL_obs[,r,s,y]<-rep(NA,8)
+        nL_obs[,s,r,y]<-rep(NA,8)
       }else{
-        nL_obs[1:length(tmp),r,s,y]<-tmp    
+        nL_obs[1:length(tmp),s,r,y]<-tmp    
       }
     
     }
@@ -421,11 +418,11 @@ print(n=100, x=numbers_per_length_group)
 
 
 max_group_num<-max(numbers_per_length_group$length_group) #14
-L_obs<-array(NA, dim=c(max_group_num, max(Nhaul), 4, Nspecies, Nyears)) 
+L_obs<-array(NA, dim=c(max_group_num, max(Nhaul), Nspecies, Nrec, Nyears)) 
 for(y in 1:Nyears){
   for(r in 1:4){
     for(s in 1:Nspecies){
-     # y<-1;s<-2; r<-3
+     # y<-5;s<-1; r<-4
       tmp<-numbers_per_length_group|> 
         filter(species==s, year==(y+min_year-1), rec_ruhnu==r) 
       if(dim(tmp)[1]!=0){ # skips this if df is empty -> NA's remain
@@ -437,7 +434,7 @@ for(y in 1:Nyears){
         ungroup() |> 
         select(-species, -year, -rec_ruhnu, -length_group)
       
-        L_obs[,1:dim(tmp)[2],r,s,y]<-as.matrix(tmp) #dim(tmp)[2] = number of hauls  
+        L_obs[,1:dim(tmp)[2],s,r,y]<-as.matrix(tmp) #dim(tmp)[2] = number of hauls  
       }
     }
   }
@@ -464,16 +461,16 @@ for(y in 1:Nyears){
     for(s in 1:Nspecies){
       for(h in 1:max(Nhaul)){
         #    y<-1;r<-2;s<-3
-        if(is.na(nL_obs[h,r,s,y])==T){ # no catch of a particular species
-          nL_obs[h,r,s,y]<-1000 # Input imaginary 1000 sample where no sample exists
+        if(is.na(nL_obs[h,s,r,y])==T){ # no catch of a particular species
+          nL_obs[h,s,r,y]<-1000 # Input imaginary 1000 sample where no sample exists
           
           for(l in 1:N_l[s]){# different species have different number of length groups
-            L_obs[l,h,r,s,y]<-NA # replace all observed lengths with NA when no sample exists
+            L_obs[l,h,s,r,y]<-NA # replace all observed lengths with NA when no sample exists
           }
         }else{ 
           for(l in 1:N_l[s]){ # different species have different number of length groups
-            if(is.na(L_obs[l,h,r,s,y])==T){
-              L_obs[l,h,r,s,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
+            if(is.na(L_obs[l,h,s,r,y])==T){
+              L_obs[l,h,s,r,y]<-0 # Input zero when sample size is not NA but none was observed (==real 0s)
             }
           }
           
@@ -486,3 +483,4 @@ for(y in 1:Nyears){
 L_obs
 nL_obs
 
+L_obs[,,2,4,6]

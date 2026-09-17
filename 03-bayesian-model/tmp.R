@@ -1,6 +1,6 @@
-x~dbin(N,p)
-p~(mu*eta, (1-mu)*eta)
-x_pred~dbetabin(mu*eta, (1-mu)*eta)
+x[h,r,y]~dbin(N[h,r,y],p[r,y])
+p[r,y]~dbeta(mu*eta, (1-mu[r,y])*eta)
+x_pred[h,r,y]~dbetabin(mu[r,y]*eta, (1-mu[r,y])*eta)
 
 x~dmulti(p,N)
 p~ddirich(alpha)

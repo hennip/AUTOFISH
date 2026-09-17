@@ -23,6 +23,7 @@ plot(run, var="Ntot")
 summary(run, var="Ntot")
 summary(run, var="etaS")
 
+plot(run, var="eta")
 plot(run, var="etaS")
 plot(run, var="cv_nasc")
 summary(run, var="muL")

@@ -62,6 +62,7 @@ parnames=c(
   "Ntot","N", "NTX"
 )
 
+
 sink(paste0("sink_",run_name,"_",".txt"))
 #sink()
 run_name

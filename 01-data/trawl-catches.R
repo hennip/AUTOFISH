@@ -142,30 +142,29 @@ sample_size<-dfB_catch_sample  |>
   summarise(tot_sample=sum(CatchNumberAtLength))#|> 
 sample_size
 
+
 # Sample size per species and rec in a form that feeds to the model
 nL_obs<-array(NA, dim=c(max(Nhaul),4,Nspecies,Nyears))
 for(y in 1:Nyears){
   for(r in 1:4){
-      #y<-1;r<-2
+    for(s in 1:Nspecies){
+#      y<-1;r<-3;s<-2
+      tmp<-sample_size |> 
+        filter(year==(y+min_year-1), rec_ruhnu==r, species==s)
       
-      dat<-sample_size |> filter(year==(y+min_year-1) &rec_ruhnu ==r)
-      
-      # 
-      for(s in 1:Nspecies){
-        if(dim(dat |> filter(species==s))[1]==0){
-          dat<-full_join(dat, tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, tot_sample=NA ))
-        }
-      }
-
-      df<-t(as.data.frame(dat |> arrange(species) |> 
-                            pivot_wider(names_from = HaulNumber, values_from = tot_sample) |> 
-                            ungroup() |>  select(-year, -rec_ruhnu, -species#, -`8000`
-                                                 )))
-      nL_obs[1:dim(df)[1],r,,y]<-df # dim= h, r, s, y
-    }
-}
-#View(sample_size)
-nL_obs
+      if(dim(tmp)[1]!=0){ # skips this if df is empty -> NA's remain
+        tmp<-tmp|>
+      arrange(HaulNumber) |> 
+      pivot_wider(names_from = HaulNumber, values_from = tot_sample) |> 
+      #complete(species=c(1:Nspecies)) |> 
+      #arrange(species) |> 
+      ungroup() |> 
+      select(-species, -year, -rec_ruhnu)
+    
+    nL_obs[1:dim(tmp)[2],r,s,y]<-t(as.matrix(tmp)) #dim(tmp)[2] = number of haul
+  }
+  }
+}}
 
 
 for(y in 1:Nyears){
@@ -420,28 +419,30 @@ numbers_per_length_group<-numbers_at_length_all_species|>
 print(n=100, x=numbers_per_length_group)
 #View(numbers_per_length_group)
 
-numbers_per_length_group |>group_by(species) |> 
-  summarise(max=max(length_group))
 
-max_group_num<-max(numbers_per_length_group$length_group)
+max_group_num<-max(numbers_per_length_group$length_group) #14
 L_obs<-array(NA, dim=c(max_group_num, max(Nhaul), 4, Nspecies, Nyears)) 
 for(y in 1:Nyears){
   for(r in 1:4){
-    for(s in 1:Nspecies)
-    for(g in 1:N_l[s]){ 
+    for(s in 1:Nspecies){
+     # y<-1;s<-2; r<-3
       tmp<-numbers_per_length_group|> 
-      filter(species==s, year==(y+min_year-1), rec_ruhnu==r, length_group==g) |>
-      ungroup() |> 
-      select(-species, -year, -rec_ruhnu, -length_group) |> arrange(HaulNumber) |> 
-      pivot_wider(names_from = HaulNumber, values_from = number_at_length) 
-    
-      if(length(tmp!=0)){
-        L_obs[g,1:length(tmp),r,s,y]<-as.matrix(tmp)[1,]
+        filter(species==s, year==(y+min_year-1), rec_ruhnu==r) 
+      if(dim(tmp)[1]!=0){ # skips this if df is empty -> NA's remain
+        tmp<-tmp|>
+        arrange(HaulNumber) |> 
+        pivot_wider(names_from = HaulNumber, values_from = number_at_length) |> 
+        complete(length_group=c(1:14)) |> 
+        arrange(length_group) |> 
+        ungroup() |> 
+        select(-species, -year, -rec_ruhnu, -length_group)
+      
+        L_obs[,1:dim(tmp)[2],r,s,y]<-as.matrix(tmp) #dim(tmp)[2] = number of hauls  
       }
-      }
+    }
   }
 }
-
+  
 L_obs
 nL_obs
 

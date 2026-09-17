@@ -1,14 +1,15 @@
 
-modelname<-"GRAHS4_NASC1_qLr_qS"
-GRAHS_model<-GRAHS4_NASC1_qLr_qS<-"
+modelname<-"GRAHS4_NASC1_qLr_qS_NTX"
+GRAHS_model<-GRAHS4_NASC1_qLr_qS_NTX<-"
 model{
 
   # Annual abundances
   # ===========================================================
   for(s in 1:Nspecies){
     for(y in 1:Nyears){
-      Ntot[s,y]<-exp(Ntmp[s,y])
-      Ntmp[s,y]~dnorm(13,0.0000001)
+      Ntot[s,y]<-Ntmp[s,y]*1000000
+      #Ntmp[s,y]~dnorm(13,0.0000001)
+      Ntmp[s,y]~dunif(0.0001,100000)
     }}
 
   # Spatial distribution
@@ -204,8 +205,11 @@ etaE4~dunif(0.001,1)
 
   # Unupdated priors
   # ===========================================================
-  NTX<-exp(NtmpX)
-  NtmpX~dnorm(13,0.0000001)
+  #NTX<-exp(NtmpX)
+  #NtmpX~dnorm(13,0.0000001)
+  NTX<-NtmpX*1000000
+  NtmpX~dunif(0.0001,100000)
+
   cv_nascX~dunif(0.1,5)#dlnorm(0.03,3.26)
   etaX1~dunif(0.0001,1000)
   etaX2~dunif(0.0001,1)

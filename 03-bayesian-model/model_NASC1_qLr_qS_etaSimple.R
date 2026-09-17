@@ -1,6 +1,6 @@
 
-modelname<-"GRAHS4_NASC1_qLr_qS"
-GRAHS_model<-GRAHS4_NASC1_qLr_qS<-"
+modelname<-"GRAHS4_NASC1_qLr_qS_etaSimple"
+GRAHS_model<-GRAHS4_NASC1_qLr_qS_etaSimple<-"
 model{
 
   # Annual abundances
@@ -30,7 +30,7 @@ model{
           n[e,r,s,y]<-N[r,s,y]*pE[e,r,s,y]
         }
         pE[1:Necho[r,y],r,s,y]~ddirich(alphaE[1:Necho[r,y],r,s,y])
-        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE[r,s,y]
+        alphaE[1:Necho[r,y],r,s,y]<-propA[1:Necho[r,y],r,y]*N[r,s,y]*etaE[s]
       }
     }
   }
@@ -88,7 +88,7 @@ model{
         muS[s,r,y]<-N[r,s,y]/sum(N[r,1:Nspecies,y])
       }
       MS[1:Nspecies,r,y]<-log(muS[1:Nspecies,r,y])-0.5*(1/tauS[1:Nspecies,r,y])
-      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[r,y]+1)
+      alphaS[1:Nspecies,r,y]<-muS[1:Nspecies,r,y]*(etaS[y]+1)
 
       tauS[1:Nspecies,r,y]<-1/log((1/alphaS[1:Nspecies,r,y])+1)
       
@@ -172,35 +172,34 @@ model{
   etaG~dunif(0.0001,1000)  # Age composition of herring among catch samples
 
   for(y in 1:Nyears){
-  for(r in 1:4){
-    etaS[r,y]~dunif(0.0001,1000)  # Species composition among trawl catches
-  }
+    #etaS[r,y]~dunif(0.0001,1000)  # Species composition among trawl catches
+    etaS[y]~dunif(0.0001,1000)  # Species composition among trawl catches
   }
 
   for(s in 1:Nspecies){
     etaL[s]~dunif(0.0001,1000)# Length composition per species among hauls  
     etaR[s]~dunif(0.001,1)    # Spatial overdispersion between rectangles
-    #etaE[s]~dunif(0.001,1)    # Spatial overdispersion within rectangles
+    etaE[s]~dunif(0.001,1)    # Spatial overdispersion within rectangles
   }
 
-for(r in 1:4){
-  for(y in 1:Nyears){
-    # Trial: assume that schooling can take place out of chance in any rec-year
-    # combination for herring, sprat or gta and that we can't know when and where such happens
-    # Also a rectangle can be empty of one species as well
-    # Let etaE adjust per case, later hierarchical structure could be assumed instead
-  for(s in 1:(Nspecies-1)){ # Herring, sprat & gta
-    etaE[r,s,y]~dunif(0.001,1)    # Spatial overdispersion within rectangles
-
-    # Sitä paitsi, ei ole kyse edes siitä että troolisaaliin vaihtelu kertoisi jotain pelkästään
-    # lajin parvikäytöksestä, vaan myös siitä miten päätös siitä missä ja milloin troolataan, tehdään!!!!
-
-  }
-  etaE[r,4,y]<-etaE4
-  }
-}
-# Other species, assume the overdispersion the same always
-etaE4~dunif(0.001,1)
+# for(r in 1:4){
+#   for(y in 1:Nyears){
+#     # Trial: assume that schooling can take place out of chance in any rec-year
+#     # combination for herring, sprat or gta and that we can't know when and where such happens
+#     # Also a rectangle can be empty of one species as well
+#     # Let etaE adjust per case, later hierarchical structure could be assumed instead
+#   for(s in 1:(Nspecies-1)){ # Herring, sprat & gta
+#     etaE[r,s,y]~dunif(0.001,1)    # Spatial overdispersion within rectangles
+# 
+#     # Sitä paitsi, ei ole kyse edes siitä että troolisaaliin vaihtelu kertoisi jotain pelkästään
+#     # lajin parvikäytöksestä, vaan myös siitä miten päätös siitä missä ja milloin troolataan, tehdään!!!!
+# 
+#   }
+#   etaE[r,4,y]<-etaE4
+#   }
+# }
+# # Other species, assume the overdispersion the same always
+# etaE4~dunif(0.001,1)
 
   # Unupdated priors
   # ===========================================================

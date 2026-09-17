@@ -14,7 +14,8 @@ source("01-data/workflow-data-bayesmodel.R")
 #source("03-bayesian-model/model_4species_clean.R")
 #source("03-bayesian-model/model_4species_etaEry.R")
 #source("03-bayesian-model/model_4species_etaEry_etaSry.R")
-source("03-bayesian-model/model_NASC1_qLr_qS.R")
+#source("03-bayesian-model/model_NASC1_qLr_qS.R")
+source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
 
 
 
@@ -57,15 +58,16 @@ data<-list(
 
 parnames=c(
   "deviance",
-  "NASC",
-  "mu_nasc",
+  #"NASC",
+  #"mu_nasc",
   "qS","qL",
-  "muS","muL",
+  #"muS","muL",
   "ageH",
   "cv_nasc", "cv_nascX", "etaX", "etaX1", "etaX2",
   "etaR", "etaE", "etaL","etaG","etaS",
   "Ntot","N", "NTX"
 )
+
 
 sink(paste0("sink_",run_name,"_",".txt"))
 #sink()

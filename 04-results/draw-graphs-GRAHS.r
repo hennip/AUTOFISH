@@ -2,28 +2,39 @@
 #rm(list = ls())
 
 source("00-basics/packages-and-paths.R")
+# Define time series for data
+min_year<-2020
+max_year<-2025
+Nyears=length(min_year:max_year)
+model_data<-str_c("_14lengths_",min_year,"-",max_year)
+source("01-data/workflow-data-bayesmodel.R")
 
-load(paste0(path_output,"GRAHS_etaE_2020-2025.RData"))
-load(paste0(path_output,"GRAHS4_etaE4etaR4_2020-2025.RData"))
-load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
 
-load(paste0(path_output_GRAHS,"GRAHS4_cleaned_2016-2025.RData"))
 
-load(paste0(path_output_GRAHS,"GRAHS4_cleaned_14lengths_2016-2025.RData"))
-load(paste0(path_output_GRAHS,"GRAHS4_etaEry_14lengths_2020-2025.RData"))
-
-load(paste0(path_output_GRAHS,"GRAHS4_etaEry_etaSry_14lengths_2020-2025.RData"))
-
-load(paste0(path_output_GRAHS,"GRAHS4_NASC1_14lengths_2020-2025.RData"))
+# load(paste0(path_output,"GRAHS_etaE_2020-2025.RData"))
+# load(paste0(path_output,"GRAHS4_etaE4etaR4_2020-2025.RData"))
+# load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
+# 
+# load(paste0(path_output_GRAHS,"GRAHS4_cleaned_2016-2025.RData"))
+# 
+# load(paste0(path_output_GRAHS,"GRAHS4_cleaned_14lengths_2016-2025.RData"))
+# load(paste0(path_output_GRAHS,"GRAHS4_etaEry_14lengths_2020-2025.RData"))
+# 
+# load(paste0(path_output_GRAHS,"GRAHS4_etaEry_etaSry_14lengths_2020-2025.RData"))
+# 
+# load(paste0(path_output_GRAHS,"GRAHS4_NASC1_14lengths_2020-2025.RData"))
+load(paste0(path_output_GRAHS,"GRAHS4_NASC1_qLr_qS_14lengths_2020-2025.RData"))
+load(paste0(path_output_GRAHS,"GRAHS4_NASC1_qLr_qS_NTX_14lengths_2020-2025.RData"))
+#load(paste0(path_output_GRAHS,"GRAHS4_NASC1_qLr_qS_etaSimple_14lengths_2020-2025.RData"))
 
 summary(run, var="deviance")
 plot(run, var="deviance")
 
 plot(run, var="Ntot")
 summary(run, var="Ntot")
-summary(run, var="etaS")
+summary(run, var="eta")
 
-plot(run, var="eta")
+plot(run, var="etaR")
 plot(run, var="etaS")
 plot(run, var="cv_nasc")
 summary(run, var="muL")
@@ -31,14 +42,18 @@ summary(run, var="cv_nasc")
 
 
 chains<-as.mcmc(run)
+chains<-window(chains, start=200000, thin=1000)
+
 
 Nyears<-6#10
 Nages<-9
 Nspecies<-4
+Nrec<-4
 species_name<-c("Herring", "Sprat", "Stickleback", "Other")
 
-#################
-# Prior vs posterior
+################################################################################
+# DIAGNOSTICS: TRACES AND PRIOR VS POSTERIOR
+################################################################################
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
 
 plot(density(chains[,"cv_nasc"]),main=expression(CV[nasc]))
@@ -76,61 +91,74 @@ par(mfrow=c(2,3),mar=c(2.5,4,4,1))
 for(s in 1:Nspecies){
   for(y in 1:Nyears){
   plot(density(chains[,str_c("Ntot[",s,",",y,"]")]/1e+06), main=str_c(species_name[s]," ", y+2019))
+  lines(density(chains[,str_c("NTX")]/1e+06))
+  }
+}
+
+################################################################################
+# PLOTS: ESTIMATES VS INPUT DATA
+################################################################################
+
+# Species composition vs S_obs
+# =========================================
+S_obs; dim(S_obs) 
+# Sobs[1:Nspecies,h,r,y]
+# qS[1:Nspecies,h,r,y]
+
+Nhaul # Number of hauls per rec and year
+
+min<-low<-med<-up<-max<-array(NA, dim=c(Nspecies,max(Nhaul),Nrec,Nyears))
+for(y in 1:Nyears){
+  for(r in 1:Nrec){
+    for(s in 1:Nspecies){
+      for(h in 1:Nhaul[r,y]){
+        tmp<-chains[,str_c("qS[",s,",",h,",",r,",",y,"]")]
+  
+        sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+        min[s,h,r,y]<-sum_tmp[1]
+        low[s,h,r,y]<-sum_tmp[2]
+        med[s,h,r,y]<-sum_tmp[3]
+        up[s,h,r,y]<-sum_tmp[4]
+        max[s,h,r,y]<-sum_tmp[5]
+      }
+    }
   }
 }
 
 
-######################################
-# Herring abundance per age group
-######################################
+# herring
+min2<-min[1,,,]
+low2<-low[1,,,]
+med2<-med[1,,,]
+up2<-up[1,,,]
+max2<-max[1,,,]
+
+colnames(min2)<-colnames(low2)<-colnames(med2)<-
+  colnames(up2)<-colnames(max2)<-c(2020:2025)#c(2016:2025)
 
 
-min<-low<-med<-up<-max<-array(NA, dim=c(Nages,Nyears))
-for(y in 1:Nyears){
-for(i in 1:Nages){
-  
-  p<-chains[,str_c("ageH[",i,",",y,"]")]
-  N<-chains[,str_c("Ntot[1,",y,"]")] #1: herring
-  tmp<-p*N/1000000
-  sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
-  min[i,y]<-sum_tmp[1]
-  low[i,y]<-sum_tmp[2]
-  med[i,y]<-sum_tmp[3]
-  up[i,y]<-sum_tmp[4]
-  max[i,y]<-sum_tmp[5]
-}
-}
-
-colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-
-  colnames(max)<-c(2020:2025)
-max
-
-df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
+df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low) |> mutate(age=row_number()) |> 
+df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
   pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med) |> mutate(age=row_number()) |> 
+df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
   pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up) |> mutate(age=row_number()) |>  
+df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
   pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max) |> mutate(age=row_number()) |> 
+df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
   pivot_longer(1:Nyears,names_to = "year", values_to = "max")
 
-df<-full_join(df_min, df_low) |> 
-  full_join(df_med) |> 
+df1<-full_join(df_min, df_low)|> 
+  full_join(df_med)|> 
   full_join(df_up) |> 
-  full_join(df_max)
-  
-df<-df |> mutate(age=age-1)
+  full_join(df_max)|> 
+  mutate(species="herring")
 
-ggplot(df, aes(age, group=age))+
-  labs(x="Age class", y="Number of herring", title="Herring abundance per age (GRAHS)")+
-  #coord_cartesian(xlim=c(0.5,9.4))+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year)+scale_x_continuous(breaks = scales::pretty_breaks(n = 9))
+
+
+################################################################################
+# PLOTS: ESTIMATES, NO INPUT DATA FOR COMPARISON
+################################################################################
 
 ######################################
 # Total abundance per species
@@ -212,9 +240,16 @@ min<-low<-med<-up<-max<-array(NA, dim=c(max(Nlengths),Nspecies,Nyears))
 for(y in 1:Nyears){
   for(s in 1:Nspecies){
     for(l in 1:Nlengths[s]){
-      p<-chains[,str_c("muL[",l,",",s,",",y,"]")]
-      N<-chains[,str_c("Ntot[",s,",",y,"]")] 
-      tmp<-p*N/1000000
+      p1<-chains[,str_c("qL[",l,",",1,",",s,",",y,"]")]
+      N1<-chains[,str_c("N[",1,",",s,",",y,"]")] 
+      p2<-chains[,str_c("qL[",l,",",2,",",s,",",y,"]")]
+      N2<-chains[,str_c("N[",2,",",s,",",y,"]")] 
+      p3<-chains[,str_c("qL[",l,",",3,",",s,",",y,"]")]
+      N3<-chains[,str_c("N[",3,",",s,",",y,"]")] 
+      p4<-chains[,str_c("qL[",l,",",4,",",s,",",y,"]")]
+      N4<-chains[,str_c("N[",4,",",s,",",y,"]")] 
+      
+      tmp<-(p1*N1+p2*N2+p3*N3+p4*N4)/1000000
       
       sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
       min[l,s,y]<-sum_tmp[1]
@@ -315,7 +350,7 @@ ggplot(df, aes(length, group=length))+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+ 
-  coord_cartesian(ylim = c(0, 1000))+
+  #coord_cartesian(ylim = c(0, 1000))+
   facet_wrap(~year, scales="free")+
   geom_point(aes(length, N))
 
@@ -367,4 +402,58 @@ ggplot(df, aes(length, group=length))+
 ##########################################
 # Relative species composition
 ##########################################
+
+
+
+######################################
+# Herring abundance per age group
+######################################
+
+
+min<-low<-med<-up<-max<-array(NA, dim=c(Nages,Nyears))
+for(y in 1:Nyears){
+  for(i in 1:Nages){
+    
+    p<-chains[,str_c("ageH[",i,",",y,"]")]
+    N<-chains[,str_c("Ntot[1,",y,"]")] #1: herring
+    tmp<-p*N/1000000
+    sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+    min[i,y]<-sum_tmp[1]
+    low[i,y]<-sum_tmp[2]
+    med[i,y]<-sum_tmp[3]
+    up[i,y]<-sum_tmp[4]
+    max[i,y]<-sum_tmp[5]
+  }
+}
+
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-
+  colnames(max)<-c(2020:2025)
+max
+
+df_min<-as_tibble(min) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up) |> mutate(age=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max) |> mutate(age=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+
+df<-full_join(df_min, df_low) |> 
+  full_join(df_med) |> 
+  full_join(df_up) |> 
+  full_join(df_max)
+
+df<-df |> mutate(age=age-1)
+
+ggplot(df, aes(age, group=age))+
+  labs(x="Age class", y="Number of herring", title="Herring abundance per age (GRAHS)")+
+  #coord_cartesian(xlim=c(0.5,9.4))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~year)+scale_x_continuous(breaks = scales::pretty_breaks(n = 9))
 

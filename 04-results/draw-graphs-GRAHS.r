@@ -40,6 +40,8 @@ plot(run, var="cv_nasc")
 summary(run, var="muL")
 summary(run, var="cv_nasc")
 
+summary(run, var="N[1,2,10]")
+
 
 chains<-as.mcmc(run)
 chains<-window(chains, start=200000, thin=1000)

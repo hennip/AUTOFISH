@@ -17,8 +17,6 @@ source("01-data/workflow-data-bayesmodel.R")
 #source("03-bayesian-model/model_NASC1_qLr_qS.R")
 source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
 
-
-
 run_name<-str_c(modelname, model_data)
 
 data<-list(

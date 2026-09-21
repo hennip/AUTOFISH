@@ -6,51 +6,45 @@ source("00-basics/packages-and-paths.R")
 min_year<-2020
 max_year<-2025
 Nyears=length(min_year:max_year)
+Nages<-9
+Nspecies<-4
+Nrec<-4
+
 model_data<-str_c("_14lengths_",min_year,"-",max_year)
 source("01-data/workflow-data-bayesmodel.R")
 
 
 
-# load(paste0(path_output,"GRAHS_etaE_2020-2025.RData"))
-# load(paste0(path_output,"GRAHS4_etaE4etaR4_2020-2025.RData"))
-# load(paste0(path_output,"GRAHS4_cleaned_2020-2025.RData"))
-# 
-# load(paste0(path_output_GRAHS,"GRAHS4_cleaned_2016-2025.RData"))
-# 
-# load(paste0(path_output_GRAHS,"GRAHS4_cleaned_14lengths_2016-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_etaEry_14lengths_2020-2025.RData"))
-# 
-# load(paste0(path_output_GRAHS,"GRAHS4_etaEry_etaSry_14lengths_2020-2025.RData"))
-# 
-# load(paste0(path_output_GRAHS,"GRAHS4_NASC1_14lengths_2020-2025.RData"))
-load(paste0(path_output_GRAHS,"GRAHS4_NASC1_qLr_qS_14lengths_2020-2025.RData"))
-load(paste0(path_output_GRAHS,"GRAHS4_NASC1_qLr_qS_NTX_14lengths_2020-2025.RData"))
-#load(paste0(path_output_GRAHS,"GRAHS4_NASC1_qLr_qS_etaSimple_14lengths_2020-2025.RData"))
+load(paste0(path_output_GRAHS,"GRAHS4_ind_muL_14lengths_2020-2025.RData"))
 
 summary(run, var="deviance")
 plot(run, var="deviance")
-
-plot(run, var="Ntot")
-summary(run, var="Ntot")
-summary(run, var="eta")
-
-plot(run, var="etaR")
-plot(run, var="etaS")
-plot(run, var="cv_nasc")
 summary(run, var="muL")
 summary(run, var="cv_nasc")
 
-summary(run, var="N[1,2,10]")
+summary(run, var="Ntot")
+summary(run, var="eta")
+
+plot(run, var="Ntot")
+plot(run, var="etaR")
+plot(run, var="etaS")
+plot(run, var="cv_nasc")
+
+summary(run, var="N[2,4,6]")
+summary(run, var="muS[2,4,6]")
+summary(run, var="etaS")
+summary(run, var="qS[1,4,6]")
+summary(run, var="qS[2,4,6]")
+summary(run, var="qS[3,4,6]")
+summary(run, var="qS[4,4,6]")
+
+data$Sobs[,,4,6]
 
 
 chains<-as.mcmc(run)
 chains<-window(chains, start=200000, thin=1000)
 
 
-Nyears<-6#10
-Nages<-9
-Nspecies<-4
-Nrec<-4
 species_name<-c("Herring", "Sprat", "Stickleback", "Other")
 
 ################################################################################

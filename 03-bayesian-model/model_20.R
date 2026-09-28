@@ -143,7 +143,7 @@ model{
   #   }
   # 
   #   for(a in 1:Nages){
-  #     ageH[a,y]<-sum(nH_at_age[a,1:Nrec,y])/Ntot[1,y]
+  #     ageH[a,y]<-sum(n_at_age[a,1:Nrec,y])/Ntot[1,y]
   #   }
   #   for(l in 1:Nlengths[1]){
   #     muG[1:Nages,l,y]~ddirich(aG)

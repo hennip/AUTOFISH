@@ -1,0 +1,99 @@
+model_ind_N_qS (24/9/26):
+
+Ei auttanut muR:n hierarkkia, lopputulos oli silti että neljännes kaloista oli 
+kutakin lajia. Tässä versiossa N[s,r,y]:t ovat toisistaan riippumattomia,
+Ntot tulee näiden summana. Kun qS:lle annetaan suoraan arvoksi malliennuste, lopputulos
+alkoi näyttämään järkevältä. Ok, qS:n epävarmuus on olematon, tähän voi miettiä
+jatkossa jotain konstia ehkä. Mutta keskimäärin menee ihan järkevän oloisesti
+mikä on mainiota.  
+
+
+model_ind_muL_2_muRsr.R (23/9/26):
+Testataan hierarkkista lähestymistapaa. Tässä 
+    alphaR[s,1:Nrec,y]<-muR[s,1:Nrec]*Ntot[s,y]*etaR[s]
+ja
+    muR[s,1:Nrec]~ddirich(aR) 
+  
+
+
+model_ind_muL_2.R (23/9/26):
+Huomio edellisestä: muS oli vakio ruutujen yli vaikka qS oli hyvinkin erilainen.
+Tästä havainto että jokin on liian jäykkää. Yritys asettaa N[s,r,y]~multi(pR, Ntot)
+epäonnistui, ei löydä sopivaa sämpleriä.
+
+Nyt versio niin että pR:stä otetaan A/Atot pois, eli ei riipu alueden suhteellisesta
+koosta. Sen sijaan annetaan dirich(1,1,1,1) priori kullekin muR[s,1:Nrec,y]:lle,
+eli sanotaan että ei voida tietää miten kalat ovat jakautuneet kulloinkin ruutujen 
+välillä, mikä epäilemättä on totta.
+
+Pinta-ala on edelleen mukana ruudun sisällä, mikä lienee järkevää myös.
+
+Tämän jälkeen voi miettiä millaisia indeksointeja cv_nasc, etaR, etaE jne. todella
+tarvitsevat. Myös mahdollisuus yksinkertaistaa qS:n ja qL:n laskentaa pidettävä mielessä,
+tämä voisi nopeuttaa myös laskentaa. 
+
+Yksi asia kerrallaan testaten...
+
+Huom! pR ja muR nyt molemmat indeksein [s,1:Nrec,y]. Jos syytä olettaa hierarkkiaa,
+voisi olla muR[s,1:Nrec] jolloin sanottaisiin että pR:t voivat olla vuosikohtaisia mutta
+kuitenkin yhteisellä odotusarvolla vuosien yli. Tuntuisi jotenkin järkevältä...
+
+
+model_ind_muL_2.R (22/9/26):
+
+Traralallallaa... En enää tiedä mitä muuta keksisi. Tässä cv_nasc, etaR, etaE ja etaS on 
+vapautettu maksimidimensioilla...
+
+model_ind_muL_qS_qL.R (21/9/26):
+
+Following the same logic as with qS let's simplify qL:
+Assume there can be very different length compositions in different rectangles and
+that's fine, i.e. assume the rectangle specific length compositions are independently distributed
+
+No sehän meni hyvin. Kalat katosi kokonaan. 
+
+model_ind_muL_qS.R (21/9/26):
+
+Since nothing seems to change the fact that qS is ok but N[2,4,6] is not,
+this model removes dirichlet part from fitting the model with species composition data.
+Thus we say that qS = model prediction for species composition, which kind of makes
+sense anyhow. Sure, there is less uncertainty now but as the uncertainty became 
+unbelievable anyhow, this should be a step into right direction. 
+
+muL remains as below, as it's hard to see why it should be rec specific. I'm not sure
+this has much of an effect on anything tbh since sigmaR uses qL and not muL. If
+so, simpler is better. 
+
+Nyt kun asiaa miettii, niin muL:n skippaaminen kokonaan voisi olla mielekästä.
+olisi qL~ddirich, eikä mitään sekavaa hierarkkista mallia josta ei oikein tiedä
+miksi se on siinä. 
+Okei, joo ehkä on mielekäs, jos ajattelee että ruutujen kokojakauma lajille s 
+pitäisi olla jotenkin samankaltainen. Mutta ehkä ei ole näin, koska ihan hyvin voi
+olla esim. niin että eri ruuduilla on eri ikäistä eli eri kokoista silakkaa.
+
+
+model_ind_muL.R (18/9/26):
+- Remove r-index from muL. This means muL represents the overall population length 
+composition instead of rectangle specific one. qL is still rec specific as it should be.
+- Change cv_nasc back to being just one for all recs and years, may need to relase
+this back or partly back (y only) later but now there are just too many weird stuff
+so it's better to take this step back first.
+
+En tiedä pitäisikö mallissa olla pituusluokkakohtaiset runsaudet explisiittisesti
+myös. Nyt kun ne puuttuvat, muL:ää ei voi kytkeä niiden malliennusteeseen, vaan
+kytkentä tapahtuu pelkän sigmaR:n kautta. Jos ongelma N[2,4,6] kalojen estimoitumisesta ei poistu
+(siis se että kiluja estimoituu paljon vaikka Sobs on ruudulla 4 pyöreä nolla),
+tätäkin voi joutua miettimään ja testaamaan.
+
+nL[1:Nlengths[s],s,r,y]=qL[1:Nlengths[s],s,r,y]*N[s,r,y]
+
+Tässä vaihtoehdossa muL:ssä olisi r mukana
+muL[1:Nlengths[s],s,r,y]=qL[1:Nlengths[s],s,r,y]*N[s,r,y]
+
+# Tämä vaihtoehto, jos summaus yli ruutujen toimisi näin... ei kyllä toimi, tjsp 
+muL[1:Nlengths[s],s,y]=sum(qL[1:Nlengths[s],s,1:4,y]*Ntot[s,y])
+
+jotenkin tuntuu sirkulaariselta ajattelulta. Testataan nyt alkuperäistä ideaa ensin.
+
+model_ind.R (17/9/26): 
+Arranging indeces so that the order is always s,r,y

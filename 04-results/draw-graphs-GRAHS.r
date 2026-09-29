@@ -101,7 +101,7 @@ data$Sobs[,,4,6]
 
 
 chains<-as.mcmc(run)
-chains<-window(chains, start=200000, thin=1000)
+chains<-window(chains, start=200000)
 species_name<-c("Herring", "Sprat", "Stickleback", "Other")
 
 ################################################################################
@@ -116,17 +116,17 @@ plot(density(chains[,"etaG"]),main=expression(eta^G))
 lines(density(chains[,"etaX1"]))
 #plot(density(chains[,"etaX"]),main=expression(eta^X), xlim=c(0,4000))
 
-par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-for(y in 1:Nyears){
-  plot(density(chains[,str_c("etaS[",y,"]")]),main=bquote(.(y+2019) ~ eta^S))
-  lines(density(chains[,"etaX1"]), col="red")
-}
+# par(mfrow=c(3,3),mar=c(2.5,4,4,1))
+# for(y in 1:Nyears){
+#   plot(density(chains[,str_c("etaS[",y,"]")]),main=bquote(.(y+2019) ~ eta^S))
+#   lines(density(chains[,"etaX1"]), col="red")
+# }
 
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-plot(density(chains[,"etaR[1]"]),main=expression(eta[1]^R));  lines(density(chains[,"etaX2"]))
-plot(density(chains[,"etaR[2]"]),main=expression(eta[2]^R));  lines(density(chains[,"etaX2"]))
-plot(density(chains[,"etaR[3]"]),main=expression(eta[3]^R));  lines(density(chains[,"etaX2"]))
-plot(density(chains[,"etaR[4]"]),main=expression(eta[4]^R));  lines(density(chains[,"etaX2"]))
+# plot(density(chains[,"etaR[1]"]),main=expression(eta[1]^R));  lines(density(chains[,"etaX2"]))
+# plot(density(chains[,"etaR[2]"]),main=expression(eta[2]^R));  lines(density(chains[,"etaX2"]))
+# plot(density(chains[,"etaR[3]"]),main=expression(eta[3]^R));  lines(density(chains[,"etaX2"]))
+# plot(density(chains[,"etaR[4]"]),main=expression(eta[4]^R));  lines(density(chains[,"etaX2"]))
 
 plot(density(chains[,"etaE[1]"]),main=expression(eta[1]^E));  lines(density(chains[,"etaX2"]))
 plot(density(chains[,"etaE[2]"]),main=expression(eta[2]^E));  lines(density(chains[,"etaX2"]))
@@ -219,7 +219,7 @@ df_p<-dfB_catch_all_species |> left_join(df_catch_tot) |>
 df2<-df_p|> 
   filter(species==1) |> select(-species)
   
-windows(record=T)
+#windows(record=T)
 ggplot(df1, aes(rec, group=rec))+
   labs(x="Length group", y="Proportion per species", 
        title="Proportion of herring")+
@@ -364,7 +364,7 @@ df1<-full_join(df_min, df_low)|>
   mutate(species="herring")
 
 
-windows()
+#windows()
 ggplot(df1, aes(rec, group=rec))+
   labs(x="Ruhnu rectangle", y="Year", title="Abundance of herring per rec (in millions)")+
   #coord_cartesian(ylim=c(0,60000))+
@@ -450,6 +450,44 @@ ggplot(df1, aes(rec, group=rec))+
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~year, scales="free")
 
+# other
+min2<-minR[4,,]
+low2<-lowR[4,,]
+med2<-medR[4,,]
+up2<-upR[4,,]
+max2<-maxR[4,,]
+
+colnames(min2)<-colnames(low2)<-colnames(med2)<-
+  colnames(up2)<-colnames(max2)<-Years
+
+df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
+  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
+  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
+  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+
+df1<-full_join(df_min, df_low)|> 
+  full_join(df_med)|> 
+  full_join(df_up) |> 
+  full_join(df_max)|> 
+  mutate(species="gta")
+
+
+#windows()
+ggplot(df1, aes(rec, group=rec))+
+  labs(x="Ruhnu rectangle", y="Year", title="Abundance of other species per rec (in millions)")+
+  coord_cartesian(ylim=c(0,1250))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+    stat = "identity",fill=rgb(1,1,1,0.1))+
+  facet_wrap(~year, scales="free")
+
 
 ######################################
 # Total abundance per species
@@ -491,9 +529,7 @@ df<-full_join(df_min, df_low) |>
                                 ifelse(species==3, "Stickleback",
                                        ifelse(species==4, "Other",NA))))) |> 
   arrange(species)
-df
 
-windows()
 ggplot(df, aes(year, group=year))+
   labs(x="Species", y="Year", title="Total abundance per species (in millions)")+
   #coord_cartesian(ylim=c(0,60000))+

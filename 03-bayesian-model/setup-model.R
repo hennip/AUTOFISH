@@ -3,6 +3,7 @@ source("00-basics/packages-and-paths.R")
 
 # Define time series for data
 Nspecies<-4
+Nrec<-4
 min_year<-2020
 max_year<-2025
 Nyears=length(min_year:max_year)
@@ -15,8 +16,16 @@ source("01-data/workflow-data-bayesmodel.R")
 #source("03-bayesian-model/model_4species_etaEry.R")
 #source("03-bayesian-model/model_4species_etaEry_etaSry.R")
 #source("03-bayesian-model/model_NASC1_qLr_qS.R")
-source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
+#source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
+#source("03-bayesian-model/model_ind.R")
+#source("03-bayesian-model/model_ind_muL_qS.R")
+#source("03-bayesian-model/model_ind_qS_qL_simple.R")
+#source("03-bayesian-model/model_ind_muL_2.R")
+#source("03-bayesian-model/model_ind_muL_2_muRsr_qS.R")
+#source("03-bayesian-model/model_ind_N.R")
+#source("03-bayesian-model/model_ind_N_qS_wAge.R")
 
+source("03-bayesian-model/model_20.R")
 
 
 run_name<-str_c(modelname, model_data)
@@ -53,6 +62,7 @@ data<-list(
   aL2=rep(1,N_lsprat),
   aL3=rep(1,N_lstickl),
   aL4=rep(1,N_lo),
+  aR=rep(1,Nrec),
   meanL=meanL/10 # mean lengths in cm's!!!
 )
 
@@ -60,11 +70,12 @@ parnames=c(
   "deviance",
   #"NASC",
   #"mu_nasc",
+  "sigmaR",
   "qS","qL",
-  #"muS","muL",
+  "muS","muL", "muR", "pR",
   "ageH",
   "cv_nasc", "cv_nascX", "etaX", "etaX1", "etaX2",
-  "etaR", "etaE", "etaL","etaG","etaS",
+  "etaR", "etaE", "etaL","etaG",#"etaS",
   "Ntot","N", "NTX"
 )
 
@@ -87,7 +98,7 @@ t2<-Sys.time();print(t2)
 print("run1 done");print(difftime(t2,t1))
 print("--------------------------------------------------")
 
-run2 <- extend.jags(run1, combine=T, sample=10000, thin=100, keep.jags.files=F)
+run2 <- extend.jags(run1, combine=T, sample=5000, thin=100, keep.jags.files=F)
 t3<-Sys.time();print(t3)
 print("run2 done"); print(difftime(t3,t2))
 print("--------------------------------------------------")

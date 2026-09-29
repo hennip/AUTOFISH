@@ -73,7 +73,7 @@ sum(df_pivot[,4:11], na.rm=T) #9336
 # ===================================================================
 df
 # Let's take ages 0-9 (10 age groups)
-G_obs<-array(NA, dim=c(10,N_lh,4,Nyears))
+G_obs<-array(NA, dim=c(10,N_lh,Nrec,Nyears))
 for(i in 1:dim(df)[1]){
   y<-df$year[i]-(min_year-1)
   r<-df$rec_ruhnu[i]
@@ -94,9 +94,9 @@ df_nG_obs_complete<-df |>
   ungroup() |> complete(length_group,year)
 #View(df_nG_obs_complete) # Filled group 1 for 2016 and groups 1 and 3 for 2019
 
-nG_obs<-array(NA, dim=c(N_lh,4,Nyears))
+nG_obs<-array(NA, dim=c(N_lh,Nrec,Nyears))
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     nG_obs[,r,y]<-as.data.frame(  df_nG_obs_complete |> 
                                     filter(year==(y+min_year-1))  |> 
                                     select(-length_group, -year))[,r] 
@@ -114,7 +114,7 @@ sum(nG_obs, na.rm=T) # 2775 in 2022-2024
 # AND
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
 for(i in 1:N_lh){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     for(y in 1:Nyears){
       if(is.na(nG_obs[i,r,y])==T){
         nG_obs[i,r,y]<-500}else{ # Input imaginary 500 sample where no sample was taken

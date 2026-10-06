@@ -25,10 +25,10 @@ source("01-data/workflow-data-bayesmodel.R")
 #source("03-bayesian-model/model_ind_N.R")
 #source("03-bayesian-model/model_ind_N_qS_wAge.R")
 
-source("03-bayesian-model/model_20.R")
+source("03-bayesian-model/model_20_pS.R")
 
 
-run_name<-str_c(modelname, model_data)
+run_name<-str_c(modelname, model_data);run_name
 
 data<-list(
   Nyears=Nyears,
@@ -53,6 +53,7 @@ data<-list(
   
   Cobs=C_obs, # Total catch per species
   Sobs=S_obs, # Number of individuals per species in each haul
+  pSobs=pS_obs, # Number of individuals per species in each haul
   nLobs=nL_obs, # Sample size per length group
   Lobs=L_obs, # Number of individuals per length group in each sample
   Gobs=G_obs, # Number of individuals per age group in each sample
@@ -79,6 +80,10 @@ parnames=c(
   "Ntot","N", "NTX"
 )
 
+#make.inits<-function(){list(N=)
+make.inits<-function(){
+  list(Ntmp=array(runif(1,10000,100000),dim=c(Nspecies,Nrec,Nyears)))}
+inits=list(make.inits(), make.inits()) # 2 chains    
 
 sink(paste0("sink_",run_name,"_",".txt"))
 #sink()
@@ -86,7 +91,7 @@ print(run_name)
 
 t1<-Sys.time();print(t1)
 run1<-run.jags(modelname, monitor=parnames,data=data,n.chains = 2, 
-               #inits=inits,
+               inits=inits,
                method = 'parallel', thin=100,
                burnin =10000, modules = "mix",
                sample =10000, adapt = 50000,

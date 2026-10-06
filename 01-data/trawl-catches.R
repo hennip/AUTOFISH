@@ -129,6 +129,59 @@ for(y in 1:Nyears){
 }
 S_obs
 
+# pS_obs: proportion per species per trawl haul
+###################################################
+
+
+df_p<-full_join(dfB_catch_all_species,TotCatch) |> 
+  mutate(p=catch3/tot_catch) |> 
+  select(-catch3, -tot_catch) |> 
+  ungroup()
+
+pS_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,Nrec,Nyears))
+for(y in 1:Nyears){
+  #y<-1;r<-2   
+  for(r in 1:Nrec){
+    dat<-df_p |>  
+      filter(year==(y+min_year-1) &rec_ruhnu ==r)
+    
+    # This goes through 4 species at each r,y combination and adds a "haul" if 
+    # the species is missing in all
+    for(s in 1:Nspecies){
+      if(dim(dat |> filter(species==s))[1]==0){
+        dat<-full_join(dat, 
+          tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, p=NA ))
+      }
+    }
+    
+    df<-t(as.data.frame(dat |>
+                          arrange(species) |> 
+                          pivot_wider(names_from = species, values_from = p) |> 
+                          ungroup() |>  select(-year, -rec_ruhnu, -HaulNumber)))
+    pS_obs[,1:dim(df)[2],r,y]<-df
+    
+  }
+  }    
+
+pS_obs
+
+# Replace NA's with 0 in cases where haul took place but
+# did not contain the particular species
+for(y in 1:Nyears){
+  for(r in 1:Nrec){
+    for(h in 1:max_number_of_hauls){
+      for(s in 1:Nspecies){
+        if(is.na(C_obs[h,r,y])==F&
+           is.na(pS_obs[s,h,r,y])==T){
+          pS_obs[s,h,r,y]<-0
+        }
+      }
+    }
+  }
+}
+
+pS_obs
+
 
 # nLobs[h,s,r,y]: Sample size per haul, rectangle and species
 # Lobs[1:Nlengths[s],h,s,r,y]: Number of fish of species s in a haul h at rectangle r from length groups 1:Nlengths[s]

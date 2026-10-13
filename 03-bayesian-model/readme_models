@@ -1,3 +1,18 @@
+
+model_20_pS: (9/10/26)
+Change observation model for species composition so that the observations are
+haul specific proportions per species and these follow dirichlet-distribution. 
+This reflects the idea that all hauls are equally representative. In practice this
+means that if the representativeness would not hold for a certain haul, that haul 
+should either be pooled with another or left out from the dataset. At the moment there
+is no checkup for haul representativeness other than that "invalid"" hauls are dropped off.
+
+To start with, etaS is common for all y and r
+
+model_20: Model 2.0
+Malliennuste suoraan qS:lle. Spatiaalinen rakenne ruutujen väliltä pudotettu pois,
+priorit annetaan N[s,r,y]-parametreille totaalin sijaan
+
 model_ind_N_qS (24/9/26):
 
 Ei auttanut muR:n hierarkkia, lopputulos oli silti että neljännes kaloista oli 

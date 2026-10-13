@@ -3,13 +3,14 @@
 
 source("00-basics/packages-and-paths.R")
 # Define time series for data
-min_year<-2020
+min_year<-2016
 max_year<-2025
 Years<-c(min_year:max_year)
 Nyears=length(Years)
 Nages<-9
 Nspecies<-4
 Nrec<-4
+species_name<-c("Herring", "Sprat", "Stickleback", "Other")
 
 model_data<-str_c("_14lengths_",min_year,"-",max_year)
 source("01-data/workflow-data-bayesmodel.R")
@@ -25,8 +26,12 @@ source("01-data/workflow-data-bayesmodel.R")
 # load(paste0(path_output_GRAHS,"GRAHS4_N_14lengths_2020-2025.RData"))
 # load(paste0(path_output_GRAHS,"GRAHS4_N_qS_14lengths_2020-2025.RData"))
 
-load(paste0(path_output_GRAHS,"GRAHS20_14lengths_2020-2025.RData"))
+#load(paste0(path_output_GRAHS,"GRAHS20_14lengths_2020-2025.RData"))
 
+#load(paste0(path_output_GRAHS,"GRAHS20_Snew_2020-2025.RData"))
+#load(paste0(path_output_GRAHS,"GRAHS20_wAge_Snew_2016-2025.RData"))
+
+load(paste0(path_output_GRAHS,"GRAHS20_Nunif_Snew_2020-2025.RData"))
 
 
 
@@ -37,8 +42,8 @@ load(paste0(path_output_GRAHS,"GRAHS20_14lengths_2020-2025.RData"))
 chains<-as.mcmc.list(run)
 chains<-window(chains, start=200000)
 
-
-
+# 
+# 
 cs<-varnames(chains)
 length(cs) #23689
 
@@ -67,6 +72,8 @@ for( i in cs){
   }
 }
 
+options(max.print=1000)
+summary(run, var="sigmaR")
 
 summary(run, var="deviance")
 plot(run, var="deviance")
@@ -97,12 +104,11 @@ summary(run, var="qS[2,4,6]")
 summary(run, var="qS[3,4,6]")
 summary(run, var="qS[4,4,6]")
 
-data$Sobs[,,4,6]
+#data$Sobs[,,4,6]
 
 
 chains<-as.mcmc(run)
-chains<-window(chains, start=200000)
-species_name<-c("Herring", "Sprat", "Stickleback", "Other")
+#chains<-window(chains, start=200000)
 
 ################################################################################
 # DIAGNOSTICS: TRACES AND PRIOR VS POSTERIOR
@@ -122,19 +128,14 @@ lines(density(chains[,"etaX1"]))
 #   lines(density(chains[,"etaX1"]), col="red")
 # }
 
-par(mfrow=c(3,3),mar=c(2.5,4,4,1))
-# plot(density(chains[,"etaR[1]"]),main=expression(eta[1]^R));  lines(density(chains[,"etaX2"]))
-# plot(density(chains[,"etaR[2]"]),main=expression(eta[2]^R));  lines(density(chains[,"etaX2"]))
-# plot(density(chains[,"etaR[3]"]),main=expression(eta[3]^R));  lines(density(chains[,"etaX2"]))
-# plot(density(chains[,"etaR[4]"]),main=expression(eta[4]^R));  lines(density(chains[,"etaX2"]))
-
+par(mfrow=c(2,2),mar=c(2.5,4,4,1))
 plot(density(chains[,"etaE[1]"]),main=expression(eta[1]^E));  lines(density(chains[,"etaX2"]))
 plot(density(chains[,"etaE[2]"]),main=expression(eta[2]^E));  lines(density(chains[,"etaX2"]))
 plot(density(chains[,"etaE[3]"]),main=expression(eta[3]^E));  lines(density(chains[,"etaX2"]))
 plot(density(chains[,"etaE[4]"]),main=expression(eta[4]^E));  lines(density(chains[,"etaX2"]))
 
 
-par(mfrow=c(3,3),mar=c(2.5,4,4,1))
+par(mfrow=c(2,2),mar=c(2.5,4,4,1))
 plot(density(chains[,"etaL[1]"]),main=expression(eta[1]^L));  lines(density(chains[,"etaX1"]), col="red")
 plot(density(chains[,"etaL[2]"]),main=expression(eta[2]^L));  lines(density(chains[,"etaX1"]), col="red")
 plot(density(chains[,"etaL[3]"]),main=expression(eta[3]^L));  lines(density(chains[,"etaX1"]), col="red")
@@ -151,6 +152,7 @@ for(s in 1:Nspecies){
 ################################################################################
 # PLOTS: ESTIMATES VS INPUT DATA
 ################################################################################
+chains<-as.mcmc(run)
 
 # Species composition vs S_obs
 # =========================================
@@ -367,7 +369,7 @@ df1<-full_join(df_min, df_low)|>
 #windows()
 ggplot(df1, aes(rec, group=rec))+
   labs(x="Ruhnu rectangle", y="Year", title="Abundance of herring per rec (in millions)")+
-  #coord_cartesian(ylim=c(0,60000))+
+  coord_cartesian(ylim=c(0,20000))+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
@@ -405,7 +407,7 @@ df1<-full_join(df_min, df_low)|>
 #windows()
 ggplot(df1, aes(rec, group=rec))+
   labs(x="Ruhnu rectangle", y="Year", title="Abundance of sprat per rec (in millions)")+
-  #coord_cartesian(ylim=c(0,60000))+
+  coord_cartesian(ylim=c(0,11000))+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
@@ -443,7 +445,7 @@ df1<-full_join(df_min, df_low)|>
 #windows()
 ggplot(df1, aes(rec, group=rec))+
   labs(x="Ruhnu rectangle", y="Year", title="Abundance of stickleback per rec (in millions)")+
-  #coord_cartesian(ylim=c(0,60000))+
+  coord_cartesian(ylim=c(0,21000))+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
@@ -481,7 +483,7 @@ df1<-full_join(df_min, df_low)|>
 #windows()
 ggplot(df1, aes(rec, group=rec))+
   labs(x="Ruhnu rectangle", y="Year", title="Abundance of other species per rec (in millions)")+
-  coord_cartesian(ylim=c(0,1250))+
+  coord_cartesian(ylim=c(0,1700))+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
@@ -600,7 +602,7 @@ max2<-max[,1,]
 
 
 colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-c(2020:2025)#c(2016:2025)
+  colnames(up2)<-colnames(max2)<-Years
 
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
@@ -628,7 +630,7 @@ df<-df1 |> mutate(year=as.numeric(year))|>
 df1 |> filter(year==2017) |> select(-species, -length, -low, -up)
 print(x=df1, n=100)
 
-windows(record=T)
+#windows(record=T)
 ggplot(df, aes(length, group=length))+
   labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, herring")+
   theme_bw()+
@@ -648,7 +650,7 @@ max2<-max[,2,]
 
 
 colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-c(2020:2025)
+  colnames(up2)<-colnames(max2)<-Years
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -694,7 +696,7 @@ max2<-max[,3,]
 
 
 colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-c(2020:2025)
+  colnames(up2)<-colnames(max2)<-Years
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -738,7 +740,7 @@ up2<-up[,4,]
 max2<-max[,4,]
 
 colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-c(2020:2025)
+  colnames(up2)<-colnames(max2)<-Years
 
 df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
   pivot_longer(1:Nyears,names_to = "year", values_to = "min")
@@ -800,7 +802,7 @@ for(y in 1:Nyears){
 }
 
 colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-
-  colnames(max)<-c(2020:2025)
+  colnames(max)<-Years
 max
 
 df_min<-as_tibble(min) |> mutate(age=row_number()) |> 

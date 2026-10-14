@@ -3,7 +3,7 @@
 
 source("00-basics/packages-and-paths.R")
 # Define time series for data
-min_year<-2016
+min_year<-2020
 max_year<-2025
 Years<-c(min_year:max_year)
 Nyears=length(Years)
@@ -31,8 +31,9 @@ source("01-data/workflow-data-bayesmodel.R")
 #load(paste0(path_output_GRAHS,"GRAHS20_Snew_2020-2025.RData"))
 #load(paste0(path_output_GRAHS,"GRAHS20_wAge_Snew_2016-2025.RData"))
 
-load(paste0(path_output_GRAHS,"GRAHS20_Nunif_Snew_2020-2025.RData"))
+load(paste0(path_output_GRAHS,"GRAHS20_Nunif_EtaEsy_Snew_2020-2025.RData"))
 
+load(paste0(path_output_GRAHS,"GRAHS20_EtaEsy_CVnasc_2020-2025.RData"))
 
 
 ################################################################################
@@ -72,15 +73,27 @@ for( i in cs){
   }
 }
 
-options(max.print=1000)
+options(max.print=100000)
 summary(run, var="sigmaR")
 
 summary(run, var="deviance")
+
+summary(run, var="mu_nasc[2772]") # rec 1, y1
+summary(run, var="mu_nasc[2773]") # rec 2, y1
+summary(run, var="mu_nasc[2774]") # rec 3, y1
+summary(run, var="mu_nasc[2775]") # rec 4, y1
+summary(run, var="mu_nasc[2776]") # rec 1, y2
+summary(run, var="mu_nasc[2777]") # rec 2, y2
+summary(run, var="mu_nasc[2778]") # rec 3, y2
+summary(run, var="mu_nasc[2779]") # rec 4, y2
+
+
 plot(run, var="deviance")
 summary(run, var="muL")
 summary(run, var="cv_nasc")
+plot(run, var="cv_nasc")
 
-summary(run, var="Ntot")
+summary(run, var="N")
 summary(run, var="etaR")
 
 plot(run, var="Ntot")
@@ -110,7 +123,41 @@ summary(run, var="qS[4,4,6]")
 chains<-as.mcmc(run)
 #chains<-window(chains, start=200000)
 
-################################################################################
+# Predicted nasc
+for(i in 2772:2795){
+  tmp<-summary(chains[,paste0("mu_nasc[",i,"]")], quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+  if(i==2772){df_nasc_pred<-tmp}
+  if(i>2772){
+    df_nasc_pred<-rbind(df_nasc_pred,tmp)}
+}
+df_pred<-as_tibble(df_nasc_pred) |> 
+  mutate(rec=rep(c(1,2,3,4),6), year=c(rep(2020,4),rep(2021,4),rep(2022,4),rep(2023,4),rep(2024,4),rep(2025,4)))
+
+
+nasc_obs<-tot_nasc_per_log_plus_one$sum_nasc
+nasc_rec<-tot_nasc_per_log_plus_one$rec
+nascY
+
+df_dat<-as.tibble(cbind(nasc_obs, nasc_rec, nascY)) |> 
+  rename(rec=nasc_rec, year=nascY) |> 
+  mutate(year=year+2019)
+
+df_med_nasc<- df_dat |> group_by(rec, year) |> summarise(med=mean(nasc_obs, na.rm=T))
+
+ggplot(df_pred, aes(rec, group = rec))+
+  theme_bw()+
+  geom_boxplot(
+    aes(ymin = `5%`, lower = `25%`, middle = `50%`, upper = `75%`, ymax = `95%`),
+    stat = "identity",fill=rgb(1,1,1,0.1), color="red")+
+  coord_cartesian(ylim=c(0,15000))+
+  facet_wrap(~year)+
+  geom_point(data=df_dat, aes(x=rec, y=nasc_obs), alpha=0.1)+
+  geom_point(data=df_med_nasc, aes(x=rec, y=med), size=5, alpha=0.2)
+
+
+
+ 
+ ################################################################################
 # DIAGNOSTICS: TRACES AND PRIOR VS POSTERIOR
 ################################################################################
 par(mfrow=c(3,3),mar=c(2.5,4,4,1))
@@ -181,91 +228,42 @@ for(y in 1:Nyears){
   }
 }
 
+# 4 species in a loop
+p<-list()
+for(s in 1:4){
 
-# herring
-min2<-minS[1,,]
-low2<-lowS[1,,]
-med2<-medS[1,,]
-up2<-upS[1,,]
-max2<-maxS[1,,]
+  min2<-minS[s,,]
+  low2<-lowS[s,,]
+  med2<-medS[s,,]
+  up2<-upS[s,,]
+  max2<-maxS[s,,]
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species=1)
-
-df_catch_tot<-dfB_catch_all_species |> group_by(year, rec_ruhnu, HaulNumber) |> 
-  summarise(catch_tot=sum(catch3))
-
-df_p<-dfB_catch_all_species |> left_join(df_catch_tot) |> 
-  mutate(p_catch=catch3/catch_tot) |> ungroup() |>
-  rename(rec=rec_ruhnu) |> 
-  select(year,rec,species,p_catch)
-
-df2<-df_p|> 
-  filter(species==1) |> select(-species)
+  colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-Years
   
-#windows(record=T)
-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Length group", y="Proportion per species", 
-       title="Proportion of herring")+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")+
-  coord_cartesian(ylim=c(0,1))+
-  geom_point(data=df2, aes(x=rec, y=p_catch))
+  df_min<-as_tibble(min2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+  df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+  df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+  df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+  df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "max")
   
-# sprat
-min2<-minS[2,,]
-low2<-lowS[2,,]
-med2<-medS[2,,]
-up2<-upS[2,,]
-max2<-maxS[2,,]
+  df1<-full_join(df_min, df_low)|> 
+    full_join(df_med)|> 
+    full_join(df_up) |> 
+    full_join(df_max)|> 
+    mutate(species=s)
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
+  df_catch_tot<-dfB_catch_all_species |> group_by(year, rec_ruhnu, HaulNumber) |> 
+    summarise(catch_tot=sum(catch3))
 
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+  df_p<-dfB_catch_all_species |> left_join(df_catch_tot) |> 
+    mutate(p_catch=catch3/catch_tot) |> ungroup() |>
+    rename(rec=rec_ruhnu) |> select(year,rec,species,p_catch)
 
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species=2)
-
-df2<-df_p|> 
-  filter(species==2) |> select(-species)
-
-ggplot(df1, aes(rec, group=rec))+
+  df2<-df_p|> filter(species==s) |> select(-species)
+  
+p[[s]]<-ggplot(df1, aes(rec, group=rec))+
   labs(x="Length group", y="Proportion per species", 
-       title="Proportion of sprat")+
+       title=paste0("Proportion of ",species_name[s]))+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
@@ -273,47 +271,13 @@ ggplot(df1, aes(rec, group=rec))+
   facet_wrap(~year, scales="free")+
   coord_cartesian(ylim=c(0,1))+
   geom_point(data=df2, aes(x=rec, y=p_catch))
+}
+p[[1]]
+p[[2]]
+p[[3]]
+p[[4]]
 
-# gta
-min2<-minS[3,,]
-low2<-lowS[3,,]
-med2<-medS[3,,]
-up2<-upS[3,,]
-max2<-maxS[3,,]
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species=3)
-
-df2<-df_p|> 
-  filter(species==3) |> select(-species)
-
-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Length group", y="Proportion per species", 
-       title="Proportion of stickleback")+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")+
-  coord_cartesian(ylim=c(0,1))+
-  geom_point(data=df2, aes(x=rec, y=p_catch))
 
 ################################################################################
 # PLOTS: ESTIMATES, NO INPUT DATA FOR COMPARISON
@@ -338,157 +302,46 @@ for(y in 1:Nyears){
   }
 }
 
-# Herring
-min2<-minR[1,,]
-low2<-lowR[1,,]
-med2<-medR[1,,]
-up2<-upR[1,,]
-max2<-maxR[1,,]
+# 4 species in a loop
+p<-list()
+y_lim<-c(20000,11000,21000,1700)
+for(s in 1:4){
+  
+  min2<-minR[s,,]
+  low2<-lowR[s,,]
+  med2<-medR[s,,]
+  up2<-upR[s,,]
+  max2<-maxR[s,,]
+  
+  colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-Years
+  
+  df_min<-as_tibble(min2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+  df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+  df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+  df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+  df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+  
+  df1<-full_join(df_min, df_low)|> 
+    full_join(df_med)|> 
+    full_join(df_up) |> 
+    full_join(df_max)|> 
+    mutate(species=species_name[s])
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species="herring")
-
-
-#windows()
-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Ruhnu rectangle", y="Year", title="Abundance of herring per rec (in millions)")+
-  coord_cartesian(ylim=c(0,20000))+
+p[[s]]<-ggplot(df1, aes(rec, group=rec))+
+  labs(x="Ruhnu rectangle", y="Year", 
+       title=paste0("Abundance of ",species_name[s]," per rec (in millions)"))+
+  coord_cartesian(ylim=c(0,y_lim[s]))+
   theme_bw()+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~year, scales="free")
+}
+p[[1]]
+p[[2]]
+p[[3]]
+p[[4]]
 
-# Sprat
-min2<-minR[2,,]
-low2<-lowR[2,,]
-med2<-medR[2,,]
-up2<-upR[2,,]
-max2<-maxR[2,,]
-
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species="sprat")
-
-
-#windows()
-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Ruhnu rectangle", y="Year", title="Abundance of sprat per rec (in millions)")+
-  coord_cartesian(ylim=c(0,11000))+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")
-
-# gta
-min2<-minR[3,,]
-low2<-lowR[3,,]
-med2<-medR[3,,]
-up2<-upR[3,,]
-max2<-maxR[3,,]
-
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species="gta")
-
-
-#windows()
-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Ruhnu rectangle", y="Year", title="Abundance of stickleback per rec (in millions)")+
-  coord_cartesian(ylim=c(0,21000))+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")
-
-# other
-min2<-minR[4,,]
-low2<-lowR[4,,]
-med2<-medR[4,,]
-up2<-upR[4,,]
-max2<-maxR[4,,]
-
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(rec=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(rec=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(rec=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species="gta")
-
-
-#windows()
-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Ruhnu rectangle", y="Year", title="Abundance of other species per rec (in millions)")+
-  coord_cartesian(ylim=c(0,1700))+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")
 
 
 ######################################
@@ -508,19 +361,13 @@ for(y in 1:Nyears){
   }
 }
 
-colnames(min)<-colnames(low)<-colnames(med)<-
-  colnames(up)<-colnames(max)<-Years
+colnames(min)<-colnames(low)<-colnames(med)<-colnames(up)<-colnames(max)<-Years
 
-df_min<-as_tibble(min) |> mutate(species=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low) |> mutate(species=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med) |> mutate(species=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up) |> mutate(species=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max) |> mutate(species=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
+df_min<-as_tibble(min) |> mutate(species=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+df_low<-as_tibble(low) |> mutate(species=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+df_med<-as_tibble(med) |> mutate(species=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+df_up<-as_tibble(up) |> mutate(species=row_number()) |>  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+df_max<-as_tibble(max) |> mutate(species=row_number()) |> pivot_longer(1:Nyears,names_to = "year", values_to = "max")
 
 df<-full_join(df_min, df_low) |> 
   full_join(df_med) |> 
@@ -541,6 +388,94 @@ ggplot(df, aes(year, group=year))+
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~species2, scales="free")+
   expand_limits(y = 0)
+
+######################################
+# Proportion at length per species
+######################################
+
+Nlengths<-c(N_lh,N_lsprat,N_lstickl,N_lo)
+#Nlengths<-c(14,8,8,8)
+
+min<-low<-med<-up<-max<-array(max(Nlengths), dim=c(14,max(Nlengths),Nspecies,Nyears))
+for(y in 1:Nyears){
+  for(r in 1:Nrec){
+    for(s in 1:Nspecies){
+      for(l in 1:Nlengths[s]){
+        tmp<-chains[,str_c("qL[",l,",",s,",",r,",",y,"]")]
+        
+        sum_tmp<-summary(tmp, quantiles=c(0.05,0.25,0.5,0.75,0.95))$quantiles
+        min[l,s,r,y]<-sum_tmp[1]
+        low[l,s,r,y]<-sum_tmp[2]
+        med[l,s,r,y]<-sum_tmp[3]
+        up[l,s,r,y]<-sum_tmp[4]
+        max[l,s,r,y]<-sum_tmp[5]
+      }
+    }
+  }
+}
+
+df_p_at_length<-numbers_per_length_group |> 
+  left_join(sample_size) |> 
+  mutate(p_at_length=number_at_length/tot_sample) |> 
+  select(year, species, rec_ruhnu, HaulNumber, length_group, p_at_length) |> 
+  rename(rec=rec_ruhnu)
+
+df_p_at_length
+
+# Now need loops over Nyears for each species
+s<-2
+p<-list()
+for(y in 1:6){
+  min2<-min[,s,,y]
+  low2<-low[,s,,y]
+  med2<-med[,s,,y]
+  up2<-up[,s,,y]
+  max2<-max[,s,,y]
+  
+  colnames(min2)<-colnames(low2)<-colnames(med2)<-colnames(up2)<-colnames(max2)<-c(1:4)
+  
+  df_min<-as_tibble(min2) |> mutate(length=row_number()) |> pivot_longer(1:Nrec,names_to = "rec", values_to = "min")
+  df_low<-as_tibble(low2) |> mutate(length=row_number()) |> pivot_longer(1:Nrec,names_to = "rec", values_to = "low") 
+  df_med<-as_tibble(med2) |> mutate(length=row_number()) |> pivot_longer(1:Nrec,names_to = "rec", values_to = "med")
+  df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  pivot_longer(1:Nrec,names_to = "rec", values_to = "up")
+  df_max<-as_tibble(max2) |> mutate(length=row_number()) |> pivot_longer(1:Nrec,names_to = "rec", values_to = "max")
+  
+  df1<-full_join(df_min, df_low)|> 
+    full_join(df_med)|> 
+    full_join(df_up) |> 
+    full_join(df_max)|> 
+    mutate(species=s, year=y)
+  
+  # df_catch_tot<-dfB_catch_all_species |> group_by(year, rec_ruhnu, HaulNumber) |> 
+  #   summarise(catch_tot=sum(catch3))
+  # 
+  # df_p<-dfB_catch_all_species |> left_join(df_catch_tot) |> 
+  #   mutate(p_catch=catch3/catch_tot) |> ungroup() |>
+  #   rename(rec=rec_ruhnu) |> select(year,rec,species,p_catch)
+  # 
+  # df2<-df_p|> filter(species==s) |> select(-species)
+
+  df2<-df_p_at_length |> filter(year==y+min_year-1, species==s) |> 
+    rename(length=length_group) |> select(-year, -species)
+ 
+  p[[y]]<-
+    ggplot(df1, aes(length, group=length))+
+    labs(x="Length group", y="Proportion per length group", 
+         title=paste0("Proportion per length group, ",species_name[s], " ", y+min_year-1))+
+    theme_bw()+
+    geom_boxplot(
+      aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
+      stat = "identity",fill=rgb(1,1,1,0.1))+
+    facet_wrap(~rec, scales="free")+
+    coord_cartesian(ylim=c(0,1), xlim=c(0, Nlengths[s]+2))+
+    geom_point(data=df2, aes(x=length, y=p_at_length, colour = factor(HaulNumber)))
+}
+p[[1]]
+p[[2]]
+p[[3]]
+p[[4]]
+p[[5]]
+p[[6]]
 
 ######################################
 # Abundance at length per species
@@ -592,187 +527,62 @@ for(y in 1:Nyears){
   }
 }
 
+# 4 species in a loop
+p<-list()
+for(s in 1:4){
+  min2<-min[,s,]
+  low2<-low[,s,]
+  med2<-med[,s,]
+  up2<-up[,s,]
+  max2<-max[,s,]
 
-# herring
-min2<-min[,1,]
-low2<-low[,1,]
-med2<-med[,1,]
-up2<-up[,1,]
-max2<-max[,1,]
+  colnames(min2)<-colnames(low2)<-colnames(med2)<-
+    colnames(up2)<-colnames(max2)<-Years
 
+  df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
+    pivot_longer(1:Nyears,names_to = "year", values_to = "min")
+  df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
+    pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
+  df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
+    pivot_longer(1:Nyears,names_to = "year", values_to = "med")
+  df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
+    pivot_longer(1:Nyears,names_to = "year", values_to = "up")
+  df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
+    pivot_longer(1:Nyears,names_to = "year", values_to = "max")
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
+  df1<-full_join(df_min, df_low)|> 
+    full_join(df_med)|> 
+    full_join(df_up) |> 
+    full_join(df_max)|> 
+    mutate(species=species_name[s])
 
+  df2<-filter(df_comp, species==s) |> select(-species) |> 
+    mutate(year=as.numeric(year))
+  df<-df1 |> mutate(year=as.numeric(year))|> 
+    full_join(df2)
 
-df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low)|> 
-  full_join(df_med)|> 
-  full_join(df_up) |> 
-  full_join(df_max)|> 
-  mutate(species="herring")
-
-df2<-filter(df_comp, species==1) |> select(-species) |> mutate(year=as.numeric(year))
-
-df<-df1 |> mutate(year=as.numeric(year))|> 
-  full_join(df2)
-
-df1 |> filter(year==2017) |> select(-species, -length, -low, -up)
-print(x=df1, n=100)
+#df1 |> filter(year==2017) |> select(-species, -length, -low, -up)
+#print(x=df1, n=100)
 
 #windows(record=T)
-ggplot(df, aes(length, group=length))+
-  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, herring")+
+p[[s]]<-ggplot(df, aes(length, group=length))+
+  labs(x="Length group", y="Abundance per length group", 
+       title=paste0("Total abundance per length group, ",species_name[s]))+
   theme_bw()+
+  coord_cartesian(xlim=c(0,Nlengths[s]+1))+
   geom_boxplot(
     aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
     stat = "identity",fill=rgb(1,1,1,0.1))+
   facet_wrap(~year, scales="free")+
   geom_point(aes(length, N)) #Excel calculated values
 
-# Sprat
-
-min2<-min[,2,]
-low2<-low[,2,]
-med2<-med[,2,]
-up2<-up[,2,]
-max2<-max[,2,]
+}
+p[[1]]
+p[[2]]
+p[[3]]
+p[[4]]
 
 
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low) |> 
-  full_join(df_med) |> 
-  full_join(df_up) |> 
-  full_join(df_max) |> 
-  mutate(species="sprat")
-
-df2<-filter(df_comp, species==2) |> select(-species) |> mutate(year=as.numeric(year))
-df<-df1 |> mutate(year=as.numeric(year))|> 
-  full_join(df2) |> 
-  filter(is.na(min)==F)
-#View(df)
-
-ggplot(df, aes(length, group=length))+
-  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, sprat")+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+ 
-  #coord_cartesian(ylim = c(0, 1000))+
-  facet_wrap(~year, scales="free")+
-  geom_point(aes(length, N))
-
-
-# GTA
-
-min2<-min[,3,]
-low2<-low[,3,]
-med2<-med[,3,]
-up2<-up[,3,]
-max2<-max[,3,]
-
-
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low) |> 
-  full_join(df_med) |> 
-  full_join(df_up) |> 
-  full_join(df_max) |> 
-  mutate(species="GTA")
-
-df2<-filter(df_comp, species==3) |> select(-species) |> mutate(year=as.numeric(year))
-df<-df1 |> mutate(year=as.numeric(year))|> 
-  full_join(df2) |> 
-  filter(is.na(min)==F)
-#View(df)
-
-ggplot(df, aes(length, group=length))+
-  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, stickleback")+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")+
-  geom_point(aes(length, N))
-
-
-# Other
-
-min2<-min[,4,]
-low2<-low[,4,]
-med2<-med[,4,]
-up2<-up[,4,]
-max2<-max[,4,]
-
-colnames(min2)<-colnames(low2)<-colnames(med2)<-
-  colnames(up2)<-colnames(max2)<-Years
-
-df_min<-as_tibble(min2) |> mutate(length=row_number()) |>
-  pivot_longer(1:Nyears,names_to = "year", values_to = "min")
-df_low<-as_tibble(low2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "low") 
-df_med<-as_tibble(med2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "med")
-df_up<-as_tibble(up2) |> mutate(length=row_number()) |>  
-  pivot_longer(1:Nyears,names_to = "year", values_to = "up")
-df_max<-as_tibble(max2) |> mutate(length=row_number()) |> 
-  pivot_longer(1:Nyears,names_to = "year", values_to = "max")
-
-df1<-full_join(df_min, df_low) |> 
-  full_join(df_med) |> 
-  full_join(df_up) |> 
-  full_join(df_max) |> 
-  mutate(species="GTA")
-
-df2<-filter(df_comp, species==4) |> select(-species) |> mutate(year=as.numeric(year))
-df<-df1 |> mutate(year=as.numeric(year))|> 
-  full_join(df2) |> 
-  filter(is.na(min)==F)
-#View(df)
-
-ggplot(df, aes(length, group=length))+
-  labs(x="Length group", y="Abundance per length group", title="Total abundance per length group, other species")+
-  theme_bw()+
-  geom_boxplot(
-    aes(ymin = min, lower = low, middle = med, upper = up, ymax = max),
-    stat = "identity",fill=rgb(1,1,1,0.1))+
-  facet_wrap(~year, scales="free")+
-  geom_point(aes(length, N))
 
 ##########################################
 # Relative species composition

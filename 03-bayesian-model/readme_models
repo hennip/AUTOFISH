@@ -1,5 +1,29 @@
-model_ind_N_qS (24/9/26):
+model_20_EtaEsy_CVnasc (14/10/26):
+Yritys parantaa mu_nasc vs obs nasc fittiä antamalla enemmän tilaa cv_nasc:lle
+vaihdella. Tässä rec*year-määrä cv:itä. Kävi kuitenkin niin päin, että vaihtelua
+kyllä tuli, mutta mu_nasc:t kasvavat vain entistä suuremmiksi. Eli palataan nyt 
+takaisin. Myöhemmin voi miettiä olisiko pelkkä year mielekäs vaihtelun mielessä.
+Ehkä olisi.
 
+
+model_20_Nunif.R (12/10/26):
+Changing N priors into form 1000000 *dunif()
+This seems to improve sampling and convergence, thus let's keep it.
+
+
+model_20.R (8/10/26):
+Sobs data changed so that each catch composition sample is assumed to have 
+contained ~1000 individuals. This seems to work out fine except that the
+estimated qS still have very little uncertainty.The approach fits with the
+assumed "all hauls have equal weight" ideology, so maybe we'll continue with this
+for now.
+
+
+model_20_pS:
+Yritys sovittaa malli lajikohtaisiin prosenttiosuuksiin ddirichlet-mallilla. Tässä tuli kuitenkin
+vastaan hankaluuksia alkuarvoistuksen kanssa (pS inconsistent with parents)
+
+model_ind_N_qS (24/9/26):
 Ei auttanut muR:n hierarkkia, lopputulos oli silti että neljännes kaloista oli 
 kutakin lajia. Tässä versiossa N[s,r,y]:t ovat toisistaan riippumattomia,
 Ntot tulee näiden summana. Kun qS:lle annetaan suoraan arvoksi malliennuste, lopputulos

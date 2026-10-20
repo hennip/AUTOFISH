@@ -38,7 +38,7 @@ dfB_catch_all<-dfB_catch |>
 # Sum together species other than herring or sprat
 dfB_catch_all_species<-dfB_catch_all |> 
   group_by(year, rec_ruhnu, HaulNumber, species) |> 
-  summarise(catch3=sum(catch))
+  summarise(catch_sp=sum(catch))
   
 dfB_catch_sample<-dfB_catch |> 
   select(year, rec_ruhnu, HaulNumber, CatchSpeciesCode, species, length, CatchNumberAtLength) 
@@ -48,15 +48,28 @@ dfB_catch_all |>
        group_by(year, species) |> 
        summarise(catchTOT=sum(catch))
 
+# ==============================================================================
+# Species composition
+# ==============================================================================
+TotCatch<-dfB_catch_all_species |>
+  group_by(year,rec_ruhnu,HaulNumber) |> 
+  summarise(tot_catch=sum(catch_sp, na.rm=T))
+TotCatch
+
+df_p<-full_join(dfB_catch_all_species,TotCatch) |> 
+  mutate(p=catch_sp/tot_catch) |> 
+  select(-catch_sp, -tot_catch) |> 
+  ungroup()
+
+df_Snew<-df_p |> mutate(catch_sp=round(p*1000,0)) |> select(-p)
+
+df_Cnew<-df_Snew |> group_by(year, rec_ruhnu, HaulNumber) |> 
+  summarise(tot_catch=sum(catch_sp))
+
 
 # Cobs: total catch per trawl haul
 #########################################
 # group by rec & haul, calculate total catch
-TotCatch<-dfB_catch_all_species |>
-  group_by(year,rec_ruhnu,HaulNumber) |> 
-  summarise(tot_catch=sum(catch3, na.rm=T))#|> 
-  #select(year,rec_ruhnu, HaulNumber, tot_catch)
-TotCatch
 
 # Calculate maximum number of hauls per rectangle in the data
 tmp<-TotCatch |> group_by(year, rec_ruhnu,HaulNumber) |> summarise(n=n()) |> 
@@ -68,9 +81,7 @@ max_number_of_hauls<-max(tmp$n)
 # Build tot catch table in which rows are hauls and columns are rectangles 
 C_obs<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
 for(y in 1:Nyears){
-  #y<-1
   for(r in 1:4){
-    #r<-1
     apu<-1
     for(i in 1:length(TotCatch$rec_ruhnu)){
       if(TotCatch$year[i]==(y+min_year-1) & TotCatch$rec_ruhnu[i]==r){
@@ -79,6 +90,23 @@ for(y in 1:Nyears){
       }}}
 }
 C_obs
+
+# Cnew_obs: same as C_obs but scaled into 1000 sample
+Cnew_obs<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
+for(y in 1:Nyears){
+  for(r in 1:4){
+    # y<-1
+    # r<-1
+    apu<-1
+    for(i in 1:length(df_Cnew$rec_ruhnu)){
+      if(df_Cnew$year[i]==(y+min_year-1) & df_Cnew$rec_ruhnu[i]==r){
+        Cnew_obs[apu,r,y]<-df_Cnew$tot_catch[i]
+        apu<-apu+1
+      }
+      }
+    }
+}
+Cnew_obs
 
 
 # Sobs: Number of individuals per species in the catch
@@ -100,13 +128,13 @@ for(y in 1:Nyears){
     
     for(s in 1:Nspecies){
       if(dim(dat |> filter(species==s))[1]==0){
-        dat<-full_join(dat, tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, catch3=NA ))
+        dat<-full_join(dat, tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, catch_sp=NA ))
       }
     }
 
     df<-t(as.data.frame(dat |>
                           arrange(species) |> 
-                          pivot_wider(names_from = species, values_from = catch3) |> 
+                          pivot_wider(names_from = species, values_from = catch_sp) |> 
                     ungroup() |>  select(-year, -rec_ruhnu, -HaulNumber)))
     S_obs[,1:dim(df)[2],r,y]<-df
   }
@@ -129,14 +157,52 @@ for(y in 1:Nyears){
 }
 S_obs
 
+# Snew_obs: Same as C_obs but scaled into 1000 sample
+
+Snew_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,Nrec,Nyears))
+for(y in 1:Nyears){
+  for(r in 1:Nrec){
+    #  y<-6;r<-4
+    dat<-df_Snew |> 
+      filter(year==(y+min_year-1) &rec_ruhnu ==r)
+    
+    for(s in 1:Nspecies){
+      if(dim(dat |> filter(species==s))[1]==0){
+        dat<-full_join(dat, tibble(year=y+min_year-1, rec_ruhnu=r, HaulNumber=8000, species=s, catch_sp=NA ))
+      }
+    }
+    
+    df<-t(as.data.frame(dat |>
+                          arrange(species) |> 
+                          pivot_wider(names_from = species, values_from = catch_sp) |> 
+                          ungroup() |>  select(-year, -rec_ruhnu, -HaulNumber)))
+    Snew_obs[,1:dim(df)[2],r,y]<-df
+  }
+}
+Snew_obs
+
+# Replace NA's with 0 in cases where haul took place but
+# did not contain the particular species
+for(y in 1:Nyears){
+  for(r in 1:Nrec){
+    for(h in 1:max_number_of_hauls){
+      for(s in 1:Nspecies){
+        if(is.na(Cnew_obs[h,r,y])==F&
+           is.na(Snew_obs[s,h,r,y])==T){
+          Snew_obs[s,h,r,y]<-0
+        }
+      }
+    }
+  }
+}
+Snew_obs
+
+
+
 # pS_obs: proportion per species per trawl haul
 ###################################################
 
 
-df_p<-full_join(dfB_catch_all_species,TotCatch) |> 
-  mutate(p=catch3/tot_catch) |> 
-  select(-catch3, -tot_catch) |> 
-  ungroup()
 
 pS_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,Nrec,Nyears))
 for(y in 1:Nyears){

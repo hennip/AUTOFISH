@@ -42,14 +42,18 @@ options(rlib_message_verbosity = "quiet")
 
 if(computer_name=="hp_laptop"){
   
-  pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS/"
-  
   pathA_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Acoustic/"
   pathB_GRAHS<-"../../01-Projects/AUTOFISH/dat/GRAHS/Biotic/"
   
   path_output_GRAHS<-"../../01-Projects/AUTOFISH/out/GRAHS/"  
   path_output_BIAS<-"../../01-Projects/AUTOFISH/out/BIAS/"  
-}
+  path_output<-path_output_GRAHS
+  
+  #pathA<-pathB<-path_BIAS<-"../../01-Projects/AUTOFISH/dat/BIAS/"
+  pathA<-pathA_GRAHS
+  pathB<-pathB_GRAHS
+  
+  }
 if(computer_name=="es_laptop"){
   pathA<-pathB<-path_BIAS<-"../../ICES Acoustic database/BIAS/"
   path_output<-"../../R projects/out/"  

@@ -79,8 +79,8 @@ model{
       }
       
        for(s in 1:Nspecies){
-        alphaS[s,r,y]<-qS[s,r,y]*etaS
-        qS[s,r,y]<-N[s,r,y]/sum(N[1:Nspecies,r,y])
+       alphaS[s,r,y]<-qS[s,r,y]*etaS
+       qS[s,r,y]<-N[s,r,y]/sum(N[1:Nspecies,r,y])
        }
      }
   }
@@ -175,6 +175,26 @@ model{
   #     tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
   #   }
   # }
+  # 
+  # Dispersion parameters
+  # ===========================================================
+  
+  etaG~dunif(0.0001,1000)  # Age composition of herring among catch samples
+  etaS~dunif(0.0001,1000)  # Species composition among catch samples
+
+  for(s in 1:Nspecies){
+    etaL[s]~dunif(0.0001,1000)# Length composition per species among hauls  
+    etaE[s]~dunif(0.001,1)    # Spatial overdispersion within rectangles
+  }
+
+
+  # Unupdated priors
+  # ===========================================================
+  NTX<-NtmpX*1000000
+  NtmpX~dunif(0.0001,100000)
+  cv_nascX~dunif(0.1,5)#dlnorm(0.03,3.26)
+  etaX1~dunif(0.0001,1000)
+  etaX2~dunif(0.0001,1)
 
 
 

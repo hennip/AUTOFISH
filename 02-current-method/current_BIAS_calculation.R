@@ -9,6 +9,8 @@
 ################################################################################
 # rm(list = ls())
 
+if
+
 ###########################
 # Workflow for taking into account rectangles that split between 2 ICES sub divisions:
 # - Acoustics: use mean_nasc for both
@@ -252,6 +254,10 @@ df_species_rec_SD<-full_join(df_nasc_per_rec, df_p_species_per_rec, relationship
          Ntot=N_per_NM2*A_NM2) |> 
   select(year, rec, ICES_SD, N_per_NM2, Ntot, everything()) |> 
   mutate(n_per_species_per_rec=p_species_per_rec/100*Ntot)
+#View(df_species_rec_SD)
+if(country=="GRAHS"){
+ df_species_rec_SD<-df_species_rec_SD |> mutate(ICES_SD=28.1)
+}
 
 # Pivot: Number of individuals per species per rectangle
 df_species_rec_SD |>   
@@ -529,7 +535,7 @@ df_bm_age_at_length<-df_bm_per_length_ICES_SD |>
   mutate(BiologyLengthClass_mm=CatchLengthClass_mm) |> 
   left_join(age_length_key, relationship="many-to-many") |> 
   mutate(bm_age_at_length=p_age_at_length*bm_per_length)
-print(x=df_bm_at_age, n=100)
+print(x=df_bm_at_length, n=100)
 
 #tmp<-age_length_key |> filter(species==126417, ICES_SD==29)
 #print(x=tmp, n=100)
@@ -539,6 +545,7 @@ df_bm_at_age<-df_bm_age_at_length |>
   summarise(bm_at_age= round(sum(bm_age_at_length, na.rm=T),2)) |> 
   left_join(df_rec_ICES_SD, relationship = "many-to-many")|> 
   arrange(age,species,ICES_SD) 
+print(x=df_bm_at_age, n=100)
 
 WTOT<-df_bm_at_age |> ungroup() |> 
   group_by(species, rec, ICES_SD) |> 

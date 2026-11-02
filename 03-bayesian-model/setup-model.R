@@ -24,6 +24,7 @@ source("01-data/workflow-data-bayesmodel.R")
 #source("03-bayesian-model/model_20.R")
 #source("03-bayesian-model/model_20_wAge.R")
 
+source("03-bayesian-model/model_20_pS.R")
 #source("03-bayesian-model/model_20_Nunif.R")
 source("03-bayesian-model/model_20_Nunif_EtaEsy.R")
 

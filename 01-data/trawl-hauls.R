@@ -30,6 +30,13 @@ dfB_haul2<-dfB_haul|>
 dfB_haul2
 #View(dfB_haul2)
 
+if(rec2==T){
+  dfB_haul2 <-dfB_haul2 |> 
+    mutate(rec=ifelse(rec==2,1, ifelse(rec==3,2, ifelse(rec==4,2,rec)))) |> 
+    mutate(rec_ruhnu=rec)  
+}
+
+
 df_rec<-dfB_haul2 |> select(year,rec_ruhnu, HaulNumber)
 #View(df_rec)
 

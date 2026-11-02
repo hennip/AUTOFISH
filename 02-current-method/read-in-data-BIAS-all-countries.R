@@ -1,6 +1,4 @@
 
-# Define in packages-and-paths.R your own path for input data and resulting output
-source("00-basics/packages-and-paths.R")
 
 # Call functions that read in all data in a folder, pick up only necessary and in
 # case of trawl data, separate to haul, catch and biology tables
@@ -14,24 +12,40 @@ df_rec_info<-read_xlsx(str_c("01-data/ICES_rec_areas.xlsx")) |>
 # Single country option
 if(country!="all"){ 
   
-  if(country=="EE"){CountryCoef<-10000}
-  if(country=="FI"){CountryCoef<-20000}
-  if(country=="DE"){CountryCoef<-30000}
-  if(country=="PL"){CountryCoef<-40000}
-  if(country=="SE"){CountryCoef<-50000}
-  if(country=="LV"){CountryCoef<-60000}
-  if(country=="LT"){CountryCoef<-70000}
+  if(country!="GRAHS"){
+    if(country=="EE"){CountryCoef<-10000}
+    if(country=="FI"){CountryCoef<-20000}
+    if(country=="DE"){CountryCoef<-30000}
+    if(country=="PL"){CountryCoef<-40000}
+    if(country=="SE"){CountryCoef<-50000}
+    if(country=="LV"){CountryCoef<-60000}
+    if(country=="LT"){CountryCoef<-70000}
+    
+    dfA<-read_in_acoustic_data(paste0(pathA,country,"/"))|> 
+      mutate(country=country, CountryCoef=10000)|>
+      select(country, everything()) |>
+      mutate(LogDistance = as.numeric(LogDistance), lognew = LogDistance + CountryCoef)
   
-  dfA<-read_in_acoustic_data(paste0(pathA,country,"/"))|> 
-    mutate(country=country, CountryCoef=10000)|>
-    select(country, everything()) |>
-    mutate(LogDistance = as.numeric(LogDistance), lognew = LogDistance + CountryCoef)
-
-  dfB<-read_in_trawl_data(paste0(pathB,country,"/"))
-  hauls_all<-dfB[[1]]|> mutate(country=country, CountryCoef=CountryCoef)
-  catch_all<-dfB[[2]]|> mutate(country=country, CountryCoef=CountryCoef)
-  biol_all<- dfB[[3]]|> mutate(country=country, CountryCoef=CountryCoef)
-
+    dfB<-read_in_trawl_data(paste0(pathB,country,"/"))
+    hauls_all<-dfB[[1]]|> mutate(country=country, CountryCoef=CountryCoef)
+    catch_all<-dfB[[2]]|> mutate(country=country, CountryCoef=CountryCoef)
+    biol_all<- dfB[[3]]|> mutate(country=country, CountryCoef=CountryCoef)
+  }
+  
+  if(country=="GRAHS"){
+    CountryCoef<-10000
+    dfA<-read_in_acoustic_data(pathA)|> 
+      mutate(country=country, CountryCoef=10000)|>
+      select(country, everything()) |>
+      mutate(LogDistance = as.numeric(LogDistance), lognew = LogDistance + CountryCoef)
+    
+    dfB<-read_in_trawl_data(pathB)
+    hauls_all<-dfB[[1]]|> mutate(country=country, CountryCoef=CountryCoef)
+    catch_all<-dfB[[2]]|> mutate(country=country, CountryCoef=CountryCoef)
+    biol_all<- dfB[[3]]|> mutate(country=country, CountryCoef=CountryCoef)
+  }
+  
+  
 } # one country option ends
   
 # All countries option

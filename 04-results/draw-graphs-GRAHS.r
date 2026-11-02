@@ -16,24 +16,19 @@ model_data<-str_c("_14lengths_",min_year,"-",max_year)
 source("01-data/workflow-data-bayesmodel.R")
 
 
-
-# load(paste0(path_output_GRAHS,"GRAHS4_ind_muL_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_ind_muL_qS_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_ind_qS_qL_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_ind_qS_qL_simple_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_ind_muL_2_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_ind_muL_2_muRsr_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_N_14lengths_2020-2025.RData"))
-# load(paste0(path_output_GRAHS,"GRAHS4_N_qS_14lengths_2020-2025.RData"))
-
 #load(paste0(path_output_GRAHS,"GRAHS20_14lengths_2020-2025.RData"))
 
 #load(paste0(path_output_GRAHS,"GRAHS20_Snew_2020-2025.RData"))
 #load(paste0(path_output_GRAHS,"GRAHS20_wAge_Snew_2016-2025.RData"))
 
-load(paste0(path_output_GRAHS,"GRAHS20_Nunif_EtaEsy_Snew_2020-2025.RData"))
+#load(paste0(path_output_GRAHS,"GRAHS20_Nunif_EtaEsy_Snew_2020-2025.RData"))
 
-load(paste0(path_output_GRAHS,"GRAHS20_EtaEsy_CVnasc_2020-2025.RData"))
+#load(paste0(path_output_GRAHS,"GRAHS20_EtaEsy_CVnasc_2020-2025.RData"))
+
+#load(paste0(path_output_GRAHS,"GRAHS20_EtaEsry_CVnasc_2020-2025.RData")) # Tässä tulee pientä miksaantumisvikaa moneen N:ään
+
+load(paste0(path_output_GRAHS,"GRAHS20_Nunif_EtaEsy_Snew100_2020-2025.RData")) # Miksaantumiselle tapahtuu outoja 2M jälkeen
+#load(paste0(path_output_GRAHS,"GRAHS20_EtaEsy_CVnasc_2020-2025.RData"))
 
 
 ################################################################################
@@ -94,6 +89,7 @@ summary(run, var="cv_nasc")
 plot(run, var="cv_nasc")
 
 summary(run, var="N")
+summary(run, var="Ntot")
 summary(run, var="etaR")
 
 plot(run, var="Ntot")
@@ -111,6 +107,7 @@ summary(run, var="N[2,3,6]")
 summary(run, var="N[2,4,6]")
 summary(run, var="muS[2,4,6]")
 
+summary(run, var="etaE")
 summary(run, var="etaS")
 summary(run, var="qS[1,4,6]")
 summary(run, var="qS[2,4,6]")
@@ -262,7 +259,7 @@ for(s in 1:4){
   df2<-df_p|> filter(species==s) |> select(-species)
   
 p[[s]]<-ggplot(df1, aes(rec, group=rec))+
-  labs(x="Length group", y="Proportion per species", 
+  labs(x="Rectangle", y="Proportion per species", 
        title=paste0("Proportion of ",species_name[s]))+
   theme_bw()+
   geom_boxplot(
@@ -304,7 +301,7 @@ for(y in 1:Nyears){
 
 # 4 species in a loop
 p<-list()
-y_lim<-c(20000,11000,21000,1700)
+y_lim<-c(20000,12000,21000,1700)
 for(s in 1:4){
   
   min2<-minR[s,,]
@@ -423,7 +420,7 @@ df_p_at_length<-numbers_per_length_group |>
 df_p_at_length
 
 # Now need loops over Nyears for each species
-s<-2
+s<-1
 p<-list()
 for(y in 1:6){
   min2<-min[,s,,y]

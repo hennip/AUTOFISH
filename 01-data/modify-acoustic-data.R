@@ -38,6 +38,11 @@ dfA2<-dfA |>
   select(rec_ruhnu, DataValue, depthLow, depthUpp, everything()) |> 
   #select(-Data, -Header) |> 
   mutate(rec=rec_ruhnu)
+
+if(rec2==T){
+  dfA2 <-dfA2 |> mutate(rec=ifelse(rec==2,1, ifelse(rec==3,2, ifelse(rec==4,2,rec))))
+}
+
 #dfA2
 #View(dfA2)  
 
@@ -95,6 +100,14 @@ A_NM2<-c(819.8155089,# NW
 )
 rec_areas_NM2<-tibble(rec=1:4, A_NM2)
 
+if(rec2==T){
+  # Area of each rectangle in square NM's
+  A_NM2<-c(819.8155089 +1014.006703,# North
+           536.3622401+1558.658342# South
+  )
+  rec_areas_NM2<-tibble(rec=1:2, A_NM2)
+}
+
 # We still one row of data per rectangle specifying the area that was NOT 
 # covered by the survey track (i.e. more than 99.9% of it)
 
@@ -138,7 +151,8 @@ tot_nasc_per_log_plus_one<-pA1 |> select(-area_NM2, -A_NM2) |>
 #print(x=tot_nasc_per_log_plus_one, n=10000)
 
 # nascY is year index in the model, must be the same length as sum_nasc
-nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |> mutate(year=year-(min_year-1)), use.names = F)
+nascY<-unlist(tot_nasc_per_log_plus_one |>ungroup() |> select(year) |>
+                mutate(year=year-(min_year-1)), use.names = F)
 #nascY
 
 

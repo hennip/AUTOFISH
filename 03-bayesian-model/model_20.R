@@ -8,10 +8,11 @@ model{
   for(s in 1:Nspecies){
     for(y in 1:Nyears){
     for(r in 1:Nrec){
-      N[s,r,y]<-exp(Ntmp[s,r,y])
-      Ntmp[s,r,y]~dnorm(13,0.0000001)
+      N[s,r,y]<-Ntmp[s,y]*1000000
+      Ntmp[s,r,y]~dunif(0.0001,100000)
 
     }
+
     Ntot[s,y]<-sum(N[s,1:Nrec,y])
     }
   }
@@ -119,39 +120,39 @@ model{
   }
   
 
-  # # Age composition of herring (aged individuals)
-  # # =============================================
-  # for(y in 1:Nyears){
-  #   for(r in 1:Nrec){
-  #     for(l in 1:Nlengths[1]){ # Age data on herring only
-  #       # Gobs: observed number of herring of each age class in length class l
-  #       Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
-  #       # qG: age distribution of length class l
-  # 
-  #       #qG~ddirich(alphaG[1:Nages,l,y]) but
-  #       # approximate dirichlet (set of gamma distributions) with lognormal distns
-  #       qG[1:Nages,l,r,y]<-zG[1:Nages,l,r,y]/sum(zG[1:Nages,l,r,y])
-  # 
-  #       for(a in 1:Nages){
-  #         zG[a,l,r,y]~dlnorm(MG[a,l,y],tauG[a,l,y])
-  #         p_at_age[a,l,r,y]<-qL[l,1,r,y]*qG[a,l,r,y] # Proportion of herring at age on length
-  #       }
-  #     }
-  #     for(a in 1:Nages){
-  #       n_at_age[a,r,y]<-sum(p_at_age[a,1:Nlengths[1],r,y])*N[1,r,y] # Number of herring at age
-  #     }
-  #   }
-  # 
-  #   for(a in 1:Nages){
-  #     ageH[a,y]<-sum(n_at_age[a,1:Nrec,y])/Ntot[1,y]
-  #   }
-  #   for(l in 1:Nlengths[1]){
-  #     muG[1:Nages,l,y]~ddirich(aG)
-  #     MG[1:Nages,l,y]<-log(muG[1:Nages,l,y])-0.5*(1/tauG[1:Nages,l,y])
-  #     alphaG[1:Nages,l,y]<-muG[1:Nages,l,y]*etaG
-  #     tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
-  #   }
-  # }
+  # Age composition of herring (aged individuals)
+  # =============================================
+  for(y in 1:Nyears){
+    for(r in 1:Nrec){
+      for(l in 1:Nlengths[1]){ # Age data on herring only
+        # Gobs: observed number of herring of each age class in length class l
+        Gobs[1:Nages,l,r,y]~dmulti(qG[1:Nages,l,r,y],nGobs[l,r,y])
+        # qG: age distribution of length class l
+
+        #qG~ddirich(alphaG[1:Nages,l,y]) but
+        # approximate dirichlet (set of gamma distributions) with lognormal distns
+        qG[1:Nages,l,r,y]<-zG[1:Nages,l,r,y]/sum(zG[1:Nages,l,r,y])
+
+        for(a in 1:Nages){
+          zG[a,l,r,y]~dlnorm(MG[a,l,y],tauG[a,l,y])
+          p_at_age[a,l,r,y]<-qL[l,1,r,y]*qG[a,l,r,y] # Proportion of herring at age on length
+        }
+      }
+      for(a in 1:Nages){
+        n_at_age[a,r,y]<-sum(p_at_age[a,1:Nlengths[1],r,y])*N[1,r,y] # Number of herring at age
+      }
+    }
+
+    for(a in 1:Nages){
+      ageH[a,y]<-sum(n_at_age[a,1:Nrec,y])/Ntot[1,y]
+    }
+    for(l in 1:Nlengths[1]){
+      muG[1:Nages,l,y]~ddirich(aG)
+      MG[1:Nages,l,y]<-log(muG[1:Nages,l,y])-0.5*(1/tauG[1:Nages,l,y])
+      alphaG[1:Nages,l,y]<-muG[1:Nages,l,y]*etaG
+      tauG[1:Nages,l,y]<-1/log((1/alphaG[1:Nages,l,y])+1)
+    }
+  }
   # 
   # Dispersion parameters
   # ===========================================================

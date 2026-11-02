@@ -205,6 +205,10 @@ Snew_obs
 ###################################################
 
 
+df_p<-full_join(dfB_catch_all_species,TotCatch) |> 
+  mutate(p=catch3/tot_catch) |> 
+  select(-catch3, -tot_catch) |> 
+  ungroup()
 
 pS_obs<-array(NA, dim=c(Nspecies, max_number_of_hauls,Nrec,Nyears))
 for(y in 1:Nyears){

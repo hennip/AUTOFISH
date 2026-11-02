@@ -10,15 +10,20 @@
 
 rm(list = ls())
 
+source("00-basics/packages-and-paths.R")
+
 # Input
 ###############################
 
 # Define year
-choose_year<-2025
+choose_year<-2020
+quadrants<-T
 
+for( y in 2020:2025){
+  choose_year<-y
 # Define paths 
 #pathA<- # Path for acoustic data
-pathB<-pathA # Path for trawl data, if different than pathA
+#pathB<-pathA # Path for trawl data, if different than pathA
 # path_output<- # Path on which you wish to have the output stored
 
 # Define country or countries whose results you wish to calculate:
@@ -37,18 +42,34 @@ pathB<-pathA # Path for trawl data, if different than pathA
 # Option 3: Choose this if you wish to run the script by pooling data from all 
 # =================================
 # countries. The age length key's are formulated on ICES SD basis
-countries<-"all"
+#countries<-"all"
+countries<-"GRAHS"
+#countries<-"EE"
 
 Ncountries<-length(countries)
 
 for(i in 1:Ncountries){
+  #i<-1
   country<-countries[i]    
   # Read in data 
   source("02-current-method/read-in-data-BIAS-all-countries.R")
   
   # Run the script for calculating BIAS results
-  source("02-current-method/current_BIAS_calculation.R")
+  #source("02-current-method/current_BIAS_calculation.R")
+  source("02-current-method/current_BIAS_calculation_GRAHS_quadrants.R")
   
   # Save the results
-  write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year,"_", country,".xlsx"))
+  if(country!="GRAHS"){
+    write_xlsx(res,paste0(path_output, "BIAS_results_", choose_year,"_", country,".xlsx"))
+  }
+  if(country=="GRAHS"){
+    if(quadrants==T){
+    write_xlsx(res,paste0(path_output, "GRAHS_results_4quadrants_", choose_year,"_", country,".xlsx"))
+    }else{
+      write_xlsx(res,paste0(path_output, "GRAHS_results_", choose_year,"_", country,".xlsx"))
+    }
+    
+  }
+}
+
 }

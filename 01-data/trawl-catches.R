@@ -61,7 +61,9 @@ df_p<-full_join(dfB_catch_all_species,TotCatch) |>
   select(-catch_sp, -tot_catch) |> 
   ungroup()
 
-df_Snew<-df_p |> mutate(catch_sp=round(p*1000,0)) |> select(-p)
+# Snew: scale species composition so that each haul corresponds to common
+# (eg 1000 or 100) sample size
+df_Snew<-df_p |> mutate(catch_sp=round(p*100,0)) |> select(-p)
 
 df_Cnew<-df_Snew |> group_by(year, rec_ruhnu, HaulNumber) |> 
   summarise(tot_catch=sum(catch_sp))
@@ -79,9 +81,9 @@ max_number_of_hauls<-max(tmp$n)
 
 # Cobs[h,r,y]
 # Build tot catch table in which rows are hauls and columns are rectangles 
-C_obs<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
+C_obs<-array(NA, dim=c(max_number_of_hauls,Nrec,Nyears))
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     apu<-1
     for(i in 1:length(TotCatch$rec_ruhnu)){
       if(TotCatch$year[i]==(y+min_year-1) & TotCatch$rec_ruhnu[i]==r){
@@ -92,9 +94,9 @@ for(y in 1:Nyears){
 C_obs
 
 # Cnew_obs: same as C_obs but scaled into 1000 sample
-Cnew_obs<-array(NA, dim=c(max_number_of_hauls,4,Nyears))
+Cnew_obs<-array(NA, dim=c(max_number_of_hauls,Nrec,Nyears))
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     # y<-1
     # r<-1
     apu<-1
@@ -264,9 +266,9 @@ sample_size
 # Sample size per species and rec in a form that feeds to the model
 nL_obs<-array(NA, dim=c(max(Nhaul),Nspecies,Nrec,Nyears))
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     for(s in 1:Nspecies){
-#      y<-6;r<-4;s<-2
+#      y<-1;r<-2;s<-1
       tmp<-sample_size |> 
         filter(year==(y+min_year-1), rec_ruhnu==r, species==s)
       
@@ -284,7 +286,7 @@ for(y in 1:Nyears){
 
 
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     for(s in 1:Nspecies){
       #y<-1;r<-2;s<-1
       tmp<-(sample_size |> filter(year==(y+min_year-1),  species==s, rec_ruhnu==r))$tot_sample
@@ -539,7 +541,7 @@ print(n=100, x=numbers_per_length_group)
 max_group_num<-max(numbers_per_length_group$length_group) #14
 L_obs<-array(NA, dim=c(max_group_num, max(Nhaul), Nspecies, Nrec, Nyears)) 
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     for(s in 1:Nspecies){
      # y<-5;s<-1; r<-4
       tmp<-numbers_per_length_group|> 
@@ -576,7 +578,7 @@ nL_obs
 # AND
 # In cases where sample was not missing, the NA's in G_obs should be replaced with 0s
 for(y in 1:Nyears){
-  for(r in 1:4){
+  for(r in 1:Nrec){
     for(s in 1:Nspecies){
       for(h in 1:max(Nhaul)){
         #    y<-1;r<-2;s<-3
@@ -602,4 +604,4 @@ for(y in 1:Nyears){
 L_obs
 nL_obs
 
-L_obs[,,2,4,6]
+#L_obs[,,2,4,6]

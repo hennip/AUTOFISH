@@ -1,6 +1,6 @@
 
-modelname<-"GRAHS20_EtaEsy_CVnasc"
-GRAHS_model<-GRAHS20_EtaEsy_CVnasc<-"
+modelname<-"GRAHS20_EtaEsry_CVnasc"
+GRAHS_model<-GRAHS20_EtaEsry_CVnasc<-"
 model{
 
   # Annual abundances
@@ -23,7 +23,7 @@ model{
           n[e,s,r,y]<-N[s,r,y]*pE[e,s,r,y]
         }
         pE[1:Necho[r,y],s,r,y]~ddirich(alphaE[1:Necho[r,y],s,r,y])
-        alphaE[1:Necho[r,y],s,r,y]<-propA[1:Necho[r,y],r,y]*N[s,r,y]*etaE[s,y]#etaE[s,r,y]
+        alphaE[1:Necho[r,y],s,r,y]<-propA[1:Necho[r,y],r,y]*N[s,r,y]*etaE[s,r,y]
       }
     }
   }
@@ -162,13 +162,12 @@ model{
   }}
 
   for(s in 1:Nspecies){
-    etaL[s]~dunif(0.0001,1000)# Length composition per species among hauls  
-    etaR[s]~dunif(0.001,1000)    # Spatial overdispersion between rectangles
-    #etaE[s]~dunif(0.001,1)    # Spatial overdispersion within rectangles
+    etaL[s]~dunif(0.0001,1000) # Length composition per species among hauls  
+    etaR[s]~dunif(0.001,1000)  # Spatial overdispersion between rectangles
      for(y in 1:Nyears){
-    #   for(r in 1:Nrec){
-         etaE[s,y]~dunif(0.001,1)    # Spatial overdispersion within rectangles
-    #   }
+       for(r in 1:Nrec){
+         etaE[s,r,y]~dunif(0.001,1)    # Spatial variation within rectangle 
+       }
      }
   }
 

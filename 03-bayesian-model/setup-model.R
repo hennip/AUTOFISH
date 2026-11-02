@@ -3,44 +3,40 @@ source("00-basics/packages-and-paths.R")
 
 # Define time series for data
 Nspecies<-4
-Nrec<-4
+
+rec2<-T # Use north/south division
+if(rec2==T){
+  Nrec<-2
+}else{
+  Nrec<-4
+}
+
 min_year<-2020
 max_year<-2025
 Nyears=length(min_year:max_year)
-model_data<-str_c("_",min_year,"-",max_year)
+model_data<-str_c("_Snew100_rec2_",min_year,"-",max_year)
 source("01-data/workflow-data-bayesmodel.R")
 
 
 # Choose model
-#source("03-bayesian-model/model_4species_clean.R")
-#source("03-bayesian-model/model_4species_etaEry.R")
-#source("03-bayesian-model/model_4species_etaEry_etaSry.R")
-#source("03-bayesian-model/model_NASC1_qLr_qS.R")
-#source("03-bayesian-model/model_NASC1_qLr_qS_etaSimple.R")
-#source("03-bayesian-model/model_ind.R")
-#source("03-bayesian-model/model_ind_muL_qS.R")
-#source("03-bayesian-model/model_ind_qS_qL_simple.R")
-#source("03-bayesian-model/model_ind_muL_2.R")
-#source("03-bayesian-model/model_ind_muL_2_muRsr_qS.R")
-#source("03-bayesian-model/model_ind_N.R")
-#source("03-bayesian-model/model_ind_N_qS_wAge.R")
 #source("03-bayesian-model/model_20_pS.R")
 
 #source("03-bayesian-model/model_20.R")
 #source("03-bayesian-model/model_20_wAge.R")
 
 #source("03-bayesian-model/model_20_Nunif.R")
-#source("03-bayesian-model/model_20_Nunif_EtaEsy.R")
+source("03-bayesian-model/model_20_Nunif_EtaEsy.R")
 
-source("03-bayesian-model/model_20_EtaEsy_CVnasc.R")
+#source("03-bayesian-model/model_20_EtaEsy_CVnasc.R")
 #source("03-bayesian-model/model_20_EtaEsy_CVnasc_qLsimple.R")
 
+#source("03-bayesian-model/model_20_EtaEsry_CVnasc.R")
 
 run_name<-str_c(modelname, model_data);run_name
 
 data<-list(
   Nyears=Nyears,
-  Nrec=4,
+  Nrec=Nrec,
   Nages=Nages, # Herring 0 - 8+ yr olds => 9 age groups 
   
   Nspecies=4,
@@ -77,7 +73,7 @@ data<-list(
 
 parnames=c(
   "deviance",
-  "NASC",
+  #"NASC",
   "mu_nasc",
   #"sigmaR",
   "qS","qL",

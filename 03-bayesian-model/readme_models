@@ -20,16 +20,17 @@ for now.
 
 
 model_20_pS:
-Yritys sovittaa malli lajikohtaisiin prosenttiosuuksiin ddirichlet-mallilla. Tässä tuli kuitenkin
-vastaan hankaluuksia alkuarvoistuksen kanssa (pS inconsistent with parents)
+Yritys sovittaa malli lajikohtaisiin prosenttiosuuksiin ddirichlet-mallilla. 
+Tässä tuli kuitenkin vastaan hankaluuksia alkuarvoistuksen kanssa 
+(pS inconsistent with parents)
 
 model_ind_N_qS (24/9/26):
-Ei auttanut muR:n hierarkkia, lopputulos oli silti että neljännes kaloista oli 
+Ei auttanut muR:n hierarkia, lopputulos oli silti että neljännes kaloista oli 
 kutakin lajia. Tässä versiossa N[s,r,y]:t ovat toisistaan riippumattomia,
-Ntot tulee näiden summana. Kun qS:lle annetaan suoraan arvoksi malliennuste, lopputulos
-alkoi näyttämään järkevältä. Ok, qS:n epävarmuus on olematon, tähän voi miettiä
-jatkossa jotain konstia ehkä. Mutta keskimäärin menee ihan järkevän oloisesti
-mikä on mainiota.  
+Ntot tulee näiden summana. Kun qS:lle annetaan suoraan arvoksi malliennuste, 
+lopputulos alkoi näyttämään järkevältä. Ok, qS:n epävarmuus on olematon, 
+tähän voi miettiä jatkossa jotain konstia ehkä. Mutta keskimäärin menee ihan 
+järkevän oloisesti mikä on mainiota.  
 
 
 model_ind_muL_2_muRsr.R (23/9/26):

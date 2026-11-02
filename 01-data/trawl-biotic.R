@@ -88,9 +88,10 @@ sum(G_obs, na.rm=T) # 9331
 # Use complete function to fill in rows that are missing (no individuals of 
 #particular length in any of the rectangles on given year)
 df_nG_obs_complete<-df |> 
-  summarise(ntot=sum(n))|> 
+  summarise(ntot=sum(n))|>
+  arrange(rec_ruhnu) |> 
   pivot_wider(names_from = rec_ruhnu, values_from = ntot) |>
-  select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
+  #select(length_group, year, `1`,`2`,`3`,`4`)|> # Order as pivot_wider may otherwise mess these up
   ungroup() |> complete(length_group,year)
 #View(df_nG_obs_complete) # Filled group 1 for 2016 and groups 1 and 3 for 2019
 
